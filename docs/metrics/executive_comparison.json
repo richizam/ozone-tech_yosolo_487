@@ -1,0 +1,22 @@
+﻿{
+    "campaigns":  "8 seeds x 11 items, camera perception",
+    "arm_primary":  {
+                        "routing_accuracy":  0.9773,
+                        "unsafe_errors":  0,
+                        "conservative_errors":  2,
+                        "executive_accuracy":  1,
+                        "arm_interventions_nominal":  88,
+                        "throughput_items_per_h":  514.5,
+                        "makespan_11_items_s":  83.2
+                    },
+    "transfer_table":  {
+                           "routing_accuracy":  0.9659,
+                           "unsafe_errors":  0,
+                           "conservative_errors":  3,
+                           "executive_accuracy":  1,
+                           "arm_interventions_nominal":  0,
+                           "throughput_items_per_h":  516.8,
+                           "makespan_11_items_s":  80.2,
+                           "fault_drill":  "snag -\u003e jam detected +10s -\u003e arm recovery -\u003e correct cage (recovery_success 1.0)"
+                       }
+}

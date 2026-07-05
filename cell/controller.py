@@ -23,15 +23,19 @@ GRASP_Z_TOL = 0.05           # m: TCP must be this close to the item top
 
 
 class Controller:
-    def __init__(self, model, data, bus):
+    def __init__(self, model, data, bus, mode="arm"):
         self.m, self.d, self.bus = model, data, bus
+        self.mode = mode
+        self.base = P.ARM_BASE[mode]
+        self.place = P.PLACE_BY_MODE[mode]
         self.jids = [model.joint(j).id for j in JOINTS]
         self.qadr = [model.jnt_qposadr[j] for j in self.jids]
         self.aids = [model.actuator(f"a{i+1}").id for i in range(4)]
         self.wrist_bid = model.body("wrist").id
         self.tcp_sid = model.site("tcp").id
         self.vmax = np.array(P.ARM["joint_vmax"])
-        self.q_home = ik(np.array([7.9, P.BELT_A["y"], P.LIFT_Z]))
+        hx, hy = P.ARM_HOME_XY[mode]
+        self.q_home = ik(np.array([hx, hy, P.LIFT_Z]), base=self.base)
         self.q_ref = self.q_home.copy()
         self.state = "IDLE"
         self.job = None
@@ -62,7 +66,7 @@ class Controller:
         self._deadline = t + 3.0 * travel + 1.0
 
     def _ik_wp(self, xyz):
-        q = ik(np.asarray(xyz, dtype=float))
+        q = ik(np.asarray(xyz, dtype=float), base=self.base)
         q[0] = unwrap_yaw(q[0], self.q_ref[0])
         return q
 
@@ -209,7 +213,7 @@ class Controller:
             self._set_target(self._ik_wp((j["pick_xy"][0], j["pick_xy"][1], j["lift_z"])), t)
 
         elif self.state == "LIFT":
-            place = P.PLACE[j["zone"]]
+            place = self.place[j["zone"]]
             tx, ty = place["xy"]
             surface = P.BELT_B["top"] if place["mode"] == "place" else P.CAGE_WALL_TOP
             self._place_wp = (tx, ty, surface + j["hang"] + place["z_clear"])

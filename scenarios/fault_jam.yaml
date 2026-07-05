@@ -1,0 +1,18 @@
+# Fault scenario: a snag is injected on the transfer table (the item stops
+# responding to the surface drive) — the routing watchdog must detect the jam
+# and the arm exception station must recover the item into the correct cage.
+seed: 42
+executive: table
+perception: camera
+items:
+  bottle: 1
+  box_s: 1
+  helmet: 1
+  cylinder: 1
+  pen: 1
+spawn_gap_s: [6.0, 8.0]
+inject_jam:
+  slug: helmet         # true zone D: recovery must deliver it to D
+  at_x: 7.95           # snag at the routing zone (inside the arm's coverage;
+                       # upstream snags escalate to operator call-out instead)
+max_sim_s: 240

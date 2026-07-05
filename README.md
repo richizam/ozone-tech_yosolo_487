@@ -33,23 +33,24 @@ Work zone: 6000×10000 mm; A and B positions fixed, C/D cages and everything els
 
 ```mermaid
 flowchart LR
-    A[Conveyor A<br/>1 m/s] -->|items| VS[Vision station<br/>overhead RGB-D camera<br/>upstream of accumulator]
-    VS -->|detect + track| PC[Perception core<br/>point cloud → OBB dims<br/>+ section-circularity ratio]
-    PC -->|category + pose + confidence| DE[Decision engine<br/>rule engine w/ priority<br/>+ low-confidence policy]
-    DE -->|routing command<br/>ahead of arrival| CTRL[Cell controller<br/>state machine, timing,<br/>fault handling]
-    A --> ACC[Accumulator]
-    ACC --> ARM[6-axis arm UR10-class<br/>hybrid vacuum + finger gripper]
-    CTRL --> ARM
-    ARM -->|place| B[Zone B: sorter infeed]
-    ARM -->|place| C[Zone C: oversize cage]
-    ARM -->|place| D[Zone D: repack cage]
+    A[Conveyor A<br/>1 m/s] -->|items| VS[Vision station<br/>multi-head depth sensing<br/>+ escapement gates]
+    VS -->|measured geometry| PC[Perception core<br/>dims + section-circularity<br/>multi-read fusion]
+    PC -->|category + confidence| DE[Decision engine<br/>official rule order<br/>+ safe-side policies]
+    DE -->|route command| CTRL[Cell controller<br/>watchdogs, exceptions]
+    A --> TT[Transfer table<br/>tri-directional routing<br/>no grasping]
+    CTRL --> TT
+    TT -->|north connector| B[Zone B: sorter infeed]
+    TT -->|east chute| C[Zone C: oversize cage]
+    TT -->|south chute| D[Zone D: repack cage]
+    CTRL -.jam detected.-> ARM[Exception arm<br/>4-axis palletizer<br/>recovery to cage]
+    ARM -.clears to.-> D
 ```
 
 Key design decisions (each is defended in the report):
 
 - **Look-ahead classification.** The camera sits upstream: an item is classified *while still travelling* toward the accumulator, so inference latency (~tens of ms) is hidden and the arm receives its command *before* the item arrives — this addresses the scored "Синхронизация по времени" criterion directly.
 - **Geometry-first perception (built, validated).** The official rules are purely geometric, so the pipeline measures geometry and implements the *formal* 0.8 criterion — not a black-box class label. The virtual sensor suite mirrors a standard DWS dimensioning tunnel: an overhead depth grid plus a light-section profile scanner with side heads (ray-cast — deterministic, zero OpenGL/GPU dependency, identical headless and in the jury's server). Analysis: min-area-rect dims + pose-robust minor axis from section radii; transverse slices along the item's main axis, densified at both ends; per-slice radial circularity + surface-of-revolution test; end-cap circles must be confirmed by several nearby slices. Multi-read fusion during belt transit follows the official decision order, and uncertain shapes divert to D — never to the sorter. **Validated: 100/99.1/99.1% categories over 330 randomized poses (3 seeds); closed-loop 8-seed campaign: 97.7% end-to-end, 100% executive, zero unsafe errors.** A learned detector (YOLO on synthetic renders) is a Phase-3+ add-on for tracking only; the category never comes from a network. This makes borderline behaviour explainable — worth points in three rubric lines.
-- **One arm, three zones.** A UR10-class arm at the accumulator with a hybrid gripper (vacuum cup for boxes/flats + adaptive fingers for sacks/cylinders) places items onto B or drops into C/D cages placed inside its reach envelope. Fallback design (kept in the report as an engineering trade-off): tri-directional powered roller table for higher throughput.
+- **Transfer table routes, the arm recovers.** The primary executive is a **tri-directional powered transfer table**: items are routed to B (north connector), C (east chute into an open-front roll container) or D (south chute) without ever being grasped — no universal-gripper assumption for arbitrary materials. The 4-axis palletizer arm stands at an **exception station**: a routing watchdog detects jams, the arm clears them into the correct cage, unreachable snags escalate to operator call-out. The arm-primary design is preserved (`--executive arm`, tag `arm-primary-baseline`) and measured against the table in [docs/report/executive_mechanism_tradeoff.md](docs/report/executive_mechanism_tradeoff.md): both 100% executive-accurate and zero unsafe errors; the table needs **zero arm interventions** in nominal flow and has pipelining headroom.
 - **Safety by design.** Fenced cell, light curtain across the human access side, e-stop chain, reduced-speed service mode — modelled in the layout and described per the "Безопасность эксплуатации" criterion.
 
 ## 3. Ground truth for the official test set (computed, reproducible)

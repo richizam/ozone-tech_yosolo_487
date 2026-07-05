@@ -48,6 +48,18 @@ The plan is phased in relative weeks (**W0 = today** → **W6 = submission/defen
 
 **Exit gate: PASSED.** Static validation 330 poses × 3 seeds: **100% / 99.1% / 99.1%** categories from sensor data alone (near-threshold dims within ±2 mm on the items where it decides). Closed-loop 8-seed campaign (88 items): **97.7% end-to-end routing, 100% executive accuracy, ZERO unsafe errors** — no round/oversize item ever reached the sorter; both misses were borderline true-B items conservatively diverted to repack. Discovered and documented: the «Цилиндр» is octagonal (0.749) with only a ~35 mm circular end cap (0.97); convex-hull collision proxies erase that cap (assets switched to true meshes); single-view sensing cannot certify convex flanks (hence the multi-head scanner).
 
+## Phase 2.5 — Executive architecture pivot: transfer table primary ✅ DONE
+
+Per [transfer_table_roadmap_changes.md](transfer_table_roadmap_changes.md): the tri-directional
+transfer table is the primary routing mechanism (no grasping in the normal path — no
+universal-gripper assumption); the arm is an exception-recovery station.
+
+- [x] Baseline preserved: tag `arm-primary-baseline`, metrics in [docs/metrics/arm_primary_summary.json](docs/metrics/arm_primary_summary.json), still runnable via `--executive arm`.
+- [x] Widened transfer table after the escapement gate; lanes to B (north connector), C (east chute → open-front roll container), D (south chute); presentation cameras top_view/overview.
+- [x] Table routing physics (controlled-surface zones), slick chutes (`priority=1` contact friction — gently-placed items must still slide), single-item vision-window discipline (pre-gate hold line + tracked-cluster isolation).
+- [x] Arm relocated to the reach-checked exception station; jam watchdog → recovery → correct cage; second failure → operator call-out; fault drill green ([scenarios/fault_jam.yaml](scenarios/fault_jam.yaml), recovery_success 1.0).
+- [x] Milestone-4 comparison ([docs/report/executive_mechanism_tradeoff.md](docs/report/executive_mechanism_tradeoff.md)): 8 seeds × both architectures — zero unsafe errors in both; table needs 0 arm interventions in nominal flow (arm-primary: 88).
+
 ## Phase 3 — Executive part depth (W3) — *the biggest rubric block (30 pts)*
 
 **Goal:** manipulation quality, geometry coverage, safety — engineered, not hand-waved.

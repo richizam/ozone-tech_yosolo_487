@@ -15,8 +15,9 @@ SPIN_DAMP = 0.85          # per-control-step angular velocity retention on belt
 
 
 class Belts:
-    def __init__(self, model, item_entries):
+    def __init__(self, model, item_entries, mode="arm"):
         self.m = model
+        self.mode = mode
         self.gid_beltA = model.geom("beltA").id
         self.gid_beltB = model.geom("beltB").id
         self.items = []
@@ -34,6 +35,8 @@ class Belts:
             self.by_gid[it["gid"]] = it
         self.skip = set()              # slugs currently attached (arm holds them)
         self.gate_open = True          # escapement gate before the accumulator
+        self.hold2_open = True         # pre-gate hold (keeps the vision window
+                                       # single-item while somebody is at the gate)
 
     def _belt_contacts(self, data):
         """gid -> set of belt geom ids the item touches this step."""
@@ -63,17 +66,25 @@ class Belts:
                 if not self.gate_open and a["gate_x"] - 0.004 <= front < a["gate_x"] + 0.05:
                     # held at the escapement gate; items whose front crossed the
                     # commit line (gate_x + 0.05, same line the gate-state check
-                    # uses) are committed to the accumulator and keep moving
+                    # uses) are committed downstream and keep moving
                     continue
-                if front < a["x_stop"] - 0.012:
-                    # deceleration zones before gate and stop wall: items creep
-                    # into contact instead of slamming at full belt speed, and
-                    # the drive cuts 12 mm early so the settle detector can see
-                    # the item actually stop
-                    taper = np.clip((a["x_stop"] - front) / 0.30, 0.08, 1.0)
+                if not self.hold2_open and a["hold2_x"] - 0.004 <= front < a["hold2_x"] + 0.05:
+                    continue           # held at the pre-gate line
+                # arm mode ends belt A at a stop wall (decelerate into it);
+                # table mode hands over to the table surface at full speed
+                x_end = a["x_stop"] if self.mode == "arm" else None
+                if x_end is None or front < x_end - 0.012:
+                    taper = 1.0
+                    if x_end is not None:
+                        # items creep into the stop instead of slamming, and
+                        # the drive cuts 12 mm early so the settle detector
+                        # can see the item actually stop
+                        taper = np.clip((x_end - front) / 0.30, 0.08, 1.0)
                     if not self.gate_open and front < a["gate_x"] + 0.05:
                         # approaching a closed gate: decelerate to a stop at it
-                        taper = min(taper, float(np.clip((a["gate_x"] - front) / 0.30, 0.0, 1.0)))
+                        taper = min(float(taper), float(np.clip((a["gate_x"] - front) / 0.30, 0.0, 1.0)))
+                    if not self.hold2_open and front < a["hold2_x"] + 0.05:
+                        taper = min(float(taper), float(np.clip((a["hold2_x"] - front) / 0.30, 0.0, 1.0)))
                     v[0] = a["speed"] * taper
                     v[1] = 0.8 * (a["y"] - y)
                     w *= SPIN_DAMP

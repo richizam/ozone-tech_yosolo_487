@@ -12,6 +12,7 @@ class Metrics:
     def __init__(self, bus, out_dir):
         self.out = Path(out_dir)
         self.out.mkdir(parents=True, exist_ok=True)
+        self.bus = bus
         self.rows = {}                 # slug -> row dict
         self.wall_t0 = time.time()
         for topic in ("item_spawned", "item_classified", "item_settled",
@@ -41,6 +42,10 @@ class Metrics:
             elif topic == "cell_event" and msg.get("event") == "released":
                 row["t_released"] = t
                 row["cycle_s"] = msg.get("cycle_s")
+            elif topic == "cell_event" and msg.get("event") == "jam_detected":
+                row["jam"] = True
+            elif topic == "cell_event" and msg.get("event") == "recovery_done":
+                row["recovered_ok"] = msg.get("ok")
             elif topic == "item_delivered":
                 row["t_delivered"] = t
                 row["zone_actual"] = msg["zone"]
@@ -50,7 +55,7 @@ class Metrics:
     def finalize(self, sim_time, extra=None):
         rows = list(self.rows.values())
         cols = ["slug", "zone_true", "zone_raw", "zone_perceived", "zone_actual", "ok",
-                "cls_confidence", "cls_flags", "t_spawn", "t_classified",
+                "cls_confidence", "cls_flags", "jam", "recovered_ok", "t_spawn", "t_classified",
                 "t_settled", "t_pick_start", "t_attached", "t_released", "t_delivered", "cycle_s"]
         with open(self.out / "events.csv", "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
@@ -69,6 +74,12 @@ class Metrics:
         errs = [r for r in rows if r.get("zone_actual") and r["zone_actual"] != r.get("zone_true")]
         unsafe = sum(1 for r in errs if r["zone_actual"] == "B")
         conservative = sum(1 for r in errs if r.get("zone_true") == "B" and r["zone_actual"] in ("C", "D"))
+        # exception handling + throughput (transfer-table architecture)
+        jams = sum(1 for r in rows if r.get("jam"))
+        recovered = sum(1 for r in rows if r.get("jam") and r.get("zone_actual") in ("C", "D"))
+        t_del = sorted(r["t_delivered"] for r in rows if r.get("t_delivered") is not None)
+        throughput = (3600.0 * (len(t_del) - 1) / (t_del[-1] - t_del[0])
+                      if len(t_del) >= 2 and t_del[-1] > t_del[0] else None)
         summary = {
             "items": len(rows),
             "routed_correctly": n_ok,
@@ -77,6 +88,10 @@ class Metrics:
             "executive_accuracy": round(exec_ok / len(delivered), 4) if delivered else None,
             "unsafe_errors": unsafe,
             "conservative_errors": conservative,
+            "arm_interventions": jams,
+            "recovery_success": round(recovered / jams, 3) if jams else None,
+            "routing_no_intervention": round((len(delivered) - jams) / len(delivered), 4) if delivered else None,
+            "throughput_items_per_h": round(throughput, 1) if throughput else None,
             "cycle_mean_s": round(float(np.mean(cycles)), 2) if cycles else None,
             "cycle_p95_s": round(float(np.percentile(cycles, 95)), 2) if cycles else None,
             "cycle_max_s": round(float(np.max(cycles)), 2) if cycles else None,
@@ -85,4 +100,8 @@ class Metrics:
             **(extra or {}),
         }
         (self.out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        with open(self.out / "events_raw.jsonl", "w", encoding="utf-8") as f:
+            for topic, msg in self.bus.history:
+                f.write(json.dumps({"topic": topic, **{k: v for k, v in msg.items()
+                                                       if k != "dims_mm"}}, default=str) + "\n")
         return summary

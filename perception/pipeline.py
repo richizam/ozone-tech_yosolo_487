@@ -26,7 +26,8 @@ from tools.classify_mesh import chebyshev_radius, MIN_DIM_MM, MAX_DIMS_MM, RATIO
 from perception.geometry import min_area_rect
 
 BELT_Z = 0.700                # calibrated belt plane (measured: 0.7000 +- 0.0000)
-ROI_X = (5.35, 6.65)          # camera footprint used for analysis
+ROI_X = (5.35, 6.55)          # camera footprint used for analysis (ends before
+                              # the table entry so downstream items stay out)
 ROI_Y_HALF = 0.26             # belt corridor half-width
 Z_MIN, Z_MAX = 0.004, 0.55    # item height window above belt (masks the mount bar)
 CIRCLE_RMS_FRAC = 0.05        # accept a circle fit if rms < 5% of radius
@@ -110,7 +111,7 @@ class LookaheadPerception:
                 & (pts[:, 0] > ROI_X[0]) & (pts[:, 0] < ROI_X[1])
                 & (np.abs(pts[:, 1] - P.BELT_A["y"]) < ROI_Y_HALF))
 
-    def cloud(self, data):
+    def cloud(self, data, x_hint=None):
         """World-frame point cloud of the item in the ROI, or None."""
         # overhead grid
         mujoco.mj_multiRay(self.m, data, self.cam_pos, self._vec_flat,
@@ -145,8 +146,30 @@ class LookaheadPerception:
         if fan_pts:
             fan_pts = np.vstack(fan_pts)
             fan_pts = fan_pts[self._mask(fan_pts)]
-            return np.vstack([grid_pts, fan_pts])
-        return grid_pts
+            pts = np.vstack([grid_pts, fan_pts])
+        else:
+            pts = grid_pts
+        return self._select_cluster(pts, x_hint)
+
+    @staticmethod
+    def _select_cluster(pts, x_hint=None, gap=0.07, min_pts=40):
+        """Instance isolation: split the cloud at along-belt gaps and keep the
+        cluster of the tracked item (x_hint from the belt tracker); without a
+        hint, keep the largest cluster."""
+        order = np.argsort(pts[:, 0])
+        xs = pts[order, 0]
+        splits = np.where(np.diff(xs) > gap)[0]
+        if len(splits) == 0:
+            return pts
+        bounds = [0] + (splits + 1).tolist() + [len(xs)]
+        clusters = [pts[order[bounds[i]:bounds[i + 1]]] for i in range(len(bounds) - 1)]
+        clusters = [c for c in clusters if len(c) >= min_pts] or clusters
+        if x_hint is not None:
+            def dist(c):
+                lo, hi = c[:, 0].min(), c[:, 0].max()
+                return 0.0 if lo <= x_hint <= hi else min(abs(x_hint - lo), abs(x_hint - hi))
+            return min(clusters, key=dist)
+        return max(clusters, key=len)
 
     # ------------------------------------------------------------------ analysis
     def analyze(self, pts):
@@ -308,8 +331,8 @@ class LookaheadPerception:
             "n_points": int(len(pts)),
         }
 
-    def classify(self, data):
-        pts = self.cloud(data)
-        if pts is None:
+    def classify(self, data, x_hint=None):
+        pts = self.cloud(data, x_hint=x_hint)
+        if pts is None or len(pts) < 40:
             return None
         return self.analyze(pts)

@@ -19,25 +19,27 @@ BX, BY = ARM["base"]
 L1, L2, TOOL = ARM["L1"], ARM["L2"], ARM["tool_len"]
 
 
-def fk(q):
+def fk(q, base=None):
     """q = (q1, q2, q3, q4) -> (tcp_xyz, wrist_xyz). q4 is ignored for position
     (tool vertical is enforced by q4 = -(q2+q3))."""
+    bx, by = base if base is not None else (BX, BY)
     q1, q2, q3, _ = q
     c2, s2 = np.cos(q2), np.sin(q2)
     c23, s23 = np.cos(q2 + q3), np.sin(q2 + q3)
     r = L1 * c2 + L2 * c23
     z = -(L1 * s2 + L2 * s23)
-    wrist = np.array([BX + r * np.cos(q1), BY + r * np.sin(q1), SHOULDER_Z + z])
+    wrist = np.array([bx + r * np.cos(q1), by + r * np.sin(q1), SHOULDER_Z + z])
     tcp = wrist - np.array([0.0, 0.0, TOOL])
     return tcp, wrist
 
 
-def ik(tcp_xyz):
+def ik(tcp_xyz, base=None):
     """TCP target -> q = (q1, q2, q3, q4), elbow-up branch. Raises ValueError
     if out of reach."""
+    bx, by = base if base is not None else (BX, BY)
     x, y, z = tcp_xyz
     wx, wy, wz = x, y, z + TOOL
-    dx, dy = wx - BX, wy - BY
+    dx, dy = wx - bx, wy - by
     q1 = np.arctan2(dy, dx)
     r = np.hypot(dx, dy)
     h = -(wz - SHOULDER_Z)             # planar "down" coordinate
@@ -55,7 +57,7 @@ def ik(tcp_xyz):
             best = cand
     q = np.array(best[1])
     # verify
-    tcp, _ = fk(q)
+    tcp, _ = fk(q, base=base)
     if not np.allclose(tcp, tcp_xyz, atol=1e-9):
         raise AssertionError(f"IK/FK mismatch: {tcp} vs {tcp_xyz}")
     return q
