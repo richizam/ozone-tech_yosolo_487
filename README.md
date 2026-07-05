@@ -48,7 +48,7 @@ flowchart LR
 Key design decisions (each is defended in the report):
 
 - **Look-ahead classification.** The camera sits upstream: an item is classified *while still travelling* toward the accumulator, so inference latency (~tens of ms) is hidden and the arm receives its command *before* the item arrives — this addresses the scored "Синхронизация по времени" criterion directly.
-- **Geometry-first perception.** The official rules are purely geometric, so the primary pipeline measures geometry (depth → point cloud → oriented bounding box dims → cross-section inscribed/circumscribed ratio) and implements the *formal* 0.8 criterion — not a black-box class label. A learned detector (YOLO on synthetic renders) only localizes/tracks items on the belt. This makes borderline behaviour explainable — worth points in three rubric lines.
+- **Geometry-first perception (built, validated).** The official rules are purely geometric, so the pipeline measures geometry and implements the *formal* 0.8 criterion — not a black-box class label. The virtual sensor suite mirrors a standard DWS dimensioning tunnel: an overhead depth grid plus a light-section profile scanner with side heads (ray-cast — deterministic, zero OpenGL/GPU dependency, identical headless and in the jury's server). Analysis: min-area-rect dims + pose-robust minor axis from section radii; transverse slices along the item's main axis, densified at both ends; per-slice radial circularity + surface-of-revolution test; end-cap circles must be confirmed by several nearby slices. Multi-read fusion during belt transit follows the official decision order, and uncertain shapes divert to D — never to the sorter. **Validated: 100/99.1/99.1% categories over 330 randomized poses (3 seeds); closed-loop 8-seed campaign: 97.7% end-to-end, 100% executive, zero unsafe errors.** A learned detector (YOLO on synthetic renders) is a Phase-3+ add-on for tracking only; the category never comes from a network. This makes borderline behaviour explainable — worth points in three rubric lines.
 - **One arm, three zones.** A UR10-class arm at the accumulator with a hybrid gripper (vacuum cup for boxes/flats + adaptive fingers for sacks/cylinders) places items onto B or drops into C/D cages placed inside its reach envelope. Fallback design (kept in the report as an engineering trade-off): tri-directional powered roller table for higher throughput.
 - **Safety by design.** Fenced cell, light curtain across the human access side, e-stop chain, reduced-speed service mode — modelled in the layout and described per the "Безопасность эксплуатации" criterion.
 
@@ -94,13 +94,15 @@ Machine-readable: [docs/ground_truth/item_ground_truth.json](docs/ground_truth/i
 │   ├── layout_v0.py             ← parametric cell layout (single source of truth for all dims)
 │   └── out/                     ← generated: top-view PNG, 3D GLB scene, reach_check.json
 ├── cell/                        ← MuJoCo cell: scene gen, belts+gate, arm IK, controller, metrics
-│   ├── run_sim.py               ← entrypoint (headless or --viewer), writes runs/<stamp>/
-│   └── assets/                  ← convex-hull proxies of the official STLs + manifest
+│   ├── run_sim.py               ← entrypoint (--perception camera|oracle, --viewer)
+│   └── assets/                  ← true-surface meshes of the official STLs + manifest
 ├── flow/                        ← SimPy flow model: capacity, queues (physics-measured times)
 ├── scenarios/                   ← scenario YAMLs (base; borderline & fault suites 🔜)
 ├── tests/                       ← rule-engine + kinematics tests (pytest, 17 tests)
-├── perception/                  ← 🔜 detector, tracker, dims/section estimation from RGB-D
-├── decision/                    ← 🔜 confidence policy (rules live in tools/classify_mesh.py)
+├── perception/                  ← ray-cast multi-head sensing + geometric classification
+│   ├── pipeline.py              ← DWS sensor suite → dims, sections, category, confidence
+│   ├── geometry.py              ← min-area rect, circle fit, envelope primitives
+│   └── validate.py              ← randomized-pose campaign → docs/metrics/
 ├── extracted/                   ← official STL/STEP test-set models (from organizer archives)
 ├── requirements.txt             ← pinned dependencies
 └── Dockerfile                   ← 🔜 one-command reproduction for the expert jury
@@ -122,11 +124,16 @@ uv pip install --python .venv -r requirements.txt
 # Recompute the full ground-truth table
 .venv/Scripts/python tools/classify_mesh.py --all "extracted/doc-1782987733/Stl" --json docs/ground_truth/item_ground_truth.json
 
-# Prepare sim assets (hull proxies), then run the FULL CELL end to end (headless)
+# Prepare sim assets, then run the FULL CELL end to end (headless), sensing included
 .venv/Scripts/python cell/prep_assets.py
 .venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --seed 42
-# → runs/<stamp>_seed42/events.csv + summary.json; exit 0 iff every item routed correctly
-# add --viewer to watch live in the MuJoCo viewer
+# → runs/<stamp>_seed42_camera/events.csv + summary.json (classification /
+#   executive / end-to-end accuracy, unsafe vs conservative errors, cycle times)
+# --perception oracle for the ground-truth-fed regression mode; --viewer to watch
+
+# Perception validation campaign: 11 items x N randomized poses, camera data only
+.venv/Scripts/python -m perception.validate --poses 10 --seed 5
+# → docs/metrics/perception_validation.{csv,json}; gate: >=95% categories
 
 # Flow model: capacity & queueing from measured cycle times
 .venv/Scripts/python -m flow.model    # → flow/out/sweep.csv + flow_sweep.png

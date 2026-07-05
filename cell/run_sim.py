@@ -32,15 +32,20 @@ from cell.scene import make_model  # noqa: E402
 
 
 class ItemManager:
-    """Spawning, settling detection, delivery detection."""
+    """Spawning, classification (oracle or camera), settling, delivery."""
 
-    def __init__(self, model, data, manifest, order, gaps, bus, perception_latency):
+    CAM_WINDOW = (5.85, 6.5)     # classify while the item center crosses this
+
+    def __init__(self, model, data, manifest, order, gaps, bus, perception_latency,
+                 perceiver=None, spawn_rng=None):
         self.m, self.d, self.bus = model, data, bus
         self.entries = {e["slug"]: e for e in manifest}
         self.queue = list(order)                   # slugs to spawn
         self.gaps = list(gaps)
         self.next_spawn_t = 1.0
         self.latency = perception_latency
+        self.perceiver = perceiver                 # None -> oracle mode
+        self.spawn_rng = spawn_rng
         self.active = {}                           # slug -> state dict
         self.done = {}                             # slug -> zone_actual
 
@@ -65,8 +70,15 @@ class ItemManager:
             slug = self.queue.pop(0)
             e = self.entries[slug]
             qadr, dadr = self._adr(slug)
+            # random yaw where the geometry allows it (big items arrive
+            # pre-aligned by the upstream infeed, as in the CAD layout note)
+            yaw = 0.0
+            if self.spawn_rng is not None:
+                diag = float(np.hypot(e["dims_m"][0], e["dims_m"][1]))
+                yaw = (float(self.spawn_rng.uniform(-0.09, 0.09)) if diag > 0.48
+                       else float(self.spawn_rng.uniform(0, 2 * np.pi)))
             self.d.qpos[qadr:qadr + 3] = [0.4, P.BELT_A["y"], P.BELT_A["top"] + e["dims_m"][2] / 2 + 0.003]
-            self.d.qpos[qadr + 3:qadr + 7] = [1, 0, 0, 0]
+            self.d.qpos[qadr + 3:qadr + 7] = [np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
             self.d.qvel[dadr:dadr + 6] = 0
             self.active[slug] = {"classified": False, "settled": False, "picked": False,
                                  "released_t": None, "classify_t": t + self.latency,
@@ -79,11 +91,32 @@ class ItemManager:
             qadr, dadr = self._adr(slug)
             pos = self.d.qpos[qadr:qadr + 3]
             vel = self.d.qvel[dadr:dadr + 3]
-            # look-ahead classification (oracle v0)
-            if not st["classified"] and t >= st["classify_t"]:
-                st["classified"] = True
-                st["zone"] = e["zone"]
-                self.bus.publish("item_classified", t=t, slug=slug, zone=e["zone"])
+            # look-ahead classification at the vision station
+            if not st["classified"]:
+                if self.perceiver is None:
+                    # oracle mode: ground truth stamped after a model latency
+                    if t >= st["classify_t"]:
+                        st["classified"] = True
+                        st["zone"] = e["zone"]
+                        self.bus.publish("item_classified", t=t, slug=slug,
+                                         zone=e["zone"], zone_true=e["zone"],
+                                         zone_raw=e["zone"], confidence=1.0, flags="")
+                elif self.CAM_WINDOW[0] <= pos[0] <= self.CAM_WINDOW[1]:
+                    # multi-capture evidence: throttled reads accumulate while
+                    # the item crosses (or dwells at the escapement gate in)
+                    # the window; the verdict is the MAJORITY zone, and shape
+                    # policies fire only on PERSISTENT evidence — single-read
+                    # artifacts from items still rocking after belt transit
+                    # cannot decide anything
+                    if t >= st.get("next_capture_t", 0.0):
+                        st["next_capture_t"] = t + 0.12
+                        res = self.perceiver.classify(self.d)
+                        reads = st.setdefault("cls_reads", [])
+                        if res is not None:
+                            reads.append(res)
+                        leaving = pos[0] > self.CAM_WINDOW[1] - 0.06
+                        if len(reads) >= 5 or (leaving and reads) or (leaving and len(reads) == 0):
+                            self._commit_classification(slug, e, reads, t)
             # fell off the belt while nobody was carrying it? adjudicate as a
             # logged fault instead of stranding the run
             if (not st["picked"] and st["released_t"] is None
@@ -124,6 +157,50 @@ class ItemManager:
                     # fault fallback: item released to B never crossed the exit line
                     self._deliver(slug, self._which_cage(pos) or "FLOOR", t)
 
+    def _commit_classification(self, slug, e, reads, t):
+        """Fuse the window's reads following the OFFICIAL decision order:
+        dimensions first (median over reads — robust to transient tilt), then
+        circle-in-section, where a corroborated detection in ANY read counts
+        (the rule is existential: 'circle in any section') and the weak
+        isolated-circle policy fires only when persistent across reads."""
+        st = self.active[slug]
+        flags = []
+        if not reads:
+            zone_raw = zone = "D"              # sensor miss: manual stream
+            rep = {"confidence": 0.0, "max_ratio": None, "dims_mm": None}
+            flags.append("sensor_miss")
+        else:
+            rep = max(reads, key=lambda r: (r.get("max_ratio") is not None,
+                                            r.get("max_ratio") or 0))
+            dims = np.median(np.array([r["dims_mm"] for r in reads if r.get("dims_mm")]),
+                             axis=0)
+            minors = [r["minor_mm"] for r in reads if r.get("minor_mm") is not None]
+            minor = float(np.median(minors)) if minors else None
+            undersize = bool(np.any(dims < 10.0) or (minor is not None and minor < 10.0))
+            oversize = bool(np.any(np.sort(dims)[::-1] > np.array([450.0, 320.0, 320.0])))
+            circ_strong = any(r.get("circular") for r in reads)
+            n_relaxed = sum(1 for r in reads if r.get("circular_relaxed"))
+            n_isolated = sum(1 for r in reads if "isolated_end_circle" in r.get("flags", []))
+            weak_persistent = (n_isolated * 2 >= len(reads)) or (n_relaxed >= 2)
+            if undersize or oversize:
+                zone_raw = zone = "C"
+            elif circ_strong:
+                zone_raw = zone = "D"
+            elif weak_persistent:
+                zone_raw, zone = "B", "D"      # policy: uncertain shape -> repack
+                flags.append("policy_reroute_D")
+            else:
+                zone_raw = zone = "B"
+            rep = dict(rep, dims_mm=[round(float(d), 1) for d in dims])
+            flags = list(rep.get("flags", [])) + flags
+        st["classified"] = True
+        st["zone"] = zone
+        self.bus.publish("item_classified", t=t, slug=slug,
+                         zone=zone, zone_true=e["zone"], zone_raw=zone_raw,
+                         confidence=rep.get("confidence"), ratio=rep.get("max_ratio"),
+                         dims_mm=rep.get("dims_mm"), n_reads=len(reads),
+                         flags=";".join(flags))
+
     def _which_cage(self, pos):
         for zone, cage in (("C", P.CAGE_C), ("D", P.CAGE_D)):
             cx, cy = cage["center"]
@@ -159,6 +236,8 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--viewer", action="store_true", help="open the MuJoCo viewer")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--perception", choices=["oracle", "camera"], default=None,
+                    help="override the scenario's perception mode")
     args = ap.parse_args(argv)
 
     sc = yaml.safe_load(Path(args.scenario).read_text(encoding="utf-8"))
@@ -175,12 +254,20 @@ def main(argv=None):
     order = list(rng.permutation(slugs))
     gaps = list(rng.uniform(sc["spawn_gap_s"][0], sc["spawn_gap_s"][1], size=len(order)))
 
+    mode = args.perception or sc.get("perception", "oracle")
+    perceiver = None
+    if mode == "camera":
+        from perception.pipeline import LookaheadPerception
+        perceiver = LookaheadPerception(model)
+
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = Path(args.out) if args.out else ROOT / "runs" / f"{stamp}_seed{seed}"
+    out_dir = Path(args.out) if args.out else ROOT / "runs" / f"{stamp}_seed{seed}_{mode}"
     bus = Bus()
     metrics = Metrics(bus, out_dir)
     items = ItemManager(model, data, manifest, order, gaps, bus,
-                        perception_latency=sc.get("perception_latency_s", 0.15))
+                        perception_latency=sc.get("perception_latency_s", 0.15),
+                        perceiver=perceiver,
+                        spawn_rng=np.random.default_rng(seed + 1000))
     belts = Belts(model, manifest)
     ctrl = Controller(model, data, bus)
 
@@ -223,7 +310,7 @@ def main(argv=None):
     decim = P.SIM["control_decimation"]
     dt_ctrl = model.opt.timestep * decim
     step = 0
-    print(f"scenario={Path(args.scenario).name} seed={seed} items={n_total} -> {out_dir}")
+    print(f"scenario={Path(args.scenario).name} seed={seed} perception={mode} items={n_total} -> {out_dir}")
 
     def accumulator_clear():
         """Escapement-gate condition: nobody (not held by the arm) committed
@@ -255,7 +342,8 @@ def main(argv=None):
             if not viewer_ctx.is_running():
                 break
 
-    summary = metrics.finalize(data.time, extra={"seed": seed, "scenario": Path(args.scenario).name})
+    summary = metrics.finalize(data.time, extra={"seed": seed, "perception": mode,
+                                                 "scenario": Path(args.scenario).name})
     print(json.dumps(summary, indent=2))
     misrouted = [s for s, z in items.done.items() if z != items.entries[s]["zone"]]
     unfinished = n_total - len(items.done)

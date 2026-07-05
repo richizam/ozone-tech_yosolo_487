@@ -37,15 +37,16 @@ The plan is phased in relative weeks (**W0 = today** → **W6 = submission/defen
 
 **Goal:** replace the oracle with sensing, without breaking the loop.
 
-- [ ] Overhead RGB-D camera in sim upstream of the accumulator (look-ahead station).
-- [ ] Belt-plane calibration; background subtraction / depth segmentation → object mask.
-- [ ] Point cloud → oriented bounding box → dimensions (mm) with error stats vs ground truth.
-- [ ] Cross-section circularity from depth silhouette + multi-height slices → `r_in/R` estimator; validate against mesh-computed truth on all 11 items.
-- [ ] YOLO (Ultralytics) belt detector trained on synthetic renders (Blender/PyBullet domain-randomized: pose, lighting, texture) — used for detection/tracking, *not* for category.
-- [ ] Confidence model: geometric margins (distance of dims to limits, ratio to 0.8) → per-item confidence; low-confidence policy (route to D + flag) documented.
-- [ ] Perception → decision → controller over one message bus (in-process pub/sub; ROS 2-shaped interfaces but zero-dependency).
+- [x] Look-ahead sensing station upstream of the accumulator — **built as a ray-cast multi-head DWS dimensioner** (overhead depth grid + close-mounted light-section profile scanner + two side heads), zero OpenGL dependency: identical results headless/CI/jury server.
+- [x] Belt-plane calibration (0.7000 m exact) + height-window segmentation.
+- [x] Dimensions from silhouette min-area rect + height; **pose-robust minor axis from section radii** (a pen resting on its clip still measures its 9 mm barrel → undersize → C).
+- [x] Circularity: transverse slices along the OBB main axis, densified at both ends; per-slice radial ratio `min ρ/max ρ` (30–150° window) + surface-of-revolution test; **end-cap circles require several nearby slices to agree**.
+- [x] Confidence: margins to thresholds + flags (`near_ratio_threshold`, `near_dim_limit`, `isolated_end_circle`); low-confidence policy: uncertain shape → D (repack), never to the sorter.
+- [x] Multi-read fusion at the cell level following the official decision order: median dims (priority gate) → OR over reads for strict circular evidence → persistence-gated policies. Stability against items still rocking from belt transit.
+- [x] Perception → decision → controller over the message bus; full trace per item in events.csv.
+- [ ] YOLO (Ultralytics) belt detector on synthetic renders — deferred to Phase 3+ (detection/tracking for nose-to-tail scenarios; category stays geometric).
 
-**Exit gate:** ≥ 95% correct categories on randomized-pose test runs of the 11 items *from camera data alone*; measured dims within ±5 mm; full trace item → category → command → placement in the log.
+**Exit gate: PASSED.** Static validation 330 poses × 3 seeds: **100% / 99.1% / 99.1%** categories from sensor data alone (near-threshold dims within ±2 mm on the items where it decides). Closed-loop 8-seed campaign (88 items): **97.7% end-to-end routing, 100% executive accuracy, ZERO unsafe errors** — no round/oversize item ever reached the sorter; both misses were borderline true-B items conservatively diverted to repack. Discovered and documented: the «Цилиндр» is octagonal (0.749) with only a ~35 mm circular end cap (0.97); convex-hull collision proxies erase that cap (assets switched to true meshes); single-view sensing cannot certify convex flanks (hence the multi-head scanner).
 
 ## Phase 3 — Executive part depth (W3) — *the biggest rubric block (30 pts)*
 

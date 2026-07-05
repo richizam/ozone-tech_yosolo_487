@@ -1,0 +1,19 @@
+{
+  "poses_per_item": 10,
+  "seed": 77,
+  "classifications": 110,
+  "category_accuracy": 0.9909,
+  "dims_err_mean_mm": 3.69,
+  "dims_err_p95_mm": 10.76,
+  "dims_err_max_mm": 31.0,
+  "misclassified": [
+    {
+      "slug": "cylinder",
+      "pose": 1,
+      "zone_true": "D",
+      "zone_perceived": "B",
+      "max_ratio": 0.906,
+      "dims_err_mm": 2.8
+    }
+  ]
+}

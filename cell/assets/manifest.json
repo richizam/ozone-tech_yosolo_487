@@ -12,7 +12,7 @@
     "mass_kg": 0.305,
     "zone": "D",
     "category": "Не подходит для сортировки без доупаковки",
-    "hull_faces": 602
+    "faces": 6522
   },
   {
     "slug": "box_s",
@@ -27,7 +27,7 @@
     "mass_kg": 3.0,
     "zone": "B",
     "category": "Подходит для сортировки",
-    "hull_faces": 188
+    "faces": 592
   },
   {
     "slug": "box_l",
@@ -42,7 +42,7 @@
     "mass_kg": 6.0,
     "zone": "C",
     "category": "Не подходит для сортировки по габаритам",
-    "hull_faces": 156
+    "faces": 536
   },
   {
     "slug": "lunchbox",
@@ -57,7 +57,7 @@
     "mass_kg": 0.412,
     "zone": "B",
     "category": "Подходит для сортировки",
-    "hull_faces": 1846
+    "faces": 11574
   },
   {
     "slug": "sack",
@@ -72,22 +72,22 @@
     "mass_kg": 0.817,
     "zone": "D",
     "category": "Не подходит для сортировки без доупаковки",
-    "hull_faces": 3576
+    "faces": 21228
   },
   {
     "slug": "detergent",
     "source": "Моющее средство.STL",
     "file": "detergent.stl",
     "dims_m": [
-      0.2784,
-      0.2603,
-      0.1793
+      0.2796,
+      0.2598,
+      0.1792
     ],
-    "half_z": 0.08965,
+    "half_z": 0.0896,
     "mass_kg": 2.002,
     "zone": "B",
     "category": "Подходит для сортировки",
-    "hull_faces": 6976
+    "faces": 72752
   },
   {
     "slug": "pouf",
@@ -102,7 +102,7 @@
     "mass_kg": 6.0,
     "zone": "C",
     "category": "Не подходит для сортировки по габаритам",
-    "hull_faces": 2172
+    "faces": 12880
   },
   {
     "slug": "pen",
@@ -117,7 +117,7 @@
     "mass_kg": 0.05,
     "zone": "C",
     "category": "Не подходит для сортировки по габаритам",
-    "hull_faces": 1554
+    "faces": 40926
   },
   {
     "slug": "plate",
@@ -132,7 +132,7 @@
     "mass_kg": 0.175,
     "zone": "D",
     "category": "Не подходит для сортировки без доупаковки",
-    "hull_faces": 850
+    "faces": 2504
   },
   {
     "slug": "cylinder",
@@ -147,21 +147,21 @@
     "mass_kg": 0.187,
     "zone": "D",
     "category": "Не подходит для сортировки без доупаковки",
-    "hull_faces": 194
+    "faces": 2152
   },
   {
     "slug": "helmet",
     "source": "Шлем.stl",
     "file": "helmet.stl",
     "dims_m": [
-      0.3531,
-      0.2974,
-      0.2808
+      0.3521,
+      0.2976,
+      0.2816
     ],
-    "half_z": 0.1404,
+    "half_z": 0.1408,
     "mass_kg": 4.323,
     "zone": "D",
     "category": "Не подходит для сортировки без доупаковки",
-    "hull_faces": 9746
+    "faces": 55159
   }
 ]

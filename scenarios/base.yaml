@@ -13,5 +13,6 @@ items:
   cylinder: 1
   helmet: 1
 spawn_gap_s: [6.0, 8.0]
-perception_latency_s: 0.15   # look-ahead classification finishes well before arrival
+perception: camera           # real sensing (override with --perception oracle)
+perception_latency_s: 0.15   # oracle mode only: modeled inference latency
 max_sim_s: 400

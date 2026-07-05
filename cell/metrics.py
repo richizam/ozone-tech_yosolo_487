@@ -27,7 +27,11 @@ class Metrics:
                 row["t_spawn"] = t
             elif topic == "item_classified":
                 row["t_classified"] = t
-                row["zone_expected"] = msg["zone"]
+                row["zone_perceived"] = msg["zone"]          # what routing follows
+                row["zone_true"] = msg.get("zone_true", msg["zone"])
+                row["zone_raw"] = msg.get("zone_raw", msg["zone"])
+                row["cls_confidence"] = msg.get("confidence")
+                row["cls_flags"] = msg.get("flags", "")
             elif topic == "item_settled":
                 row["t_settled"] = t
             elif topic == "routing_cmd":
@@ -45,7 +49,8 @@ class Metrics:
 
     def finalize(self, sim_time, extra=None):
         rows = list(self.rows.values())
-        cols = ["slug", "zone_expected", "zone_actual", "ok", "t_spawn", "t_classified",
+        cols = ["slug", "zone_true", "zone_raw", "zone_perceived", "zone_actual", "ok",
+                "cls_confidence", "cls_flags", "t_spawn", "t_classified",
                 "t_settled", "t_pick_start", "t_attached", "t_released", "t_delivered", "cycle_s"]
         with open(self.out / "events.csv", "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
@@ -54,10 +59,24 @@ class Metrics:
 
         cycles = [r["cycle_s"] for r in rows if r.get("cycle_s")]
         n_ok = sum(1 for r in rows if r.get("ok"))
+        classified = [r for r in rows if r.get("zone_perceived")]
+        cls_ok = sum(1 for r in classified if r["zone_perceived"] == r.get("zone_true"))
+        delivered = [r for r in rows if r.get("zone_actual") and r.get("zone_perceived")]
+        exec_ok = sum(1 for r in delivered if r["zone_actual"] == r["zone_perceived"])
+        # error direction: B->C/D only diverts a sortable item to inspection
+        # (conservative); C/D->B feeds a bad item to the sorter (unsafe — the
+        # failure this cell exists to prevent)
+        errs = [r for r in rows if r.get("zone_actual") and r["zone_actual"] != r.get("zone_true")]
+        unsafe = sum(1 for r in errs if r["zone_actual"] == "B")
+        conservative = sum(1 for r in errs if r.get("zone_true") == "B" and r["zone_actual"] in ("C", "D"))
         summary = {
             "items": len(rows),
             "routed_correctly": n_ok,
             "routing_accuracy": round(n_ok / len(rows), 4) if rows else None,
+            "classification_accuracy": round(cls_ok / len(classified), 4) if classified else None,
+            "executive_accuracy": round(exec_ok / len(delivered), 4) if delivered else None,
+            "unsafe_errors": unsafe,
+            "conservative_errors": conservative,
             "cycle_mean_s": round(float(np.mean(cycles)), 2) if cycles else None,
             "cycle_p95_s": round(float(np.percentile(cycles, 95)), 2) if cycles else None,
             "cycle_max_s": round(float(np.max(cycles)), 2) if cycles else None,

@@ -54,7 +54,7 @@ def build_xml(manifest):
 
     xml = f"""
 <mujoco model="sortmaster_cell">
-  <compiler meshdir="{ASSETS / 'hulls'}" angle="radian"/>
+  <compiler meshdir="{ASSETS / 'meshes'}" angle="radian"/>
   <option timestep="{P.SIM['timestep']}" integrator="implicitfast"/>
   <visual>
     <headlight ambient="0.45 0.45 0.45" diffuse="0.7 0.7 0.7"/>
@@ -69,6 +69,17 @@ def build_xml(manifest):
 
   <worldbody>
     <light dir="0 0 -1" pos="6 3 6" directional="true"/>
+
+    <!-- look-ahead vision station: overhead RGB-D, 1.8 m upstream of the
+         accumulator; the sensor hangs BELOW its crossbar so the mount never
+         shadows the field of view -->
+    <camera name="lookahead" pos="6.0 3.0 2.2" xyaxes="1 0 0 0 1 0" fovy="45"/>
+    <geom name="cam_post" type="cylinder" size="0.04 1.175" pos="6.0 2.2 1.175"
+          rgba="0.45 0.25 0.55 1" contype="0" conaffinity="0"/>
+    <geom name="cam_bar" type="box" size="0.03 0.42 0.03" pos="6.0 2.6 2.32"
+          rgba="0.45 0.25 0.55 1" contype="0" conaffinity="0"/>
+    <geom name="cam_head" type="box" size="0.06 0.06 0.035" pos="6.0 3.0 2.255"
+          rgba="0.2 0.1 0.3 1" contype="0" conaffinity="0"/>
 
     <geom name="floor" type="plane" size="12 8 0.1" pos="5 3 0" material="floor"/>
 
