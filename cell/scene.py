@@ -105,7 +105,7 @@ def _cage_xml(name, cage):
     if open_side:
         g.append(f'<geom name="cage{name}_mat" type="box" size="{hx} {hy} 0.004" '
                  f'pos="{cx} {cy} {t + 0.004}" friction="{P.CAGE_MAT_FRICTION}" '
-                 f'priority="2" rgba="0.15 0.15 0.17 1"/>')
+                 f'priority="2" solref="0.012 1" rgba="0.15 0.15 0.17 1"/>')
     # roll-cage frame: corner posts + top rails (visual only)
     for sx in (-1, 1):
         for sy in (-1, 1):
@@ -185,8 +185,13 @@ def _chute_xml(zone, cc, axis, wall_at):
         pc, ph = (pmid, fixed, pz - 0.015), (plen / 2, cc["width"] / 2, 0.015)
     else:
         pc, ph = (fixed, pmid, pz - 0.015), (cc["width"] / 2, plen / 2, 0.015)
-    g.append(_incline_xml(f"chute{zone}_pad", pc, ph, (0, 0, 0),
-                          "0.30 0.31 0.35 1", cc["pad_friction"]))
+    # soft (rubber-faced) brake pad: absorbs the landing instead of returning
+    # it — a stiff contact can eject a thin light item (pen pogo, found by
+    # close_spacing): 9 mm rod at 1.5 m/s penetrates deep in one substep and
+    # a hard solver reference fires it back out
+    g.append(f'<geom name="chute{zone}_pad" type="box" size="{ph[0]} {ph[1]} {ph[2]}" '
+             f'pos="{pc[0]} {pc[1]} {pc[2]}" friction="{cc["pad_friction"]}" '
+             f'priority="1" solref="0.012 1" rgba="0.30 0.31 0.35 1"/>')
 
     # HOOD over the aperture: a cover PARALLEL to the slope (never a catch
     # face) with a flared funnel mouth and a brow strip on the wall plane —
@@ -524,11 +529,23 @@ def build_xml(manifest, mode=None):
         slug = e["slug"]
         px = 0.6 + i * 0.85
         pz = e["dims_m"][2] / 2 + 0.001
+        # thin items (pen-class, min extent < 20 mm): soft contact + a small
+        # activation margin. A sub-centimeter hull can penetrate a full body
+        # depth in one substep when wedged under heavier items in a cage; a
+        # stiff solver reference then ejects it violently (NaN divergence
+        # found by borderline/close_spacing). Physically: thin light objects
+        # flex and absorb instead of bouncing rigidly.
+        # stiff + overdamped (dampratio 2): holds a heavy neighbor's static
+        # load without sinking past the thin body's half-thickness AND kills
+        # restitution on impact — a soft contact here sags under a 6 kg box
+        # until the geometry inverts and the solver ejects the item
+        soft = (' solref="0.004 2" margin="0.001"'
+                if min(e["dims_m"]) < 0.02 else "")
         items.append(
             f'<body name="item_{slug}" pos="{px} -1.2 {pz}">\n'
             f'      <freejoint name="fj_{slug}"/>\n'
             f'      <geom name="g_{slug}" type="mesh" mesh="m_{slug}" mass="{e["mass_kg"]}" '
-            f'friction="0.9 0.02 0.0005" rgba="0.75 0.72 0.65 1"/>\n'
+            f'friction="0.9 0.02 0.0005"{soft} rgba="0.75 0.72 0.65 1"/>\n'
             f'    </body>')
         welds.append(f'<weld name="w_{slug}" body1="wrist" body2="item_{slug}" active="false" '
                      f'solref="0.004 1"/>')

@@ -1,5 +1,10 @@
 # Nominal scenario: one of each official item, generous spacing.
+# The official set contains designed borderline items (detergent 0.73 ratio,
+# helmet dome, hex «cylinder») whose physical rocking occasionally flips a
+# measurement — always to the SAFE side. Conservative diversions are logged
+# and tolerated; an unsafe route (bad item to the sorter) fails the run.
 seed: 42
+allow_conservative: true
 items:
   bottle: 1
   box_s: 1

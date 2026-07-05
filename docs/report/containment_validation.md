@@ -23,6 +23,19 @@ Geometry invariants are locked by unit tests ([tests/test_containment_design.py]
 slope-cannot-hold-items, hood clearance > tallest item, gate stroke > max item + arm-carry height,
 apertures fit chutes, brake pads end inside cages.
 
+Three refinements found by the scenario suite (close_spacing / borderline / stress campaigns):
+
+- **Soft-faced brake pads and cage mats** (`solref 0.012`): a rigid landing contact can eject a
+  thin, feather-light item (the 9 mm / 50 g pen pogo-launched off a stiff pad edge). Rubber-faced
+  pads absorb the landing — physically standard, and it removed the escape class entirely.
+- **Thin items get stiff overdamped contact** (`solref 0.004/2`): under a 6 kg neighbor in a
+  shared cage, a *soft* contact sags past the 9 mm body's half-thickness and the solver ejects it;
+  stiff + overdamped holds the static load AND kills restitution on impact.
+- **Cage fill-level call-out** (`CONTAIN.cage_full_fraction`, modeled fill sensor): items are
+  admitted only while the accumulated footprint stays under 60% of the cage floor — beyond that a
+  cage-swap call-out fires and the item goes to manual handling. Piling above the 0.8 m walls (how
+  an overfull cage loses items under 1.3× overload) is prevented at the source.
+
 ## 2. The metric
 
 Delivery into a cage **starts** the check, it does not end it. From aperture crossing to the end

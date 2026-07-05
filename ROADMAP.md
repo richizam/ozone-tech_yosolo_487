@@ -89,11 +89,13 @@ gets there. Full write-up: [docs/report/containment_validation.md](docs/report/c
 
 **Goal:** turn "it works" into measured, attackable-proof evidence.
 
-- [ ] Synchronization analysis: inference latency + command latency vs belt travel distance; show the look-ahead margin quantitatively (item classified X mm / Y ms before accumulator).
-- [ ] Fault scenario suite (`scenarios/faults/`): items nose-to-tail, failed grasp, item jam at accumulator, conveyor stop signal, sensor dropout, mid-cycle e-stop. Each: detection mechanism → handling → recovery, all logged.
+- [x] Synchronization analysis — measured per item and aggregated: `perception_latency_ms` (capture→route command, ~500 ms of in-motion multi-read fusion + 80 ms modeled processing) and `command_margin_s` (command ready ≥ 0.5 s before table entry; `items_with_negative_command_margin = 0` gates every validation run; the belt never stops — `conveyor_a_stop_count = 0` asserted).
+- [x] Fault/robustness scenario suite (`scenarios/`): `borderline` (designed threshold attacks), `close_spacing` (nose-to-tail arrivals; slug-spaced accumulation keeps the measurement window single-item), `low_confidence` (3 mm sensor noise; guard-banded fusion diverts uncertainty safely), `fault_jam` (snag → watchdog → arm recovery → correct cage), `failed_transfer` (route command executes then stalls → recovery to safe review), `stress_mix` (16-item catalogue at 1.3× capacity × 5 seeds). Each: detection mechanism → handling → recovery, fully logged. One command: `python -m cell.validate`.
+- [x] Borderline items generated with computed ground truth (`tools/make_borderline_items.py`): 445/460 mm boxes across the max limits, pentagon prism at ratio cos 36° = 0.809, rounded square at 0.78, 12 mm rod at the certification floor.
 - [ ] SimPy campaign: 1000-item runs across item-mix distributions; utilization, queue lengths, accumulation limits, throughput histograms → CSV + plots.
-- [ ] Borderline campaign: synthetic variants sweeping dims across 10 mm / 450×320×320 and ratio across 0.8 (scaled hexagons ↔ octagons, 449 mm vs 451 mm boxes) → correctness-vs-margin curve.
-- [ ] Metrics pack frozen: category accuracy, routing accuracy, first-attempt grasp rate, cycle time (mean/p95), throughput, fault recovery rate.
+- [ ] Correctness-vs-margin curve from the borderline family (sweep scale factors around each threshold).
+- [x] Metrics pack frozen: classification/routing/executive accuracy, unsafe vs conservative direction, containment rate + cage entry speeds, cycle time (mean/p95/max), throughput, latency/margin stats, jam/recovery/callout/deadlock counters — all in `summary.json` + per-item `events.csv`.
+- [x] **Multi-view sensing trade study (decision: keep 4 viewpoints).** The DWS station already fuses an overhead depth grid + top fan + two side profiler heads. Every observed failure was flow/dynamics (tailgater merges, contact-queue riders, rocking smear) — none is a coverage problem; fixes were slug-spaced accumulation, a cluster identity gate, guard bands and a certification floor. Extra heads: ~+33% ray cost each, full re-validation, no attacked failure mode. Upgrade path if evidence ever demands it: denser ground sampling (3→2 mm) → second along-belt overhead head → 5-sided end views. (Analysis in README §2.2.)
 
 **Exit gate:** every performance claim in the future report links to a script + CSV an expert can regenerate with one command.
 

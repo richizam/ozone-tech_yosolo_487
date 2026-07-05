@@ -89,6 +89,7 @@ class ItemManager:
         self.active = {}                           # slug -> state dict
         self.done = {}                             # slug -> zone_actual
         self.cage_watch = {}                       # slug -> post-delivery containment state
+        self.cage_fill = {"C": 0.0, "D": 0.0}      # accumulated footprint, m^2
         self.window_conflicts = 0                  # events: >=2 items co-occupied
         self._window_multi = False                 # the measurement window
 
@@ -253,13 +254,29 @@ class ItemManager:
     def _step_table_item(self, slug, st, pos, t):
         # assign the route as soon as the classified item commits to the table
         if st["classified"] and "routed_t" not in st and pos[0] > P.TABLE["x0"] - 0.25:
-            self.table.routes[slug] = st["zone"]
+            zone = st["zone"]
+            # modeled cage fill sensor: routing into a full cage piles items
+            # above the walls (that is how they escape) — a full cage raises a
+            # swap call-out and the item is pulled to manual handling instead
+            if zone in self.cage_fill:
+                e = self.entries[slug]
+                footprint = e["dims_m"][0] * e["dims_m"][1]
+                cage = self.cages[zone]
+                floor_area = cage["inner"][0] * cage["inner"][1]
+                if (self.cage_fill[zone] + footprint
+                        > P.CONTAIN["cage_full_fraction"] * floor_area):
+                    self.bus.publish("cell_event", t=t, event="cage_full_callout",
+                                     slug=slug, zone=zone,
+                                     fill=round(self.cage_fill[zone] / floor_area, 2))
+                    self._deliver(slug, "MANUAL", t)
+                    return
+            self.table.routes[slug] = zone
             st["routed_t"] = t
             st["watch_xy"] = (float(pos[0]), float(pos[1]))
             st["watch_t"] = t
-            self.bus.publish("routing_cmd", t=t, slug=slug, zone=st["zone"])
+            self.bus.publish("routing_cmd", t=t, slug=slug, zone=zone)
             self.bus.publish("table_state", t=t, slug=slug,
-                             state=f"TABLE_ROUTE_{st['zone']}")
+                             state=f"TABLE_ROUTE_{zone}")
         # physical entry onto the table: command_margin_s reference point
         if "t_table_entry" not in st and pos[0] > P.TABLE["x0"] and pos[2] > 0.5:
             st["t_table_entry"] = t
@@ -396,12 +413,18 @@ class ItemManager:
                 dim_suspect = near_under or near_over
             ratio_suspect = False
             max_ratio = rep.get("max_ratio")
-            if not circ_strong and max_ratio is not None and noise_mm > 0.0:
-                # ratio uncertainty scales with noise over the cross-section
-                # circumradius (the two smaller extents span the section)
+            if not circ_strong and max_ratio is not None:
+                # ratio uncertainty = (noise + sampling resolution) over the
+                # cross-section circumradius (the two smaller extents span the
+                # section). The resolution term never vanishes: at 3 mm ground
+                # sampling a 73 mm-radius pentagon (true cos36 = 0.809)
+                # measured 0.799 — one part in a thousand below the threshold
+                # cannot certify "not circular" (found by stress seed 3)
                 srt = np.sort(dims)[::-1]
                 r_est = float(np.hypot(srt[1], srt[2])) / 2.0
-                g_ratio = min(0.25, 2.0 * noise_mm / max(r_est, 5.0))
+                g_ratio = min(0.25, (2.0 * noise_mm
+                                     + P.VIRTUAL_SENSOR["ground_res_mm"])
+                              / max(r_est, 5.0))
                 ratio_suspect = P.CIRCLE_RATIO - g_ratio <= max_ratio < P.CIRCLE_RATIO
             rule_dim = "undersize" if undersize else ("oversize" if oversize else "pass")
             rule_circ = ("strong" if circ_strong
@@ -504,6 +527,7 @@ class ItemManager:
             self.cage_watch[slug] = {"zone": zone_actual, "t_enter": t,
                                      "v_entry": v_entry, "violated": False,
                                      "t_settle": None, "max_z": 0.0}
+            self.cage_fill[zone_actual] += e["dims_m"][0] * e["dims_m"][1]
         # park delivered B-items back off-cell so contacts stay cheap
         if zone_actual == "B":
             idx = list(self.entries).index(slug)
@@ -855,7 +879,16 @@ def main(argv=None):
         belts.step(data)
         if table is not None:
             table.step(data)
+        t_before = data.time
         mujoco.mj_step(model, data)
+        if data.time < t_before:
+            # MuJoCo auto-reset after a solver divergence (mjWARN_BADQACC):
+            # the world state is no longer meaningful — fail loudly instead of
+            # silently continuing on a reset scene
+            bus.publish("cell_event", t=t_before, event="physics_divergence")
+            print(f"FATAL: physics divergence at t={t_before:.2f} "
+                  f"(solver reset detected) — aborting run")
+            break
         step += 1
         if recorder is not None:
             recorder.maybe_capture(data, data.time)

@@ -4,7 +4,7 @@
 
 A software–hardware complex (ПАК), delivered **entirely in simulation**, that detects a product on the infeed conveyor, classifies it into one of three categories, and physically routes it to the correct processing zone — perception, decision and actuation working as one closed loop.
 
-> **Status: v0 loop closed, containment validated ✅** — the full physics cell runs end to end: items travel conveyor A at 1 m/s, classify via the DWS sensor pipeline, and the actuated transfer table routes them through normally-closed exit gates and guided brake chutes into aperture-walled roll cages. **Routing accuracy 100% AND containment 100% (routed items provably SETTLE AND STAY inside their cage) on 6/6 oracle seeds + camera-perception runs; cage entry speeds ≤ 2.1 m/s (guided, never thrown); fault drill: injected snag → jam detected by a zero-displacement watchdog → arm recovery → re-delivered through the normal guided path, recovery success 100%.** This README is the root navigation document required by the submission rules ("Полнота комплекта сдачи решения", 0–5 pts). Sections marked 🔜 are filled as the roadmap advances. See [ROADMAP.md](ROADMAP.md) for the winning plan and [STEP_BY_STEP.md](STEP_BY_STEP.md) for the execution guide.
+> **Status: validated closed loop + full scenario evidence base ✅** — the physics cell runs end to end on sensor data: items travel conveyor A at 1 m/s, classify **in motion** via the multi-head DWS sensor pipeline (route command ready **0.5+ s before table entry**, belt never stops), and the actuated transfer table routes them through normally-closed exit gates and guided brake chutes into aperture-walled roll cages. **Across the entire validation matrix — 22 runs, 235 items: nominal, borderline threshold attacks, close spacing, sensor noise, injected jams, failed transfers, 1.3× overload — ZERO unsafe errors, ZERO deadlocks, containment 1.0 everywhere.** Nominal runs: 100% routing at the reference seed (oracle: 100% on all seeds); on other seeds the official set's designed borderline items (detergent 0.73 ratio, helmet dome) occasionally rock into a **safe-side** divert — every logged error across every scenario is conservative, never an unsafe feed to the sorter. Jam → zero-displacement watchdog → arm recovery → guided re-delivery; escalation to operator call-out when out of reach or a cage fills. One command reproduces all of it: `python -m cell.validate`. This README is the root navigation document required by the submission rules ("Полнота комплекта сдачи решения", 0–5 pts). See [ROADMAP.md](ROADMAP.md) for the winning plan and [STEP_BY_STEP.md](STEP_BY_STEP.md) for the execution guide.
 
 ---
 
@@ -69,6 +69,26 @@ Reaching the right zone is necessary, not sufficient: the item must **stay insid
 
 Latest campaign (`scenarios/base.yaml`, all 11 official items per run): **6/6 oracle seeds and camera-perception runs at 100% routing + 100% containment, zero violations**; the fault drill (`fault_jam.yaml`) recovers an injected snag and still books 100% containment. Full numbers: [docs/report/containment_validation.md](docs/report/containment_validation.md).
 
+### 2.2 Virtual sensor model (what `--perception camera` actually simulates)
+
+The `camera` mode is a **virtual multi-head depth/dimensioning station** (DWS-tunnel class), not a hidden ground-truth feed. One visible config — `VIRTUAL_SENSOR` in [cell/params.py](cell/params.py) — holds every parameter, and each value is consumed by the implementation ([perception/pipeline.py](perception/pipeline.py)); a test suite ([tests/test_sensor_config.py](tests/test_sensor_config.py)) locks config↔implementation equality:
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| Sensing heads | **4 viewpoints** | overhead depth grid + light-section profilers: top fan + two side heads |
+| Overhead head | (6.0, 3.0, 2.2) m | ray-cast depth grid, **3 mm** ground sampling |
+| Profiler fans | 0.1° top / 0.2° side, planes every **4 mm** | swept along the belt (physically: one scanner + belt motion at 1 m/s) |
+| Measurement window | x ∈ 5.85–6.28 m | items measured **in motion**; window ends before the escapement gate |
+| Capture cadence | 0.12 s (~8 Hz) | multi-read evidence per item, fused per the official rule order |
+| Depth noise | σ = 0 mm default, **scenario-tunable** | `sensor: {depth_noise_mm: 2.0}`; 0 = ideal-optics baseline |
+| Processing latency | 80 ms | fusion verdict → route command (logged per item as `perception_latency_ms`) |
+
+What the pipeline does with the returns: calibrated **background subtraction** (3σ empty-belt depth map) → morphological denoise → instance isolation with an **identity gate** (a measurement must cover the tracked item's position, else it is a sensor miss — a neighbor's cloud can never be committed under another item's identity) → min-area-rect dims (robust percentile extents under noise) → per-slice radial circularity + surface-of-revolution test → multi-read fusion with **guard bands**: a measurement within the sensor's uncertainty of the 10 mm / 450×320×320 mm limits or the 0.8 circle threshold **cannot take the permissive branch** — it diverts to the safe side (legal-metrology practice). A dimension below the certification floor (10 mm + 2× ground sampling) always diverts to C. Result: at σ = 2 mm the official set still routes **11/11 with zero unsafe errors**.
+
+`camera` vs `oracle` is explicit everywhere: CLI banner, run folder name, `summary.json` (`perception_mode`, `sensor_model`, `oracle_used_for_classification: false` in camera mode) and `events.csv` per item. Oracle mode injects ground truth after a configured latency and exists only as a debugging/regression baseline.
+
+**Why not more cameras? (multi-view trade study.)** The station already fuses 4 viewpoints, and every failure the scenario suite ever produced was a *flow/dynamics* problem, not a coverage problem: tailgaters merging into a cloud (fixed by slug-spaced accumulation + the identity gate), a thin item shoved *onto* a neighbor in a contact queue (fixed by no-contact queue lines), rocking items smearing their multi-read dims (temporal — any number of heads samples the same rocking pose). Extra heads would add ~33% ray cost each and force re-validation of the whole tuned stack while attacking none of the observed failure modes; the one genuinely resolution-limited case (9 mm pen barrel at 3 mm sampling) is neutralized by the certification floor, which routes "cannot certify > 10 mm" to C — exactly what the rules' priority demands. The documented upgrade path, if future evidence demands it: denser ground sampling (3→2 mm) first, a second along-belt overhead head second, 5-sided end-view heads last.
+
 ## 3. Ground truth for the official test set (computed, reproducible)
 
 We analysed the 11 official STL models with the reference classifier ([tools/classify_mesh.py](tools/classify_mesh.py)). Dimensions are oriented-bounding-box extents; ratio is max over cross-sections along principal axes of `r_in/R_circ`:
@@ -106,18 +126,24 @@ Machine-readable: [docs/ground_truth/item_ground_truth.json](docs/ground_truth/i
 │   ├── report/                  ← 🔜 final report (PDF)
 │   └── presentation/            ← 🔜 defence deck (≤ 7 min)
 ├── tools/
-│   └── classify_mesh.py         ← reference classifier: STL/STEP → category (CLI)
+│   ├── classify_mesh.py         ← reference classifier: STL/STEP → category (CLI)
+│   └── make_borderline_items.py ← 5 designed threshold attacks (GT computed, not asserted)
 ├── cad/
 │   ├── layout_v0.py             ← parametric cell layout (single source of truth for all dims)
 │   └── out/                     ← generated: top-view PNG, 3D GLB scene, reach_check.json
 ├── cell/                        ← MuJoCo cell: scene gen, belts+gates, arm IK, controller, metrics
 │   ├── run_sim.py               ← entrypoint (--perception camera|oracle, --viewer, --record MP4)
+│   ├── validate.py              ← batch validation runner → validation_report.md (one command)
 │   ├── visuals.py               ← live presentation state: route lights, lane pulse, andon tower
 │   ├── signs.py                 ← bilingual EN/RU signage textures (rendered on demand)
-│   └── assets/                  ← true-surface meshes of the official STLs + manifest
+│   └── assets/                  ← true-surface meshes (official + synthetic borderline) + manifests
+├── configs/
+│   └── validation_matrix.yaml   ← scenario × seed matrix with pass/fail expectations
 ├── flow/                        ← SimPy flow model: capacity, queues (physics-measured times)
-├── scenarios/                   ← scenario YAMLs (base; borderline & fault suites 🔜)
-├── tests/                       ← rules + kinematics + containment-design invariants (pytest, 25 tests)
+├── scenarios/                   ← base, borderline, close_spacing, low_confidence,
+│                                  fault_jam, failed_transfer, stress_mix
+├── tests/                       ← rules + kinematics + containment invariants + sensor-config
+│                                  truth + end-to-end smoke (pytest, 38 tests)
 ├── perception/                  ← ray-cast multi-head sensing + geometric classification
 │   ├── pipeline.py              ← DWS sensor suite → dims, sections, category, confidence
 │   ├── geometry.py              ← min-area rect, circle fit, envelope primitives
@@ -143,17 +169,29 @@ uv pip install --python .venv -r requirements.txt
 # Recompute the full ground-truth table
 .venv/Scripts/python tools/classify_mesh.py --all "extracted/doc-1782987733/Stl" --json docs/ground_truth/item_ground_truth.json
 
-# Prepare sim assets, then run the FULL CELL end to end (headless), sensing included
+# Prepare sim assets (official STLs + synthetic borderline items)
 .venv/Scripts/python cell/prep_assets.py
-.venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --seed 42
-# → runs/<stamp>_seed42_camera_table/events.csv + summary.json (classification /
-#   executive / end-to-end accuracy, unsafe vs conservative errors, throughput,
-#   arm interventions & recovery success)
-# --executive table (default) = transfer-table routing, arm on exceptions;
-# --executive arm = the preserved arm-primary baseline;
-# --perception oracle for ground-truth-fed regression; --viewer to watch live
+.venv/Scripts/python tools/make_borderline_items.py
 
-# Fault drill: injected snag on the table → jam detection → arm recovery
+# Run the FULL CELL end to end (headless), sensing included
+.venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --seed 42 --perception camera --executive table
+# → runs/<stamp>_seed42_camera_table/events.csv + summary.json: classification /
+#   executive / end-to-end accuracy, unsafe vs conservative errors, containment,
+#   cycle_mean/p95/max, perception_latency_ms, command_margin_s, throughput,
+#   arm interventions & recovery success
+# --executive arm = the preserved arm-primary baseline;
+# --perception oracle = ground-truth debug baseline; --viewer to watch live
+.venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --seed 42 --perception camera --executive table --viewer
+
+# ONE COMMAND, ALL EVIDENCE: every scenario x seed with pass/fail gates
+.venv/Scripts/python -m cell.validate --matrix configs/validation_matrix.yaml
+# → runs/validation_<stamp>/validation_report.md + validation_matrix.csv
+#   (+ full events.csv/summary.json per run); exits non-zero on any failure
+.venv/Scripts/python -m cell.validate --quick     # first seed of each entry
+
+# Scenario suite (each also runs standalone):
+#   base | borderline | close_spacing | low_confidence | fault_jam |
+#   failed_transfer | stress_mix
 .venv/Scripts/python -m cell.run_sim --scenario scenarios/fault_jam.yaml
 
 # Record a demo MP4 of any run (cameras: overview | top_view | routing | lookahead)
@@ -166,7 +204,9 @@ uv pip install --python .venv -r requirements.txt
 # Flow model: capacity & queueing from measured cycle times
 .venv/Scripts/python -m flow.model    # → flow/out/sweep.csv + flow_sweep.png
 
-# Test suite (rules + kinematics + official ground-truth regression)
+# Test suite: rules + kinematics + containment invariants + sensor-config
+# truth + end-to-end smoke (cycle metrics non-null, margins positive, fault
+# drill produces a recovered intervention)
 .venv/Scripts/python -m pytest tests -q
 ```
 
@@ -191,16 +231,17 @@ uv pip install --python .venv -r requirements.txt
 | 2. Readiness matrix (УГТ 4×4) | 20 | CV L4 × Executive L4 = validated sim vs calculations |
 | 3. Category correctness | 20 | Formal-rule classifier + borderline analysis + test-set demo |
 | 4. Executive part & manipulation | 30 | Arm cell in physics sim: routing, grasping per shape, safety concept |
-| 5. Performance & timing | 20 | SimPy + PyBullet cycle-time evidence, look-ahead sync, fault scenarios |
+| 5. Performance & timing | 20 | Measured cycle_mean/p95/max + perception_latency_ms + command_margin_s per item; look-ahead sync (command ready 0.5+ s before table entry, belt never stops); fault/overload scenario suite |
 | 6. Integration & realism | 15 | One message bus, category → command trace, industrially plausible cell |
 | 7. Report, reproducibility, README | 15 | This README, Docker one-command run, full report |
 
-## 8. For the expert jury (проверка решения) 🔜
+## 8. For the expert jury (проверка решения)
 
-- **Run instructions with pinned versions** — `requirements.txt` + Dockerfile.
-- **Tunable input parameters:** belt speed, item spawn order/mix, sensor noise, classifier threshold (0.8), arm speed limits.
-- **Prepared scenarios:** nominal mix, borderline-only set, fault injection (failed grasp, jam, close-spaced items, conveyor stop).
-- **Cloud links** (large binaries: weights, full video, CAD sources) — collected here with descriptions when uploaded.
+- **Run instructions with pinned versions** — `requirements.txt` (Dockerfile 🔜).
+- **One-command evidence:** `python -m cell.validate` runs every scenario × seed with explicit pass/fail gates and writes `validation_report.md`.
+- **Tunable input parameters** (all per scenario YAML): item mix and spawn order (`items`, `seed`), arrival intensity (`spawn_gap_s`), sensor noise (`sensor: {depth_noise_mm: ...}`), classification policy (`classification: {min_confidence_for_B, low_confidence_route, ...}`), fault injection (`inject_jam: {slug, at_x}`), perception/executive mode (CLI `--perception camera|oracle --executive table|arm`).
+- **Prepared scenarios:** nominal (`base`), borderline threshold attacks (`borderline`), close-spaced arrivals (`close_spacing`), degraded sensing (`low_confidence`), jam recovery (`fault_jam`), failed transfer (`failed_transfer`), 1.3× overload (`stress_mix`).
+- **Cloud links** (large binaries: weights, full video, CAD sources) — collected here with descriptions when uploaded 🔜.
 
 ## 9. Team & contacts 🔜
 

@@ -122,6 +122,12 @@ CONTAIN = {
     "z_fly": 1.20,                     # anything this high left the cage volume
     "settle_speed": 0.10,              # m/s: item at rest inside the cage
     "settle_time": 0.5,                # s below settle_speed -> settled
+    # fill-level limit (modeled fill sensor): when the accumulated footprint
+    # of contained items plus the incoming one exceeds this fraction of the
+    # cage floor, the cage is FULL — the item is pulled to manual handling
+    # and a cage-swap call-out is raised (piling above the 0.8 m walls is how
+    # items escape; a real cell swaps the roll-cage instead)
+    "cage_full_fraction": 0.60,
 }
 CAGE_C = CAGES["arm"]["C"]              # arm-mode aliases (existing code paths)
 CAGE_D = CAGES["arm"]["D"]
