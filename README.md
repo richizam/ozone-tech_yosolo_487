@@ -4,7 +4,7 @@
 
 A software–hardware complex (ПАК), delivered **entirely in simulation**, that detects a product on the infeed conveyor, classifies it into one of three categories, and physically routes it to the correct processing zone — perception, decision and actuation working as one closed loop.
 
-> **Status:** project bootstrap. This README is the root navigation document required by the submission rules ("Полнота комплекта сдачи решения", 0–5 pts). Sections marked 🔜 are filled as the roadmap advances. See [ROADMAP.md](ROADMAP.md) for the winning plan and [STEP_BY_STEP.md](STEP_BY_STEP.md) for the execution guide.
+> **Status: v0 loop closed ✅** — the full physics cell runs end to end: items travel conveyor A at 1 m/s, classify via the rule engine, and a 4-axis palletizer arm routes them to B/C/D. **Routing accuracy 100% on 6/6 random seeds (66 item passes), mean cycle 2.35 s, measured cell capacity ≈ 1000 items/h.** This README is the root navigation document required by the submission rules ("Полнота комплекта сдачи решения", 0–5 pts). Sections marked 🔜 are filled as the roadmap advances. See [ROADMAP.md](ROADMAP.md) for the winning plan and [STEP_BY_STEP.md](STEP_BY_STEP.md) for the execution guide.
 
 ---
 
@@ -93,11 +93,14 @@ Machine-readable: [docs/ground_truth/item_ground_truth.json](docs/ground_truth/i
 ├── cad/
 │   ├── layout_v0.py             ← parametric cell layout (single source of truth for all dims)
 │   └── out/                     ← generated: top-view PNG, 3D GLB scene, reach_check.json
+├── cell/                        ← MuJoCo cell: scene gen, belts+gate, arm IK, controller, metrics
+│   ├── run_sim.py               ← entrypoint (headless or --viewer), writes runs/<stamp>/
+│   └── assets/                  ← convex-hull proxies of the official STLs + manifest
+├── flow/                        ← SimPy flow model: capacity, queues (physics-measured times)
+├── scenarios/                   ← scenario YAMLs (base; borderline & fault suites 🔜)
+├── tests/                       ← rule-engine + kinematics tests (pytest, 17 tests)
 ├── perception/                  ← 🔜 detector, tracker, dims/section estimation from RGB-D
-├── decision/                    ← 🔜 rule engine, confidence policy, category → command
-├── cell/                        ← 🔜 PyBullet cell: conveyor, accumulator, arm, gripper, zones
-├── flow/                        ← 🔜 SimPy discrete-event model: throughput, queues, cycle time
-├── scenarios/                   ← 🔜 test scenarios incl. borderline & fault cases
+├── decision/                    ← 🔜 confidence policy (rules live in tools/classify_mesh.py)
 ├── extracted/                   ← official STL/STEP test-set models (from organizer archives)
 ├── requirements.txt             ← pinned dependencies
 └── Dockerfile                   ← 🔜 one-command reproduction for the expert jury
@@ -108,26 +111,37 @@ Original organizer documents kept at repo root: task statement ([doc-1783095831.
 ## 5. Quickstart
 
 ```bash
-# Python 3.11+ (tested on 3.14)
-python -m pip install -r requirements.txt
+# Python 3.12 venv (PyBullet has no Windows wheels; we use MuJoCo — wheels everywhere)
+uv venv --python 3.12 .venv          # or: py -3.12 -m venv .venv
+uv pip install --python .venv -r requirements.txt
 
 # Classify any mesh — the reference implementation of the official rules
-python tools/classify_mesh.py "extracted/doc-1782987733/Stl/Бутылка.stl"
+.venv/Scripts/python tools/classify_mesh.py "extracted/doc-1782987733/Stl/Бутылка.stl"
 # → category D («Не подходит для сортировки без доупаковки»), r_in/R = 0.997
 
 # Recompute the full ground-truth table
-python tools/classify_mesh.py --all "extracted/doc-1782987733/Stl" --json docs/ground_truth/item_ground_truth.json
+.venv/Scripts/python tools/classify_mesh.py --all "extracted/doc-1782987733/Stl" --json docs/ground_truth/item_ground_truth.json
+
+# Prepare sim assets (hull proxies), then run the FULL CELL end to end (headless)
+.venv/Scripts/python cell/prep_assets.py
+.venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --seed 42
+# → runs/<stamp>_seed42/events.csv + summary.json; exit 0 iff every item routed correctly
+# add --viewer to watch live in the MuJoCo viewer
+
+# Flow model: capacity & queueing from measured cycle times
+.venv/Scripts/python -m flow.model    # → flow/out/sweep.csv + flow_sweep.png
+
+# Test suite (rules + kinematics + official ground-truth regression)
+.venv/Scripts/python -m pytest tests -q
 ```
 
-🔜 `python -m cell.run_sim --scenario scenarios/base.yaml` — full cell simulation (headless or GUI).
-🔜 `python -m flow.throughput` — cycle-time/throughput analysis with plots.
 🔜 `docker compose up` — the exact environment the jury can run.
 
 ## 6. Toolchain (all from the organizers' allowed list)
 
 | Purpose | Tool |
 |---|---|
-| Physics simulation of the cell | **PyBullet** (primary — deterministic, scriptable, runs headless in the jury's server env); NVIDIA Isaac Sim / Gazebo optional for the demo video |
+| Physics simulation of the cell | **MuJoCo 3** (primary — deterministic, scriptable, headless; ships wheels for Windows *and* Linux, so the dev and jury environments are identical. PyBullet was the original pick but publishes **no Windows wheels** — verified empirically; decision documented in the report). Isaac Sim optional for the demo video |
 | Discrete-event flow & cycle time | **SimPy** (+ pandas, matplotlib for metrics) |
 | Perception | **OpenCV**, **Open3D**, **Trimesh**, **Shapely**; **Ultralytics YOLO** for belt detection (synthetic training data rendered in **Blender**) |
 | CAD / layout | **FreeCAD** (reads the official STEP models), exports STEP/STL |

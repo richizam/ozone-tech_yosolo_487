@@ -45,7 +45,9 @@ Expected: Box S / LunchBox / Detergent → **B**; Box L / Pouf / Pen → **C**; 
 
 **Unit tests to add now** (`tests/test_rules.py`, pytest): perfect cylinder → D; cube → B (0.707 < 0.8); regular hexagonal prism → D (0.866); regular pentagonal prism → B (cos 36° = 0.809 → actually D! good — that's the kind of edge you want to *know*); 451 mm box → C; 9 mm sheet → C; oversized cylinder → C not D (priority).
 
-## Step 2 — PyBullet cell v0: close the loop with an oracle (3–4 days)
+> **Build log (July 5):** Steps 0–3 are DONE — with one engine change: **MuJoCo instead of PyBullet**, because PyBullet publishes no Windows wheels on PyPI (Linux-only; verified) while MuJoCo 3 ships wheels for Windows and Linux. The package layout below was kept (`cell/…`), the belt is contact-gated with deceleration zones and an escapement gate, the arm is a 4-axis palletizer with closed-form IK (`cell/arm_ik.py`), and grasp verification + watchdog abort/retry are already in. Venv is Python 3.12 via `uv` (3.14 has no wheels for several sim packages). Results: 100% routing on 6 seeds, cycle 2.35 s, capacity ≈1000 items/h.
+
+## Step 2 — cell v0: close the loop with an oracle (3–4 days) ✅
 
 Create `cell/` as a package:
 

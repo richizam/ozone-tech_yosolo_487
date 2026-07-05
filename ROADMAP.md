@@ -21,17 +21,17 @@ The plan is phased in relative weeks (**W0 = today** → **W6 = submission/defen
 
 **Exit gate:** repo online; every teammate can run the reference classifier and reproduce the ground-truth table.
 
-## Phase 1 — Thin end-to-end loop (W1)
+## Phase 1 — Thin end-to-end loop (W1) ✅ DONE (v0-loop-closed, July 5)
 
 **Goal:** the smallest thing that is already a ПАК: item spawns → moves on belt → is classified → arm routes it to B/C/D. Ugly is fine; *connected* is mandatory.
 
-- [ ] PyBullet scene v0: work zone 6000×10000, conveyor A (1 m/s, kinematic belt), accumulator stop, zone B conveyor, C/D cages as boxes, official STL items spawnable.
-- [ ] Oracle classifier v0: feed mesh ground truth directly to the controller (perception comes later — the loop must close first).
-- [ ] Arm v0: UR10 URDF + single suction gripper (fixed-constraint grasp), scripted pick from accumulator, place to B / drop to C / D.
-- [ ] Controller v0: state machine (IDLE → PICK → PLACE → HOME), simple queue, event log to CSV.
-- [ ] First cycle-time measurement; SimPy flow model v0 fed with that number.
+- [x] **MuJoCo** scene v0 (engine switched from PyBullet: no Windows wheels on PyPI — MuJoCo ships wheels for Windows+Linux, identical dev/jury envs): work zone, conveyor A (1 m/s with deceleration zones + **escapement gate**), accumulator with rails and stop, zone B conveyor, C/D cages, official STL items as convex-hull proxies.
+- [x] Oracle classifier v0 feeding ground truth with a 0.15 s look-ahead latency stamp.
+- [x] Arm v0: self-authored 4-axis palletizer (closed-form IK, reach 1300 mm) + suction weld; **grasp verification before attach**, live world-AABB pick/carry heights (handles rolled items).
+- [x] Controller v0: full state machine + **watchdog abort/retry** (never deadlocks), fall-off adjudication.
+- [x] Metrics per run (events.csv, summary.json); SimPy flow model fed with measured phase times.
 
-**Exit gate:** one command runs a 10-item mixed scenario, all 11 item types route to their ground-truth zone, a metrics CSV comes out. **This alone is already УГТ CV-1 × Exec-3 territory.**
+**Exit gate MET and exceeded:** `python -m cell.run_sim` routes **11/11 item types correctly on 6/6 seeds** (exit code enforces it); mean cycle **2.35 s**; flow model shows **≈1000 items/h** capacity, zero belt overflow ≤700/h offered. Several Phase-3/4 items pulled forward (grasp check, fault watchdog, gate, retry policy). 17 pytest tests green.
 
 ## Phase 2 — Real perception (W2)
 
