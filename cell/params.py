@@ -203,6 +203,46 @@ LIMIT_MIN_MM = 10.0
 LIMIT_MAX_MM = (450.0, 320.0, 320.0)
 CIRCLE_RATIO = 0.8
 
+# ---------------------------------------------------------------- virtual sensor (implementation-true)
+# The `camera` perception mode is a virtual multi-head depth/dimensioning
+# station (DWS-tunnel class), implemented in perception/pipeline.py by ray
+# casting against the true item surface. Every value below is CONSUMED by the
+# implementation — nothing here is declarative-only. `oracle` mode bypasses
+# this sensor entirely and injects ground truth (debug baseline).
+VIRTUAL_SENSOR = {
+    "type": "multi_head_depth_profiler",
+    "model": "ray_cast_depth_grid+light_section_profilers",
+    "conveyor_speed_mps": BELT_A["speed"],      # items are measured IN MOTION
+    "window_x": (5.85, 6.28),                   # measurement window on belt A (m);
+                                                # ends before the escapement gate
+    "overhead_pos": (6.0, 3.0, 2.2),            # overhead head (x, y, z), m
+    "ground_res_mm": 3.0,                       # overhead grid ground sampling
+    "profile_plane_spacing_mm": 4.0,            # light-section plane pitch along belt
+    "profile_angular_res_deg": 0.1,             # top profiler fan resolution
+    "side_head_angular_res_deg": 0.2,           # side profiler fan resolution
+    "side_head_offset_m": 0.45,                 # side heads' lateral offset
+    "side_head_z_m": 1.05,                      # side heads' height
+    "capture_period_s": 0.12,                   # multi-read cadence (~8.3 Hz)
+    "depth_noise_mm": 0.0,                      # Gaussian sigma per ray; 0 = ideal
+                                                # optics baseline (scenario-tunable:
+                                                # sensor: {depth_noise_mm: ...})
+    "processing_latency_s": 0.08,               # fusion verdict -> route command
+    "blind_zone_note": "single item per window enforced by the pre-gate hold",
+}
+
+# ---------------------------------------------------------------- classification policy (used by run_sim fusion)
+# Safe-side decision policy on top of the official rule order. All knobs are
+# implementation-true (consumed in cell/run_sim.py) and scenario-tunable via a
+# `classification:` block.
+CLASSIFICATION = {
+    "min_confidence_for_B": 0.30,   # fused confidence below this never routes to B
+    "low_confidence_route": "D",    # ...it diverts to the repack/manual-review lane
+    "stable_reads_required": 5,     # commit after N reads with a stable tail
+    "stable_dims_tol_mm": 8.0,      # two reads "agree" within this
+    "read_cap": 30,                 # hard cap on reads per item
+    "weak_evidence_reroute": True,  # persistent weak circle evidence -> D (never B)
+}
+
 # ---------------------------------------------------------------- simulation
 SIM = {
     "timestep": 0.002,

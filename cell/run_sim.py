@@ -65,11 +65,13 @@ class Recorder:
 class ItemManager:
     """Spawning, classification (oracle or camera), routing state, delivery."""
 
-    CAM_WINDOW = (5.85, 6.28)    # classify while the item center crosses this
-                                 # (ends before the escapement gate)
+    CAM_WINDOW = P.VIRTUAL_SENSOR["window_x"]    # classify while the item center
+                                                 # crosses this (ends before the
+                                                 # escapement gate)
 
     def __init__(self, model, data, manifest, order, gaps, bus, perception_latency,
-                 perceiver=None, spawn_rng=None, executive="arm", table=None):
+                 perceiver=None, spawn_rng=None, executive="arm", table=None,
+                 belts=None, cls_cfg=None):
         self.m, self.d, self.bus = model, data, bus
         self.entries = {e["slug"]: e for e in manifest}
         self.queue = list(order)                   # slugs to spawn
@@ -80,10 +82,15 @@ class ItemManager:
         self.spawn_rng = spawn_rng
         self.executive = executive
         self.table = table                         # Table instance in table mode
+        self.belts = belts                         # for gate-hold accounting
+        self.cls_cfg = dict(P.CLASSIFICATION, **(cls_cfg or {}))
+        self.proc_latency = P.VIRTUAL_SENSOR["processing_latency_s"]
         self.cages = P.cages_for(executive)
         self.active = {}                           # slug -> state dict
         self.done = {}                             # slug -> zone_actual
         self.cage_watch = {}                       # slug -> post-delivery containment state
+        self.window_conflicts = 0                  # events: >=2 items co-occupied
+        self._window_multi = False                 # the measurement window
 
     def _adr(self, slug):
         jid = self.m.joint(f"fj_{slug}").id
@@ -100,7 +107,7 @@ class ItemManager:
                 return False
         return True
 
-    def step(self, t):
+    def step(self, t, dt=0.0):
         # spawn
         if self.queue and t >= self.next_spawn_t and self.spawn_zone_clear():
             slug = self.queue.pop(0)
@@ -119,24 +126,64 @@ class ItemManager:
             self.active[slug] = {"classified": False, "settled": False, "picked": False,
                                  "released_t": None, "classify_t": t + self.latency,
                                  "attempts": 0}
-            self.bus.publish("item_spawned", t=t, slug=slug)
+            self.bus.publish("item_spawned", t=t, slug=slug,
+                             asset=e.get("source", e.get("file", slug)),
+                             zone_true=e["zone"])
             self.next_spawn_t = t + (self.gaps.pop(0) if self.gaps else 6.0)
 
+        # single-item discipline check: how many items are INSIDE the window?
+        # (the pre-gate hold exists to keep this at <=1; violations are counted)
+        in_window = sum(1 for s in self.active
+                        if self.CAM_WINDOW[0] <= float(self.pose(s)[0]) <= self.CAM_WINDOW[1])
+        if in_window >= 2 and not self._window_multi:
+            self.window_conflicts += 1
+        self._window_multi = in_window >= 2
+
+        cfg = self.cls_cfg
         for slug, st in list(self.active.items()):
             e = self.entries[slug]
             qadr, dadr = self._adr(slug)
             pos = self.d.qpos[qadr:qadr + 3]
             vel = self.d.qvel[dadr:dadr + 3]
+            # detection-zone entry: cycle_start for BOTH perception modes
+            if "t_detected" not in st and pos[0] >= self.CAM_WINDOW[0]:
+                st["t_detected"] = t
+                self.bus.publish("item_detected", t=t, slug=slug)
+            # escapement/pre-gate holds: accumulated per item (spacing control;
+            # the BELT never stops — see conveyor_a_stop_count)
+            if self.belts is not None and dt > 0.0 and not st["picked"]:
+                front = pos[0] + e["dims_m"][0] / 2
+                a = P.BELT_A
+                if (not self.belts.gate_open
+                        and a["gate_x"] - 0.004 <= front < a["gate_x"] + 0.05):
+                    st["gate_hold_s"] = st.get("gate_hold_s", 0.0) + dt
+                if (not self.belts.hold2_open
+                        and a["hold2_x"] - 0.004 <= front < a["hold2_x"] + 0.05):
+                    st["hold2_hold_s"] = st.get("hold2_hold_s", 0.0) + dt
+            # pending classification verdict: published after the modeled
+            # processing latency (route command generation time)
+            if not st["classified"] and "pending_cls" in st:
+                if t >= st["pending_cls"]["t_ready"]:
+                    self._publish_classification(slug, t)
             # look-ahead classification at the vision station
-            if not st["classified"]:
+            elif not st["classified"]:
                 if self.perceiver is None:
                     # oracle mode: ground truth stamped after a model latency
                     if t >= st["classify_t"]:
                         st["classified"] = True
                         st["zone"] = e["zone"]
+                        st["t_route_cmd"] = t
+                        dims_mm = [round(d * 1000, 1) for d in e["dims_m"]]
+                        over = bool(np.any(np.sort(dims_mm)[::-1] > np.array(P.LIMIT_MAX_MM)))
+                        under = bool(np.any(np.array(dims_mm) < P.LIMIT_MIN_MM))
+                        rule_dim = "undersize" if under else ("oversize" if over else "pass")
                         self.bus.publish("item_classified", t=t, slug=slug,
                                          zone=e["zone"], zone_true=e["zone"],
-                                         zone_raw=e["zone"], confidence=1.0, flags="")
+                                         zone_raw=e["zone"], confidence=1.0, flags="",
+                                         dims_mm=dims_mm, n_reads=0,
+                                         latency_ms=round(self.latency * 1000, 1),
+                                         rule_dim=rule_dim,
+                                         rule_circ="ground_truth")
                 elif pos[0] > self.CAM_WINDOW[1]:
                     # escaped the window between captures: commit what we have
                     # (no reads at all -> sensor_miss -> manual stream)
@@ -148,14 +195,16 @@ class ItemManager:
                     # verdicts fuse per the official decision order and shape
                     # policies fire only on persistent evidence
                     if t >= st.get("next_capture_t", 0.0):
-                        st["next_capture_t"] = t + 0.12
+                        st["next_capture_t"] = t + P.VIRTUAL_SENSOR["capture_period_s"]
+                        st.setdefault("t_capture_start", t)
+                        st["t_capture_end"] = t
                         res = self.perceiver.classify(self.d, x_hint=float(pos[0]))
                         reads = st.setdefault("cls_reads", [])
                         if res is not None:
                             reads.append(res)
                         leaving = pos[0] > self.CAM_WINDOW[1] - 0.06
                         # commit once the pose has stabilised (two consecutive
-                        # agreeing reads after >=5) — rocking items keep being
+                        # agreeing reads after >=N) — rocking items keep being
                         # read through the gate dwell, up to a hard cap
                         stable = False
                         if len(reads) >= 2:
@@ -163,8 +212,10 @@ class ItemManager:
                             stable = (r1["zone"] == r2["zone"]
                                       and r1.get("dims_mm") and r2.get("dims_mm")
                                       and max(abs(a - b) for a, b in
-                                              zip(r1["dims_mm"], r2["dims_mm"])) < 8.0)
-                        if ((len(reads) >= 5 and stable) or len(reads) >= 30
+                                              zip(r1["dims_mm"], r2["dims_mm"]))
+                                      < cfg["stable_dims_tol_mm"])
+                        if ((len(reads) >= cfg["stable_reads_required"] and stable)
+                                or len(reads) >= cfg["read_cap"]
                                 or (leaving and reads)):
                             self._commit_classification(slug, e, reads, t)
             # fell to the floor while nobody was carrying it? adjudicate as a
@@ -194,6 +245,12 @@ class ItemManager:
             st["watch_xy"] = (float(pos[0]), float(pos[1]))
             st["watch_t"] = t
             self.bus.publish("routing_cmd", t=t, slug=slug, zone=st["zone"])
+            self.bus.publish("table_state", t=t, slug=slug,
+                             state=f"TABLE_ROUTE_{st['zone']}")
+        # physical entry onto the table: command_margin_s reference point
+        if "t_table_entry" not in st and pos[0] > P.TABLE["x0"] and pos[2] > 0.5:
+            st["t_table_entry"] = t
+            self.bus.publish("table_entry", t=t, slug=slug)
         # delivered into a cage? (rode the chute through the aperture — items
         # queued on the in-cage slope section count: they are inside the
         # cage volume and the containment watch takes over from here)
@@ -258,8 +315,13 @@ class ItemManager:
         dimensions first (median over reads — robust to transient tilt), then
         circle-in-section, where a corroborated detection in ANY read counts
         (the rule is existential: 'circle in any section') and the weak
-        isolated-circle policy fires only when persistent across reads."""
+        isolated-circle policy fires only when persistent across reads.
+
+        The verdict is stamped `t_ready = t + processing_latency_s` and
+        published then — the route command is generated after the modeled
+        fusion/inference time, while the item keeps moving."""
         st = self.active[slug]
+        cfg = self.cls_cfg
         flags = []
         if reads:
             # stable-tail rejection (standard DWS practice): keep the longest
@@ -277,9 +339,13 @@ class ItemManager:
             if 2 <= len(tail) < len(reads):
                 flags.append("unstable_reads_rejected")
                 reads = list(reversed(tail))
+        low_conf, fb_reason = False, None
         if not reads:
-            zone_raw = zone = "D"              # sensor miss: manual stream
+            zone_raw = zone = cfg["low_confidence_route"]   # sensor miss: manual stream
             rep = {"confidence": 0.0, "max_ratio": None, "dims_mm": None}
+            conf, minor = 0.0, None
+            rule_dim, rule_circ = "no_measurement", "no_measurement"
+            low_conf, fb_reason = True, "sensor_miss"
             flags.append("sensor_miss")
         else:
             rep = max(reads, key=lambda r: (r.get("max_ratio") is not None,
@@ -288,34 +354,94 @@ class ItemManager:
                              axis=0)
             minors = [r["minor_mm"] for r in reads if r.get("minor_mm") is not None]
             minor = float(np.median(minors)) if minors else None
-            undersize = bool(np.any(dims < 10.0) or (minor is not None and minor < 10.0))
-            oversize = bool(np.any(np.sort(dims)[::-1] > np.array([450.0, 320.0, 320.0])))
+            conf = float(np.median([r.get("confidence", 0.0) for r in reads]))
+            undersize = bool(np.any(dims < P.LIMIT_MIN_MM)
+                             or (minor is not None and minor < P.LIMIT_MIN_MM))
+            oversize = bool(np.any(np.sort(dims)[::-1] > np.array(P.LIMIT_MAX_MM)))
             circ_strong = any(r.get("circular") for r in reads)
             n_relaxed = sum(1 for r in reads if r.get("circular_relaxed"))
             n_isolated = sum(1 for r in reads if "isolated_end_circle" in r.get("flags", []))
             weak_persistent = (n_isolated * 2 >= len(reads)) or (n_relaxed >= 2)
+            # guard bands (legal-metrology practice): a measurement within the
+            # sensor's uncertainty of a decision threshold cannot support the
+            # PERMISSIVE outcome — divert to the safe side. Bands scale with
+            # the configured sensor noise and vanish at the ideal baseline.
+            noise_mm = (self.perceiver.noise_m * 1000.0
+                        if self.perceiver is not None else 0.0)
+            g_dim = 2.0 * noise_mm
+            dim_suspect = False
+            if not (undersize or oversize) and g_dim > 0.0:
+                mins = np.concatenate([dims, [] if minor is None else [minor]])
+                near_under = bool(np.any(mins < P.LIMIT_MIN_MM + g_dim))
+                near_over = bool(np.any(
+                    np.sort(dims)[::-1] > np.array(P.LIMIT_MAX_MM) - g_dim))
+                dim_suspect = near_under or near_over
+            ratio_suspect = False
+            max_ratio = rep.get("max_ratio")
+            if not circ_strong and max_ratio is not None and noise_mm > 0.0:
+                # ratio uncertainty scales with noise over the cross-section
+                # circumradius (the two smaller extents span the section)
+                srt = np.sort(dims)[::-1]
+                r_est = float(np.hypot(srt[1], srt[2])) / 2.0
+                g_ratio = min(0.25, 2.0 * noise_mm / max(r_est, 5.0))
+                ratio_suspect = P.CIRCLE_RATIO - g_ratio <= max_ratio < P.CIRCLE_RATIO
+            rule_dim = "undersize" if undersize else ("oversize" if oversize else "pass")
+            rule_circ = ("strong" if circ_strong
+                         else "weak_persistent" if weak_persistent else "none")
             if undersize or oversize:
                 zone_raw = zone = "C"
+            elif dim_suspect:
+                zone_raw = zone = "C"          # guard band: may violate dims
+                low_conf, fb_reason = True, "dims_within_noise_of_limit"
+                flags.append("guard_band_dims")
             elif circ_strong:
                 zone_raw = zone = "D"
-            elif weak_persistent:
+            elif ratio_suspect:
+                zone_raw, zone = "B", "D"      # guard band: may be circular
+                low_conf, fb_reason = True, "ratio_within_noise_of_threshold"
+                flags.append("guard_band_ratio")
+            elif weak_persistent and cfg["weak_evidence_reroute"]:
                 zone_raw, zone = "B", "D"      # policy: uncertain shape -> repack
+                low_conf, fb_reason = True, "weak_circle_evidence"
                 flags.append("policy_reroute_D")
             else:
                 zone_raw = zone = "B"
+            # low-confidence safe fallback: an uncertain item NEVER goes to B
+            if zone == "B" and conf < cfg["min_confidence_for_B"]:
+                zone = cfg["low_confidence_route"]
+                low_conf, fb_reason = True, "confidence_below_threshold"
+                flags.append("low_confidence_fallback")
             rep = dict(rep, dims_mm=[round(float(d), 1) for d in dims])
             flags = list(rep.get("flags", [])) + flags
             if os.environ.get("SIM_DEBUG_CLS") and zone != e["zone"]:
                 print(f"[cls] {slug} true={e['zone']} got={zone} dims={rep['dims_mm']} "
                       f"minor={minor} n={len(reads)} "
                       f"all_dims={[r.get('dims_mm') for r in reads]}")
+        st["pending_cls"] = {
+            "t_ready": t + self.proc_latency,
+            "payload": dict(
+                zone=zone, zone_true=e["zone"], zone_raw=zone_raw,
+                confidence=round(conf, 3), ratio=rep.get("max_ratio"),
+                dims_mm=rep.get("dims_mm"), n_reads=len(reads),
+                rule_dim=rule_dim, rule_circ=rule_circ,
+                low_confidence=low_conf, fallback_reason=fb_reason,
+                flags=";".join(flags)),
+        }
+
+    def _publish_classification(self, slug, t):
+        """Route command generation: the fused verdict becomes the command."""
+        st = self.active[slug]
+        payload = st.pop("pending_cls")["payload"]
         st["classified"] = True
-        st["zone"] = zone
+        st["zone"] = payload["zone"]
+        st["t_route_cmd"] = t
+        latency_ms = None
+        if "t_capture_start" in st:
+            latency_ms = round((t - st["t_capture_start"]) * 1000, 1)
         self.bus.publish("item_classified", t=t, slug=slug,
-                         zone=zone, zone_true=e["zone"], zone_raw=zone_raw,
-                         confidence=rep.get("confidence"), ratio=rep.get("max_ratio"),
-                         dims_mm=rep.get("dims_mm"), n_reads=len(reads),
-                         flags=";".join(flags))
+                         t_capture_start=st.get("t_capture_start"),
+                         t_capture_end=st.get("t_capture_end"),
+                         latency_ms=latency_ms, **payload)
 
     @staticmethod
     def _in_cage_region(pos, cage, closed_m, open_m):
@@ -360,7 +486,10 @@ class ItemManager:
             self.d.qpos[qadr + 3:qadr + 7] = [1, 0, 0, 0]
             self.d.qvel[dadr:dadr + 6] = 0
         self.bus.publish("item_delivered", t=t, slug=slug, zone=zone_actual, ok=ok,
-                         v_entry=round(v_entry, 3))
+                         v_entry=round(v_entry, 3),
+                         route_command=st.get("zone"),
+                         gate_hold_s=round(st.get("gate_hold_s", 0.0), 2),
+                         hold2_hold_s=round(st.get("hold2_hold_s", 0.0), 2))
 
     # ------------------------------------------------- containment validation
     def _watch_containment(self, t):
@@ -395,7 +524,8 @@ class ItemManager:
                         if w["t_settle"] is not None else None)
             self.bus.publish("containment_final", t=t, slug=slug, zone=w["zone"],
                              contained=not w["violated"], v_entry=w["v_entry"],
-                             settle_s=settle_s, max_z=round(w["max_z"], 3))
+                             settle_s=settle_s, t_settle=w["t_settle"],
+                             max_z=round(w["max_z"], 3))
 
     def _front_unclassified(self):
         """Slug of the most-downstream unclassified item inside the window."""
@@ -449,24 +579,34 @@ def main(argv=None):
     order = list(rng.permutation(slugs))
     gaps = list(rng.uniform(sc["spawn_gap_s"][0], sc["spawn_gap_s"][1], size=len(order)))
 
+    sensor_cfg = dict(P.VIRTUAL_SENSOR, **(sc.get("sensor") or {}))
     perceiver = None
+    sensor_model = "oracle_ground_truth"
     if mode == "camera":
         from perception.pipeline import LookaheadPerception
-        perceiver = LookaheadPerception(model)
+        perceiver = LookaheadPerception(
+            model, noise_mm=sensor_cfg["depth_noise_mm"],
+            noise_rng=np.random.default_rng(seed + 2000))
+        sensor_model = sensor_cfg["model"]
 
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = Path(args.out) if args.out else ROOT / "runs" / f"{stamp}_seed{seed}_{mode}_{executive}"
+    run_id = out_dir.name
     bus = Bus()
     metrics = Metrics(bus, out_dir)
     table = Table(model, manifest) if executive == "table" else None
+    belts = Belts(model, manifest, mode=executive)
     items = ItemManager(model, data, manifest, order, gaps, bus,
                         perception_latency=sc.get("perception_latency_s", 0.15),
                         perceiver=perceiver,
                         spawn_rng=np.random.default_rng(seed + 1000),
-                        executive=executive, table=table)
-    belts = Belts(model, manifest, mode=executive)
+                        executive=executive, table=table, belts=belts,
+                        cls_cfg=sc.get("classification"))
     ctrl = Controller(model, data, bus, mode=executive)
     inject = sc.get("inject_jam")      # e.g. {slug: helmet, at_x: 8.0}
+    # single-item-discipline + belt-state counters (реакция на нештатные потоки)
+    flow_stats = {"spacing_gate_activations": 0, "escapement_gate_activations": 0,
+                  "multi_object_window_events": 0, "conveyor_a_stop_count": 0}
 
     # presentation layer: category tint, lane lights, beacons, andon tower
     vis = Visuals(model)
@@ -512,6 +652,8 @@ def main(argv=None):
                 ok = m.get("event") == "job_done"
                 bus.publish("cell_event", t=m["t"], event="recovery_done",
                             slug=m["slug"], ok=ok)
+                bus.publish("table_state", t=m["t"], slug=m["slug"],
+                            state="TABLE_IDLE")
                 st = items.active.get(m["slug"])
                 if st is not None:
                     # re-arm the watchdog: if the item STILL fails to arrive,
@@ -600,9 +742,18 @@ def main(argv=None):
     while len(items.done) < n_total and data.time < max_t:
         if step % decim == 0:
             t = data.time
-            items.step(t)
+            items.step(t, dt_ctrl)
+            was_gate, was_hold2 = belts.gate_open, belts.hold2_open
             belts.gate_open = downstream_clear()
             belts.hold2_open = window_clear()
+            # flow-discipline telemetry: each open->closed transition is one
+            # activation; a hold2 activation means a SECOND item approached the
+            # measurement corridor while it was busy (single-item discipline)
+            if was_gate and not belts.gate_open:
+                flow_stats["escapement_gate_activations"] += 1
+            if was_hold2 and not belts.hold2_open:
+                flow_stats["spacing_gate_activations"] += 1
+            flow_stats["multi_object_window_events"] = items.window_conflicts
             # fault injection: a snag on the table (fault scenarios)
             if inject and inject["slug"] in items.active and table is not None \
                     and not items.active[inject["slug"]].get("snagged"):
@@ -628,6 +779,8 @@ def main(argv=None):
                         table.hold_open.add(rzone)     # recovery path crosses this gate
                         bus.publish("cell_event", t=t, event="recovery_start",
                                     slug=slug, target=rzone)
+                        bus.publish("table_state", t=t, slug=slug,
+                                    state="TABLE_RECOVERY_LOCKOUT")
                         ctrl.start_job(slug, rzone, items.entries[slug], t)
             else:
                 if not ctrl.busy:
@@ -684,13 +837,27 @@ def main(argv=None):
     if recorder is not None:
         recorder.close()
         print(f"video: {recorder.path}")
-    summary = metrics.finalize(data.time, extra={"seed": seed, "perception": mode,
-                                                 "executive": executive,
-                                                 "scenario": Path(args.scenario).name})
+    unfinished = n_total - len(items.done)
+    summary = metrics.finalize(data.time, extra={
+        "seed": seed, "perception": mode, "executive": executive,
+        "scenario": Path(args.scenario).name,
+        "perception_mode": mode, "executive_mode": executive,
+        "sensor_model": sensor_model,
+        "oracle_used_for_classification": perceiver is None,
+        "depth_noise_mm": sensor_cfg["depth_noise_mm"] if perceiver is not None else None,
+        "run_id": run_id,
+        "deadlocks": unfinished,
+        **flow_stats,
+    })
     print(json.dumps(summary, indent=2))
     misrouted = [s for s, z in items.done.items() if z != items.entries[s]["zone"]]
-    unfinished = n_total - len(items.done)
     escaped = [s for s, w in items.cage_watch.items() if w["violated"]]
+    # fault scenarios may accept CONSERVATIVE outcomes (a sortable item diverted
+    # to inspection during recovery); UNSAFE outcomes (bad item delivered to the
+    # sorter) always fail the run
+    unsafe = [s for s in misrouted if items.done[s] == "B"]
+    if sc.get("allow_conservative"):
+        misrouted = unsafe
     if misrouted:
         print(f"MISROUTED: {misrouted}")
     if unfinished:

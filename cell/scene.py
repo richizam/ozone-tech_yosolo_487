@@ -342,7 +342,7 @@ def _vision_markers():
     escapement-gate and pre-gate hold lines painted on/over belt A."""
     a = P.BELT_A
     g = []
-    w0, w1 = 5.85, 6.28                  # ItemManager.CAM_WINDOW
+    w0, w1 = P.VIRTUAL_SENSOR["window_x"]
     g.append(f'<geom name="vis_window" type="box" size="{(w1 - w0) / 2} {a["width"] / 2} 0.001" '
              f'pos="{(w0 + w1) / 2} {a["y"]} {a["top"] + 0.002}" rgba="0.45 0.25 0.55 0.25" '
              f'contype="0" conaffinity="0" group="2"/>')

@@ -34,6 +34,8 @@ Z_MIN, Z_MAX = 0.004, 0.55    # item height window above belt (masks the mount b
 CIRCLE_RMS_FRAC = 0.05        # accept a circle fit if rms < 5% of radius
 CIRCLE_MIN_ARC = 100.0        # and the visible arc covers at least this many degrees
 
+SENSOR_MODEL = P.VIRTUAL_SENSOR["model"]      # stamped into run logs
+
 
 def _poly_ratio(pts_2d):
     """r_in / R_circ of the convex hull of 2D points (same math as ground truth)."""
@@ -62,15 +64,25 @@ class LookaheadPerception:
          motion) — dense ANGULAR coverage of section contours, which a
          top-down grid cannot achieve on steep flanks and end caps."""
 
+    # geometry/sampling constants below are the SAME values published in
+    # cell.params.VIRTUAL_SENSOR (asserted in tests) — one visible config
     SCAN_CLEARANCE = 0.25       # top profiler head rides this far above the item
-    FAN_ANGLES = np.arange(-0.84, 0.8401, 0.00175)   # top head: +-48 deg, 0.1 deg
-    FAN_STEP = 0.004            # scan plane spacing along the belt
-    SIDE_Y_OFF = 0.45           # side heads' lateral offset from belt center
-    SIDE_Z = BELT_Z + 0.35      # side heads' height
-    SIDE_TILTS = np.arange(-0.53, 1.0501, 0.0035)    # -30(up)..+60(down) deg, 0.2 deg
+    FAN_ANGLES = np.arange(-0.84, 0.8401,
+                           np.deg2rad(P.VIRTUAL_SENSOR["profile_angular_res_deg"]))
+    FAN_STEP = P.VIRTUAL_SENSOR["profile_plane_spacing_mm"] / 1000.0
+    SIDE_Y_OFF = P.VIRTUAL_SENSOR["side_head_offset_m"]
+    SIDE_Z = P.VIRTUAL_SENSOR["side_head_z_m"]
+    SIDE_TILTS = np.arange(-0.53, 1.0501,
+                           np.deg2rad(P.VIRTUAL_SENSOR["side_head_angular_res_deg"]))
 
-    def __init__(self, model, ground_res=0.003):
+    def __init__(self, model, ground_res=None, noise_mm=None, noise_rng=None):
         self.m = model
+        if ground_res is None:
+            ground_res = P.VIRTUAL_SENSOR["ground_res_mm"] / 1000.0
+        # per-ray Gaussian depth noise (sigma, mm). 0 = ideal-optics baseline.
+        self.noise_m = (P.VIRTUAL_SENSOR["depth_noise_mm"] if noise_mm is None
+                        else float(noise_mm)) / 1000.0
+        self.noise_rng = noise_rng if noise_rng is not None else np.random.default_rng(0)
         cam_id = model.camera("lookahead").id
         self.cam_id = cam_id
         self.cam_pos = np.array(model.cam_pos0[cam_id] if hasattr(model, "cam_pos0")
@@ -82,7 +94,13 @@ class LookaheadPerception:
         targets = np.column_stack([gxx.ravel(), gyy.ravel(),
                                    np.full(gxx.size, BELT_Z)])
         dirs = targets - self.cam_pos
-        dirs /= np.linalg.norm(dirs, axis=1, keepdims=True)
+        ranges = np.linalg.norm(dirs, axis=1)
+        dirs /= ranges[:, None]
+        # calibrated empty-belt depth map: per-ray background range. A return
+        # counts as "item" only if it is >3 sigma NEARER than the background —
+        # the standard DWS background-subtraction model, which keeps the belt
+        # plane out of the cloud even under sensor noise.
+        self._belt_dist = ranges
         self._dirs = dirs.astype(np.float64)
         self._vec_flat = self._dirs.reshape(-1).copy()
         self._nray = len(dirs)
@@ -120,8 +138,14 @@ class LookaheadPerception:
         mujoco.mj_multiRay(self.m, data, self.cam_pos, self._vec_flat,
                            RAY_GROUPS, 1, -1, self._geomid, self._dist, None,
                            self._nray, mujoco.mjMAXVAL)
+        sig = max(self.noise_m, 5e-4)
         hit = self._geomid >= 0
-        grid_pts = self.cam_pos + self._dirs[hit] * self._dist[hit, None]
+        dist = self._dist.copy()
+        if self.noise_m > 0.0 and hit.any():
+            dist[hit] += self.noise_rng.normal(0.0, self.noise_m, int(hit.sum()))
+        # background subtraction against the calibrated empty-belt depth map
+        keep = hit & (dist < self._belt_dist - 3.0 * sig)
+        grid_pts = self.cam_pos + self._dirs[keep] * dist[keep, None]
         grid_pts = grid_pts[self._mask(grid_pts)]
         if len(grid_pts) < 40:
             return None
@@ -145,14 +169,47 @@ class LookaheadPerception:
                                    None, n, mujoco.mjMAXVAL)
                 fh = self._fan_geomid[:n] >= 0
                 if fh.any():
-                    fan_pts.append(origin + dirs[fh] * self._fan_dist[:n][fh, None])
+                    fd = self._fan_dist[:n].copy()
+                    if self.noise_m > 0.0:
+                        fd[fh] += self.noise_rng.normal(0.0, self.noise_m, int(fh.sum()))
+                    # per-ray background range: distance at which this ray
+                    # would hit the empty belt plane (inf for upward rays)
+                    dz = dirs[:, 2]
+                    bg = np.where(dz < -1e-6,
+                                  (origin[2] - BELT_Z) / np.where(dz < -1e-6, -dz, 1.0),
+                                  np.inf)
+                    fkeep = fh & (fd < bg - 3.0 * sig)
+                    if fkeep.any():
+                        fan_pts.append(origin + dirs[fkeep] * fd[fkeep, None])
         if fan_pts:
             fan_pts = np.vstack(fan_pts)
             fan_pts = fan_pts[self._mask(fan_pts)]
             pts = np.vstack([grid_pts, fan_pts])
         else:
             pts = grid_pts
+        pts = self._denoise(pts)
+        if pts is None or len(pts) < 40:
+            return None
         return self._select_cluster(pts, x_hint)
+
+    def _denoise(self, pts):
+        """Morphological cleanup under sensor noise (standard DWS practice):
+        background-subtraction tails are ISOLATED salt returns, real items are
+        DENSE blobs — keep points whose 3x3-cell plan neighborhood holds >=5
+        returns (cell = 6 mm). No-op for the ideal-optics baseline."""
+        if self.noise_m <= 0.0 or len(pts) == 0:
+            return pts
+        cell = 0.006
+        ij = np.floor(pts[:, :2] / cell).astype(np.int64)
+        ij -= ij.min(axis=0)
+        shape = ij.max(axis=0) + 1
+        flat = ij[:, 0] * shape[1] + ij[:, 1]
+        counts = np.bincount(flat, minlength=int(shape[0] * shape[1])
+                             ).reshape(shape)
+        padded = np.pad(counts, 1)
+        neigh = sum(padded[di:di + shape[0], dj:dj + shape[1]]
+                    for di in range(3) for dj in range(3))
+        return pts[neigh[ij[:, 0], ij[:, 1]] >= 5]
 
     @staticmethod
     def _select_cluster(pts, x_hint=None, gap=0.07, min_pts=40):
@@ -177,8 +234,21 @@ class LookaheadPerception:
     # ------------------------------------------------------------------ analysis
     def analyze(self, pts):
         z_rel = pts[:, 2] - BELT_Z
-        height = float(z_rel.max())
         L, W, ang = min_area_rect(pts[:, :2])
+        if self.noise_m > 0.0:
+            # calibrated robust extents for the noisy path: percentile spans
+            # along the rect axes instead of hull extremes (kills the
+            # extreme-value bias of max-statistics over ~10^4 noisy returns),
+            # minus the known boundary-inflation bias of ~2 sigma
+            ud = np.array([np.cos(ang), np.sin(ang)])
+            vd = np.array([-np.sin(ang), np.cos(ang)])
+            pu, pv = pts[:, :2] @ ud, pts[:, :2] @ vd
+            cal = 2.0 * self.noise_m
+            L = max(float(np.percentile(pu, 99.5) - np.percentile(pu, 0.5)) - cal, 0.001)
+            W = max(float(np.percentile(pv, 99.5) - np.percentile(pv, 0.5)) - cal, 0.001)
+            height = max(float(np.percentile(z_rel, 99.5)) - cal, 0.001)
+        else:
+            height = float(z_rel.max())
         dims_mm = np.sort([L * 1000, W * 1000, height * 1000])[::-1]
 
         sections = []
