@@ -26,6 +26,7 @@ from tools.classify_mesh import chebyshev_radius, MIN_DIM_MM, MAX_DIMS_MM, RATIO
 from perception.geometry import min_area_rect
 
 BELT_Z = 0.700                # calibrated belt plane (measured: 0.7000 +- 0.0000)
+RAY_GROUPS = np.array([1, 1, 0, 1, 1, 1], dtype=np.uint8)   # group 2 = presentation layer, invisible to rays
 ROI_X = (5.35, 6.55)          # camera footprint used for analysis (ends before
                               # the table entry so downstream items stay out)
 ROI_Y_HALF = 0.26             # belt corridor half-width
@@ -113,9 +114,11 @@ class LookaheadPerception:
 
     def cloud(self, data, x_hint=None):
         """World-frame point cloud of the item in the ROI, or None."""
-        # overhead grid
+        # overhead grid; geom group 2 (presentation layer: lane markings,
+        # signage, light-curtain sheet, lamp geoms) is transparent to the
+        # depth sensors, exactly as it is to a real ToF/laser head
         mujoco.mj_multiRay(self.m, data, self.cam_pos, self._vec_flat,
-                           None, 1, -1, self._geomid, self._dist, None,
+                           RAY_GROUPS, 1, -1, self._geomid, self._dist, None,
                            self._nray, mujoco.mjMAXVAL)
         hit = self._geomid >= 0
         grid_pts = self.cam_pos + self._dirs[hit] * self._dist[hit, None]
@@ -138,7 +141,7 @@ class LookaheadPerception:
             for origin, dirs, vec in heads:
                 n = len(dirs)
                 mujoco.mj_multiRay(self.m, data, origin, vec,
-                                   None, 1, -1, self._fan_geomid[:n], self._fan_dist[:n],
+                                   RAY_GROUPS, 1, -1, self._fan_geomid[:n], self._fan_dist[:n],
                                    None, n, mujoco.mjMAXVAL)
                 fh = self._fan_geomid[:n] >= 0
                 if fh.any():

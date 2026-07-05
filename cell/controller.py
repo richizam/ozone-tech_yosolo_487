@@ -63,7 +63,8 @@ class Controller:
     def _set_target(self, q_target, t):
         self._target = q_target
         travel = float(np.max(np.abs(q_target - self.q_ref) / self.vmax))
-        self._deadline = t + 3.0 * travel + 1.0
+        self._deadline = t + 3.0 * travel + 2.0    # settle margin: PD creeps
+                                                   # under load near contact
 
     def _ik_wp(self, xyz):
         q = ik(np.asarray(xyz, dtype=float), base=self.base)
@@ -215,7 +216,8 @@ class Controller:
         elif self.state == "LIFT":
             place = self.place[j["zone"]]
             tx, ty = place["xy"]
-            surface = P.BELT_B["top"] if place["mode"] == "place" else P.CAGE_WALL_TOP
+            surface = (P.BELT_B["top"] if place["mode"] == "place"
+                       else place.get("surface_z", P.CAGE_WALL_TOP))
             self._place_wp = (tx, ty, surface + j["hang"] + place["z_clear"])
             self.state = "TRANSFER"
             self._set_target(self._ik_wp((tx, ty, j["lift_z"])), t)

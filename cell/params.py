@@ -45,13 +45,53 @@ TABLE = {
 }
 # short powered connector from the table's north edge to the fixed belt B
 CONNECT_B = {"cx": 8.4, "width": 0.5, "y0": 3.55, "y1": 4.2, "top": 0.7, "speed": 0.8}
-# gravity chutes from the table edges down into the open cage sides
-CHUTE_C = {"x0": 8.55, "x1": 9.05, "cy": 3.0, "width": 0.62, "z0": 0.7, "z1": 0.38}
-CHUTE_D = {"y0": 2.45, "y1": 1.95, "cx": 8.05, "width": 0.62, "z0": 0.7, "z1": 0.38}
+# gravity chutes from the table edges into the cages: ONE continuous 32 deg
+# slope (mu=0.40 < tan 32 deg, so no item can ever rest statically on it — no
+# seams, no stall points, recovery drops always slide) that passes through the
+# cage entry aperture and lands on a short high-friction BRAKE PAD just above
+# the cage floor. The item is guided and decelerated the whole way down:
+# never thrown, never free-falling.
+CHUTE_C = {"x0": 8.55, "x1": 9.40, "cy": 3.0, "width": 0.62, "z0": 0.7, "z1": 0.16,
+           "friction": "0.40 0.005 0.0001",
+           "pad_x1": 9.65, "pad_friction": "0.45 0.01 0.0001"}
+CHUTE_D = {"y0": 2.45, "y1": 1.60, "cx": 8.05, "width": 0.62, "z0": 0.7, "z1": 0.16,
+           "friction": "0.40 0.005 0.0001",
+           "pad_y1": 1.35, "pad_friction": "0.45 0.01 0.0001"}
+GUIDE_H = 0.14                          # chute side-guide height above the surface
+# chute hood: a cover parallel to the slope over the cage aperture — closes
+# the fly-out window without presenting any catch face to the flow (its
+# upstream edge sits ~0.98 high, above any nose rotating off the table lip)
+HOOD = {"clearance": 0.50,              # normal gap slope->hood (max item 0.36)
+        "up": 0.30, "into": 0.28,       # span upstream / into the cage
+        "brow_z0": 0.80}                # wall-plane brow strip (hood top overlaps it;
+                                        # item apexes pass at <= 0.78)
+
+# actuated vertical-lift exit gates on the transfer table (closed by default:
+# an item can only leave through the gate its route command opened)
+GATES = {
+    "travel": 0.66,                     # lift stroke, m: open panel bottom at 1.364
+                                        # clears the 500 mm max item AND an arm-carried
+                                        # load at max lift (item top <= 1.29)
+    "panel_h": 0.30, "panel_t": 0.024,  # panel height / thickness
+    "gap": 0.004,                       # closed-state clearance over the table top
+    "B": {"axis": "x", "c0": 8.15, "c1": 8.55, "line": 3.532},   # north exit
+    "C": {"axis": "y", "c0": 2.69, "c1": 3.31, "line": 8.528},   # east exit
+    "D": {"axis": "x", "c0": 7.74, "c1": 8.36, "line": 2.468},   # south exit
+}
+
+# route colour code, used consistently: lane markings, gate lamps, destination
+# beacons, cage frames and signage all share the zone colour
+ROUTE_RGBA = {
+    "B": (0.25, 0.55, 0.95),            # sorter = blue
+    "C": (0.95, 0.55, 0.15),            # oversize = orange
+    "D": (0.20, 0.78, 0.35),            # repack = green
+}
 
 # ---------------------------------------------------------------- roll-cages 1200x800x800 (positions ours)
-# per executive mode; in table mode the receiving side is open (real roll
-# containers have a drop-down front) so chute-routed items enter at floor level
+# per executive mode. In table mode the receiving wall is NOT left open: it
+# carries an entry APERTURE just big enough for the chute runout plus item
+# clearance — flanks and a header strip close the rest, so a routed item can
+# roll or bounce inside the cage but cannot leave it again.
 CAGES = {
     "arm": {
         "C": {"center": (9.25, 2.95), "inner": (1.2, 0.8), "wall_h": 0.8, "wall_t": 0.03,
@@ -61,13 +101,27 @@ CAGES = {
     },
     "table": {
         # rotated 90 deg (0.8 across belt direction) so it fits inside the
-        # 10 m work zone; opening faces the C chute
+        # 10 m work zone; the aperture faces the C chute. aperture_top = wall
+        # top: the vertical clearance is closed by the chute HOOD + brow
+        # (parallel to the flow — a header strip would be a catch face for
+        # long items still rotating off the table lip).
         "C": {"center": (9.5, 3.0), "inner": (0.8, 1.2), "wall_h": 0.8, "wall_t": 0.03,
-              "open_side": "-x"},
-        # opening faces the D chute end (chute exits at y=1.95)
+              "open_side": "-x", "aperture_w": 0.80, "aperture_top": 0.83},
+        # aperture faces the D chute (the slope crosses the wall at y=1.965)
         "D": {"center": (8.05, 1.55), "inner": (1.2, 0.8), "wall_h": 0.8, "wall_t": 0.03,
-              "open_side": "+y"},
+              "open_side": "+y", "aperture_w": 0.80, "aperture_top": 0.83},
     },
+}
+# high-friction landing mat on the cage floor at the entry half: kills the
+# residual slide speed so items settle instead of ramming the far wall
+CAGE_MAT_FRICTION = "0.9 0.01 0.0001"
+
+# ---------------------------------------------------------------- containment validation
+CONTAIN = {
+    "margin": 0.06,                    # m beyond the outer wall face = escape
+    "z_fly": 1.20,                     # anything this high left the cage volume
+    "settle_speed": 0.10,              # m/s: item at rest inside the cage
+    "settle_time": 0.5,                # s below settle_speed -> settled
 }
 CAGE_C = CAGES["arm"]["C"]              # arm-mode aliases (existing code paths)
 CAGE_D = CAGES["arm"]["D"]
@@ -75,6 +129,29 @@ CAGE_D = CAGES["arm"]["D"]
 
 def cages_for(mode):
     return CAGES[mode]
+
+# ---------------------------------------------------------------- signage (billboards + floor decals)
+# every functional station is labelled, EN headline + RU subtitle; billboards
+# auto-face the overview camera so the demo video reads at a glance
+SIGNS = [
+    # key, EN, RU, (x, y, z of panel center), zone colour or None (steel grey)
+    ("a_infeed",  "A — INFEED CONVEYOR",     "А — подача товаров",        (1.30, 3.80, 1.75), None),
+    ("vision",    "VISION / MEASUREMENT",    "зона измерения товара",     (6.00, 3.80, 1.95), None),
+    ("table",     "ACTIVE TRANSFER TABLE",   "активный стол-перекладчик", (7.25, 4.05, 1.70), None),
+    ("b_sorter",  "B — MAIN SORTER",         "В — основной сортировщик",  (8.42, 5.55, 1.75), "B"),
+    ("c_oversize", "C — OVERSIZE",           "С — негабарит",             (9.55, 4.00, 1.55), "C"),
+    ("d_repack",  "D — REPACK",              "D — доупаковка",            (7.05, 1.30, 1.55), "D"),
+    ("arm_exc",   "EXCEPTION ARM",           "разбор нештатных ситуаций", (9.30, 1.95, 1.75), None),
+]
+FLOOR_DECALS = [
+    # key reuses the sign texture; (x, y), yaw deg, half-size (len, wid)
+    ("a_infeed",  (1.30, 2.30), 0.0, (0.55, 0.22)),
+    ("vision",    (6.00, 2.20), 0.0, (0.55, 0.22)),
+    ("b_sorter",  (7.75, 5.05), 90.0, (0.55, 0.22)),
+    ("c_oversize", (9.45, 2.15), 0.0, (0.50, 0.22)),
+    ("d_repack",  (6.70, 1.75), 0.0, (0.50, 0.22)),
+]
+OVERVIEW_CAM_XY = (4.8, -0.8)          # billboards yaw to face this camera
 
 # ---------------------------------------------------------------- arm (ours): 4-axis palletizer kinematics
 ARM_BASE = {
@@ -107,14 +184,18 @@ PLACE_BY_MODE = {
         "D": {"xy": (8.35, 2.15), "mode": "drop", "z_clear": 0.05},
     },
     "table": {
-        # recovery drops: onto the chutes, which deliver into the open cages
-        "C": {"xy": (8.75, 3.0), "mode": "drop", "z_clear": 0.05},
-        "D": {"xy": (8.05, 2.3), "mode": "drop", "z_clear": 0.05},
+        # recovery PLACES the item back on the table at its lane exit (gentle,
+        # «мягкость обращения») — the route stays assigned, so the table drive
+        # re-delivers it through the normal guided path (gate -> chute -> cage)
+        "C": {"xy": (8.30, 3.0), "mode": "drop", "z_clear": 0.02, "surface_z": 0.70},
+        "D": {"xy": (8.05, 2.60), "mode": "drop", "z_clear": 0.02, "surface_z": 0.70},
     },
 }
 PLACE = PLACE_BY_MODE["arm"]           # legacy alias
 ARM_HOME_XY = {"arm": (7.9, 3.0), "table": (8.35, 2.3)}
-JAM_TIMEOUT_S = 10.0                   # routing watchdog before arm recovery
+JAM_TIMEOUT_S = 10.0                   # routing watchdog window
+JAM_MIN_PROGRESS_M = 0.06              # less displacement per window = jammed
+                                       # (queue creep is flow, not a fault)
 CAGE_WALL_TOP = 0.83                   # cage floor 0.03 + walls 0.8
 
 # ---------------------------------------------------------------- sorter limits (FIXED, official rules; mm)

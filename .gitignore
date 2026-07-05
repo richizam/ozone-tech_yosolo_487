@@ -6,6 +6,8 @@ __pycache__/
 
 # simulation outputs (regenerable; keep them out of the submission repo)
 runs/
+# sign textures, rendered on demand by cell/signs.py
+cell/assets/signs/
 
 # ML training artifacts (regenerable via perception/synth_dataset.py + yolo_compare.py;
 # final weights go to cloud storage per the submission rules)

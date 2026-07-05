@@ -18,6 +18,10 @@ from cell import params as P
 
 SPIN_DAMP = 0.85
 
+# an item's trailing edge is past the gate plane here -> safe to close again
+# (thresholds include the largest item half-extent + margin)
+GATE_CLEAR = {"B": ("y", +1, 3.85), "C": ("x", +1, 8.90), "D": ("y", -1, 2.15)}
+
 
 class Table:
     def __init__(self, model, item_entries):
@@ -26,16 +30,45 @@ class Table:
         self.gid_connect = model.geom("connectB").id
         self.items = []
         self.by_gid = {}
+        self.by_slug = {}
         for e in item_entries:
             jid = model.joint(f"fj_{e['slug']}").id
             it = {"slug": e["slug"], "gid": model.geom(f"g_{e['slug']}").id,
                   "qadr": model.jnt_qposadr[jid], "dadr": model.jnt_dofadr[jid]}
             self.items.append(it)
             self.by_gid[it["gid"]] = it
+            self.by_slug[it["slug"]] = it
         self.routes = {}               # slug -> "B" | "C" | "D"
         self.skip = set()              # slugs held by the arm
         self.frozen = set()            # slugs with an injected snag (fault scenario)
         self.paused = False            # global pause during arm recovery
+        self.hold_open = set()         # zones held open for an arm recovery path
+        # normally-closed exit gates (position actuators added by scene.py)
+        self.gate_aid = {z: model.actuator(f"ga{z}").id for z in "BCD"}
+        self.gate_qadr = {z: model.jnt_qposadr[model.joint(f"gj{z}").id] for z in "BCD"}
+
+    def gate_open_frac(self, data):
+        """Per-zone gate opening 0..1 (for lights and telemetry)."""
+        tr = P.GATES["travel"]
+        return {z: float(np.clip(data.qpos[q] / tr, 0.0, 1.0))
+                for z, q in self.gate_qadr.items()}
+
+    def _drive_gates(self, data):
+        """A gate opens only while a routed item still needs its exit (or an
+        arm recovery is using it) — the table is otherwise fully bounded."""
+        want = {z: z in self.hold_open for z in "BCD"}
+        for slug, route in self.routes.items():
+            if slug in self.skip or route not in want:
+                continue
+            it = self.by_slug[slug]
+            x, y = data.qpos[it["qadr"]:it["qadr"] + 2]
+            ax, sgn, thr = GATE_CLEAR[route]
+            v = x if ax == "x" else y
+            if sgn * (v - thr) < 0:    # trailing edge not yet past the plane
+                want[route] = True
+        tr = P.GATES["travel"]
+        for z, open_ in want.items():
+            data.ctrl[self.gate_aid[z]] = tr if open_ else 0.0
 
     def freeze(self, slug):
         self.frozen.add(slug)
@@ -54,6 +87,7 @@ class Table:
 
     def step(self, data):
         tb, cb = P.TABLE, P.CONNECT_B
+        self._drive_gates(data)
         touching = self._contacts(data)
         for it in self.items:
             slug = it["slug"]

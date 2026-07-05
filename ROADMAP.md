@@ -60,6 +60,17 @@ universal-gripper assumption); the arm is an exception-recovery station.
 - [x] Arm relocated to the reach-checked exception station; jam watchdog → recovery → correct cage; second failure → operator call-out; fault drill green ([scenarios/fault_jam.yaml](scenarios/fault_jam.yaml), recovery_success 1.0).
 - [x] Milestone-4 comparison ([docs/report/executive_mechanism_tradeoff.md](docs/report/executive_mechanism_tradeoff.md)): 8 seeds × both architectures — zero unsafe errors in both; table needs 0 arm interventions in nominal flow (arm-primary: 88).
 
+## Phase 2.75 — Containment & jury-readable executive ✅ DONE (July 5)
+
+Routed ≠ done: the item must **stay** in the correct container, and the jury must **see** how it
+gets there. Full write-up: [docs/report/containment_validation.md](docs/report/containment_validation.md).
+
+- [x] Containment-by-design geometry: normally-closed actuated lift gates on all three table exits (route command = the only open path), single-slope guided chutes (μ < tan θ — no static rest points anywhere, even for recovery drops) with side guides and brake pads, roll cages closed except a chute-sized aperture (flanks + skirt + anti-fly-out hood + brow + full-floor mat).
+- [x] Containment validation metric: every C/D delivery tracked to end of run — `containment_rate` / `containment_violations` / `v_entry` / `cage_settle_s` / `cage_max_z` in events.csv + summary.json; **an escape fails the run exactly like a misroute**. Design invariants locked by tests (25 pytest green).
+- [x] Campaign: **100% routing + 100% containment on 6/6 oracle seeds and camera runs; zero violations; entry speeds ≤ 2.13 m/s (guided, never thrown); throughput ≈ 500 items/h.**
+- [x] Smarter exception path: zero-displacement jam watchdog (queue creep ≠ fault); arm recovery places the snag back on its lane and the table re-delivers through the normal guided path — fault drill recovery success 1.0, contained.
+- [x] Jury-readable presentation layer (sensor-masked geom group, zero physics impact): bilingual EN/RU signage at every station + floor decals, per-category item tinting at the moment of classification, zone-coloured lane markings/chevrons/flow arrows, destination beacons, gate lamps, andon tower, visible escapement-gate flag; `--record` MP4 capture (overview / top_view / routing cameras).
+
 ## Phase 3 — Executive part depth (W3) — *the biggest rubric block (30 pts)*
 
 **Goal:** manipulation quality, geometry coverage, safety — engineered, not hand-waved.
