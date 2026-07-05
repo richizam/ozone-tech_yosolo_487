@@ -198,6 +198,19 @@ class ItemManager:
                         st["next_capture_t"] = t + P.VIRTUAL_SENSOR["capture_period_s"]
                         st.setdefault("t_capture_start", t)
                         st["t_capture_end"] = t
+                        # tailgater proximity: a follower within 8 cm of this
+                        # item's rear can merge into its cloud — remember it
+                        # (the fused verdict then may not commit to B)
+                        rear = pos[0] - e["dims_m"][0] / 2
+                        for other in self.active:
+                            if other == slug:
+                                continue
+                            op = self.pose(other)
+                            if abs(op[1] - P.BELT_A["y"]) > 0.4:
+                                continue
+                            ofront = op[0] + self.entries[other]["dims_m"][0] / 2
+                            if ofront <= pos[0] + 0.01 and rear - ofront < 0.08:
+                                st["window_conflict"] = True
                         res = self.perceiver.classify(self.d, x_hint=float(pos[0]))
                         reads = st.setdefault("cls_reads", [])
                         if res is not None:
@@ -368,13 +381,18 @@ class ItemManager:
             # the configured sensor noise and vanish at the ideal baseline.
             noise_mm = (self.perceiver.noise_m * 1000.0
                         if self.perceiver is not None else 0.0)
-            g_dim = 2.0 * noise_mm
+            # certification floor (sampling physics, present at zero noise): a
+            # dimension the sensor cannot resolve better than ~2x its ground
+            # sampling cannot certify "> 10 mm" — divert to C, per the rules'
+            # priority (a maybe-undersize item never feeds the sorter)
+            g_dim = 2.0 * noise_mm + 2.0 * P.VIRTUAL_SENSOR["ground_res_mm"]
             dim_suspect = False
-            if not (undersize or oversize) and g_dim > 0.0:
+            if not (undersize or oversize):
                 mins = np.concatenate([dims, [] if minor is None else [minor]])
                 near_under = bool(np.any(mins < P.LIMIT_MIN_MM + g_dim))
                 near_over = bool(np.any(
-                    np.sort(dims)[::-1] > np.array(P.LIMIT_MAX_MM) - g_dim))
+                    np.sort(dims)[::-1] > np.array(P.LIMIT_MAX_MM)
+                    - max(2.0 * noise_mm, 1e-9)))
                 dim_suspect = near_under or near_over
             ratio_suspect = False
             max_ratio = rep.get("max_ratio")
@@ -411,6 +429,13 @@ class ItemManager:
                 zone = cfg["low_confidence_route"]
                 low_conf, fb_reason = True, "confidence_below_threshold"
                 flags.append("low_confidence_fallback")
+            # single-item discipline defense-in-depth: if a tailgater came
+            # within cloud-merge range during measurement, this verdict may be
+            # a merged-object artifact — it must not feed the sorter
+            if zone == "B" and st.get("window_conflict"):
+                zone = cfg["low_confidence_route"]
+                low_conf, fb_reason = True, "tailgater_during_measurement"
+                flags.append("window_conflict")
             rep = dict(rep, dims_mm=[round(float(d), 1) for d in dims])
             flags = list(rep.get("flags", [])) + flags
             if os.environ.get("SIM_DEBUG_CLS") and zone != e["zone"]:
@@ -575,9 +600,15 @@ def main(argv=None):
 
     slugs = []
     for name, count in sc["items"].items():
+        if int(count) != 1:
+            raise SystemExit(
+                f"scenario item '{name}': count={count} unsupported — each item "
+                f"is one physical body; volume comes from running multiple "
+                f"seeds (see cell/validate.py and scenarios/stress_mix.yaml)")
         slugs += [name] * int(count)
     order = list(rng.permutation(slugs))
-    gaps = list(rng.uniform(sc["spawn_gap_s"][0], sc["spawn_gap_s"][1], size=len(order)))
+    gap_lo, gap_hi = sc.get("spawn_gap_s", [6.0, 8.0])
+    gaps = list(rng.uniform(gap_lo, gap_hi, size=len(order)))
 
     sensor_cfg = dict(P.VIRTUAL_SENSOR, **(sc.get("sensor") or {}))
     perceiver = None

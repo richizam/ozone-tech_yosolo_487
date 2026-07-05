@@ -1,0 +1,25 @@
+# Failed transfer: the route command is issued and the table starts executing,
+# then the item snags INSIDE the routing zone (drive fault injection) while
+# heading to B. The zero-displacement watchdog must detect the stall, the
+# exception arm must clear the item to the safe review lane (an uncertain
+# stalled item never continues to the sorter), and the cell must not deadlock.
+#
+# Expected: arm_interventions >= 1, recovery_success = 1.0, deadlocks = 0,
+# zero unsafe errors. The true-B item lands in D = a CONSERVATIVE outcome by
+# design (safe side), so conservative errors do not fail this run.
+seed: 42
+perception: camera
+executive: table
+allow_conservative: true
+items:
+  box_s: 1
+  bottle: 1
+  lunchbox: 1
+inject_jam:
+  slug: box_s          # true zone B; snags mid-route in the routing zone
+  at_x: 8.0            # after the B-lane drive engaged (route_x = 7.95),
+                       # still inside the exception arm's reach envelope
+                       # (snags farther up the B lane escalate to operator
+                       # call-out — outside the arm's lift-height radius)
+spawn_gap_s: [6.0, 8.0]
+max_sim_s: 240

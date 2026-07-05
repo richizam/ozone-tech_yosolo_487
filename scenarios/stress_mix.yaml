@@ -1,0 +1,34 @@
+# Stress mix: the full 16-item catalogue (11 official + 5 synthetic
+# borderline) in randomized order at production spacing. Volume comes from
+# seeds, per the physics model's one-body-per-item identity: the validation
+# matrix runs this scenario over 5 seeds = 80 items end to end, which is the
+# "50-100 items, multiple seeds, stable metrics, no deadlock" stress claim.
+#
+# Expected per run: zero unsafe, zero deadlock, containment 1.0, stable
+# throughput; borderline items may divert conservatively. Arrivals run ~1.3x
+# above measured capacity (~507/h), so accumulation queues form and drain —
+# saturation must degrade SAFELY: conservative diversions and (if a cage
+# overflows) operator call-outs, never an unsafe route and never a deadlock.
+seed: 42
+perception: camera
+executive: table
+allow_conservative: true
+items:
+  bottle: 1
+  box_s: 1
+  box_l: 1
+  lunchbox: 1
+  sack: 1
+  detergent: 1
+  pouf: 1
+  pen: 1
+  plate: 1
+  cylinder: 1
+  helmet: 1
+  bl_box_b: 1
+  bl_box_c: 1
+  bl_pent_d: 1
+  bl_rsq_b: 1
+  bl_rod_b: 1
+spawn_gap_s: [4.5, 6.5]
+max_sim_s: 700

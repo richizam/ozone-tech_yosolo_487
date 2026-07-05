@@ -212,23 +212,32 @@ class LookaheadPerception:
         return pts[neigh[ij[:, 0], ij[:, 1]] >= 5]
 
     @staticmethod
-    def _select_cluster(pts, x_hint=None, gap=0.07, min_pts=40):
+    def _select_cluster(pts, x_hint=None, gap=0.07, min_pts=40, max_hint_dist=0.10):
         """Instance isolation: split the cloud at along-belt gaps and keep the
         cluster of the tracked item (x_hint from the belt tracker); without a
-        hint, keep the largest cluster."""
+        hint, keep the largest cluster.
+
+        Identity gate: if no cluster COVERS the tracked position (within
+        max_hint_dist), there is no valid measurement of THIS item — return
+        None (sensor miss) rather than a neighbor's cloud. Committing the
+        nearest cluster spoofed a tailgater's identity onto a thin item whose
+        own returns vanished (found by the stress scenario)."""
         order = np.argsort(pts[:, 0])
         xs = pts[order, 0]
         splits = np.where(np.diff(xs) > gap)[0]
         if len(splits) == 0:
-            return pts
-        bounds = [0] + (splits + 1).tolist() + [len(xs)]
-        clusters = [pts[order[bounds[i]:bounds[i + 1]]] for i in range(len(bounds) - 1)]
-        clusters = [c for c in clusters if len(c) >= min_pts] or clusters
+            clusters = [pts]
+        else:
+            bounds = [0] + (splits + 1).tolist() + [len(xs)]
+            clusters = [pts[order[bounds[i]:bounds[i + 1]]]
+                        for i in range(len(bounds) - 1)]
+            clusters = [c for c in clusters if len(c) >= min_pts] or clusters
         if x_hint is not None:
             def dist(c):
                 lo, hi = c[:, 0].min(), c[:, 0].max()
                 return 0.0 if lo <= x_hint <= hi else min(abs(x_hint - lo), abs(x_hint - hi))
-            return min(clusters, key=dist)
+            best = min(clusters, key=dist)
+            return best if dist(best) <= max_hint_dist else None
         return max(clusters, key=len)
 
     # ------------------------------------------------------------------ analysis

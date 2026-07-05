@@ -1,0 +1,23 @@
+# Uncertain perception: 3 mm depth noise (sigma per ray) on ambiguous shapes.
+# The guard-banded fusion must NEVER send an uncertain item to B; diverting a
+# borderline item to D/review is the designed safe behavior.
+#
+# Expected: zero unsafe errors; conservative diversions allowed and likely;
+# low_confidence_fallback_count typically > 0.
+seed: 42
+perception: camera
+executive: table
+allow_conservative: true
+sensor:
+  depth_noise_mm: 3.0
+items:
+  helmet: 1
+  detergent: 1
+  sack: 1
+  cylinder: 1
+  bl_pent_d: 1
+  bl_rsq_b: 1
+  box_s: 1
+  plate: 1
+spawn_gap_s: [6.0, 8.0]
+max_sim_s: 350

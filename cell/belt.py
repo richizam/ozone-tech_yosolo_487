@@ -49,9 +49,50 @@ class Belts:
                     touching.setdefault(gi, set()).add(gb)
         return touching
 
+    QUEUE_GAP = 0.15           # enforced clearance between queued items:
+                               # zone-accumulation (slug) spacing — queued items
+                               # NEVER touch, so a light thin item cannot be
+                               # shoved onto or under a neighbor (rider/shingle
+                               # failure found by the stress scenario), and
+                               # clouds of queued items can never merge
+
+    def _queue_lines(self, data):
+        """Per-item stop lines while the pre-gate hold is closed.
+
+        The front-most item between the hold and the gate commit line owns the
+        measurement corridor (exempt — it must keep moving; holding it would
+        deadlock the corridor on itself). Items behind it stop at staggered
+        lines: hold2, then hold2 - (len+gap), ... — an accumulation zone."""
+        a = P.BELT_A
+        lines = {}
+        on_a = []
+        for it in self.items:
+            if it["slug"] in self.skip:
+                continue
+            x, y = data.qpos[it["qadr"]:it["qadr"] + 2]
+            if abs(y - a["y"]) > 0.4:
+                continue
+            front = x + it["half_x"]
+            if front - 2 * it["half_x"] > a["gate_x"] + 0.05:
+                continue                      # rear past the commit line:
+                                              # committed downstream
+            on_a.append((front, it))
+        on_a.sort(key=lambda p: -p[0])
+        if on_a and on_a[0][0] > a["hold2_x"] - 0.004:
+            on_a.pop(0)                       # corridor owner: exempt
+        line = a["hold2_x"]
+        for front, it in on_a:
+            # an item already past its computed line freezes where it is (the
+            # `front >= line` hold in step()) — never exempt, or it would
+            # tailgate the owner through the measurement corridor
+            lines[it["gid"]] = line
+            line -= 2 * it["half_x"] + self.QUEUE_GAP
+        return lines
+
     def step(self, data):
         a, b = P.BELT_A, P.BELT_B
         touching = self._belt_contacts(data)
+        hold_lines = self._queue_lines(data) if not self.hold2_open else {}
         for it in self.items:
             if it["slug"] in self.skip:
                 continue
@@ -68,8 +109,9 @@ class Belts:
                     # commit line (gate_x + 0.05, same line the gate-state check
                     # uses) are committed downstream and keep moving
                     continue
-                if not self.hold2_open and a["hold2_x"] - 0.004 <= front < a["hold2_x"] + 0.05:
-                    continue           # held at the pre-gate line
+                hold_at = hold_lines.get(it["gid"])
+                if hold_at is not None and front >= hold_at - 0.004:
+                    continue                  # holding at the queue stop line
                 # arm mode ends belt A at a stop wall (decelerate into it);
                 # table mode hands over to the table surface at full speed
                 x_end = a["x_stop"] if self.mode == "arm" else None
@@ -83,8 +125,8 @@ class Belts:
                     if not self.gate_open and front < a["gate_x"] + 0.05:
                         # approaching a closed gate: decelerate to a stop at it
                         taper = min(float(taper), float(np.clip((a["gate_x"] - front) / 0.30, 0.0, 1.0)))
-                    if not self.hold2_open and front < a["hold2_x"] + 0.05:
-                        taper = min(float(taper), float(np.clip((a["hold2_x"] - front) / 0.30, 0.0, 1.0)))
+                    if hold_at is not None and front < hold_at:
+                        taper = min(float(taper), float(np.clip((hold_at - front) / 0.30, 0.0, 1.0)))
                     v[0] = a["speed"] * taper
                     v[1] = 0.8 * (a["y"] - y)
                     w *= SPIN_DAMP

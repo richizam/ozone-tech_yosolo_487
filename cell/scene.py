@@ -35,7 +35,11 @@ DARK = "0.22 0.24 0.28 1"
 
 
 def load_manifest():
-    return json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
+    extra = ASSETS / "manifest_extra.json"       # synthetic borderline items
+    if extra.exists():                           # (tools/make_borderline_items.py)
+        manifest += json.loads(extra.read_text(encoding="utf-8"))
+    return manifest
 
 
 def _rgba(zone, scale=1.0, alpha=1.0):

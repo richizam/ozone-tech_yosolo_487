@@ -137,7 +137,7 @@ class Metrics:
         # ends anywhere safe (C/D/manual review) is a CONSERVATIVE error
         row["unsafe_error"] = bool(z_act == "B" and z_true not in (None, "B"))
         row["conservative_error"] = bool(z_true == "B" and z_act not in (None, "B"))
-        row["operator_callout"] = bool(z_act == "MANUAL")
+        row["operator_callout"] = bool(z_act in ("MANUAL", "GRASP_FAIL"))
         row["conveyor_a_stopped_for_classification"] = False   # the belt drive
         # never halts for perception; spacing holds are per-item escapements
         t_cmd = row.get("route_command_time_s")

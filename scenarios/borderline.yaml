@@ -1,0 +1,37 @@
+# Borderline suite: every item sits NEAR a decision boundary.
+#
+# Official borderline items:
+#   cylinder   hexagonal prism, ratio 0.867, 435 mm (15 mm under the length limit)
+#   detergent  oval, true ratio 0.73 (0.07 under the circle threshold)
+#   helmet     dome, ratio ~0.89
+#   pen        9 mm minor dimension (1 mm UNDER the minimum -> undersize C)
+#   pouf       circular AND oversize -> priority rule: C
+#   sack       rounded blob, ratio ~0.886
+# Designed threshold attacks (tools/make_borderline_items.py):
+#   bl_box_b   445x315x315 -> B (1% inside every max limit)
+#   bl_box_c   460x330x330 -> C (2-3% over)
+#   bl_pent_d  pentagon prism, ratio cos36 = 0.809 -> D (0.009 OVER threshold)
+#   bl_rsq_b   rounded square, ratio 0.78 -> B (0.02 UNDER threshold)
+#   bl_rod_b   220x16x12 -> B (2 mm above the minimum)
+#
+# Expected behavior (brief §10): ZERO unsafe errors; low-confidence borderline
+# items MAY divert conservatively to D/review — that is correct behavior, so
+# conservative outcomes do not fail the run.
+seed: 42
+perception: camera
+executive: table
+allow_conservative: true
+items:
+  cylinder: 1
+  detergent: 1
+  helmet: 1
+  pen: 1
+  pouf: 1
+  sack: 1
+  bl_box_b: 1
+  bl_box_c: 1
+  bl_pent_d: 1
+  bl_rsq_b: 1
+  bl_rod_b: 1
+spawn_gap_s: [6.0, 8.0]
+max_sim_s: 400

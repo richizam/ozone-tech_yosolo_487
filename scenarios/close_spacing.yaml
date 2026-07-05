@@ -1,0 +1,20 @@
+# Close-arrival discipline: items spawn with tight gaps; the pre-gate hold
+# must keep the measurement window single-item (no merged point clouds), the
+# escapement gate must meter the table handover.
+#
+# Expected: zero unsafe errors; spacing gate visibly active
+# (spacing_gate_activations > 0); degraded measurements of crowded thin items
+# may divert to the safe review lane (never to the sorter).
+seed: 42
+perception: camera
+executive: table
+allow_conservative: true
+items:
+  box_s: 1
+  bottle: 1
+  lunchbox: 1
+  plate: 1
+  pen: 1
+  detergent: 1
+spawn_gap_s: [1.2, 2.0]
+max_sim_s: 300

@@ -1,0 +1,73 @@
+# Validation matrix: one command reproduces the full evidence base.
+#
+#   .venv/Scripts/python -m cell.validate --matrix configs/validation_matrix.yaml
+#
+# Expectations: plain key = exact match, min_<metric> = lower bound,
+# max_<metric> = upper bound. Every run must also exit 0 on its own gates
+# (misroutes beyond the scenario's declared tolerance, containment violations,
+# unfinished items all make a run exit non-zero).
+defaults:                       # merged into every run's expectations
+  unsafe_errors: 0
+  deadlocks: 0
+  containment_violations: 0
+  items_with_negative_command_margin: 0
+  conveyor_a_stop_count: 0
+
+runs:
+  - scenario: scenarios/base.yaml
+    perception: camera
+    executive: table
+    seeds: [42, 7, 11, 3, 99, 123]
+    expect:
+      min_routing_accuracy: 0.90     # one known borderline pose (detergent)
+      arm_interventions: 0           # nominal flow never needs the arm
+      max_cycle_p95_s: 12.0
+  - scenario: scenarios/base.yaml
+    perception: oracle               # debug baseline: same executive path
+    executive: table
+    seeds: [42, 7]
+    expect:
+      min_routing_accuracy: 1.0
+      arm_interventions: 0
+  - scenario: scenarios/borderline.yaml
+    perception: camera
+    executive: table
+    seeds: [42, 7, 11]
+    expect:
+      min_classification_accuracy: 0.60   # razor-edge suite: safe C/D swaps
+                                          # tolerated, unsafe never (defaults)
+  - scenario: scenarios/close_spacing.yaml
+    perception: camera
+    executive: table
+    seeds: [42, 7, 11]
+    expect:
+      min_spacing_gate_activations: 1     # discipline must actually engage
+  - scenario: scenarios/low_confidence.yaml
+    perception: camera
+    executive: table
+    seeds: [42]
+    expect:
+      min_low_confidence_fallback_count: 1
+  - scenario: scenarios/fault_jam.yaml
+    perception: camera
+    executive: table
+    seeds: [42]
+    expect:
+      min_arm_interventions: 1
+      min_recovery_success: 1.0
+      min_routing_accuracy: 1.0           # recovered item reaches its TRUE zone
+  - scenario: scenarios/failed_transfer.yaml
+    perception: camera
+    executive: table
+    seeds: [42]
+    expect:
+      min_arm_interventions: 1
+      min_recovery_success: 1.0
+      operator_callouts: 0
+  - scenario: scenarios/stress_mix.yaml
+    perception: camera
+    executive: table
+    seeds: [42, 7, 11, 3, 99]             # 5 x 16 = 80 items end to end
+    expect:
+      min_routing_accuracy: 0.60          # saturation: safe-side losses only
+      max_cycle_p95_s: 90.0               # accumulation queues drain in-cycle

@@ -1,0 +1,82 @@
+[
+  {
+    "slug": "bl_box_b",
+    "source": "synthetic:bl_box_b",
+    "file": "bl_box_b.stl",
+    "dims_m": [
+      0.445,
+      0.315,
+      0.315
+    ],
+    "half_z": 0.1575,
+    "mass_kg": 6.0,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "max_ratio": 0.707,
+    "faces": 12
+  },
+  {
+    "slug": "bl_box_c",
+    "source": "synthetic:bl_box_c",
+    "file": "bl_box_c.stl",
+    "dims_m": [
+      0.46,
+      0.33,
+      0.33
+    ],
+    "half_z": 0.165,
+    "mass_kg": 6.0,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "max_ratio": 0.707,
+    "faces": 12
+  },
+  {
+    "slug": "bl_pent_d",
+    "source": "synthetic:bl_pent_d",
+    "file": "bl_pent_d.stl",
+    "dims_m": [
+      0.26,
+      0.1046,
+      0.0995
+    ],
+    "half_z": 0.04975,
+    "mass_kg": 0.468,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "max_ratio": 0.809,
+    "faces": 20
+  },
+  {
+    "slug": "bl_rsq_b",
+    "source": "synthetic:bl_rsq_b",
+    "file": "bl_rsq_b.stl",
+    "dims_m": [
+      0.22,
+      0.1,
+      0.1
+    ],
+    "half_z": 0.05,
+    "mass_kg": 0.538,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "max_ratio": 0.78,
+    "faces": 380
+  },
+  {
+    "slug": "bl_rod_b",
+    "source": "synthetic:bl_rod_b",
+    "file": "bl_rod_b.stl",
+    "dims_m": [
+      0.22,
+      0.016,
+      0.012
+    ],
+    "half_z": 0.006,
+    "mass_kg": 0.05,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "max_ratio": 0.6,
+    "faces": 12
+  }
+]
