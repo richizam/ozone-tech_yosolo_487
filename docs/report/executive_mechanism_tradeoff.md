@@ -47,6 +47,27 @@ carry-height planning, grasp verification, retry and abort logic. It remains
 the fallback and the evidence that the team can do manipulation — the choice
 of the table is an engineering decision, not a limitation.
 
+## Detector benchmark: YOLO26n vs YOLO11n (tracking role)
+
+Trained on 300 auto-labeled synthetic frames from the cell's own vision
+station (12 epochs, 448 px, CPU; [docs/metrics/yolo_comparison.json](../metrics/yolo_comparison.json)):
+
+| | YOLO26n | YOLO11n |
+|---|---|---|
+| Params | 2.38 M | 2.58 M |
+| mAP50 (val) | 0.921 | **0.984** |
+| mAP50-95 (val) | 0.672 | **0.725** |
+| ONNX CPU latency (mean / p95) | **12.1** / 16.6 ms | 13.1 / **13.9** ms |
+| NMS-free end-to-end export | **yes** | no |
+
+**Choice: YOLO11n** for the tracking role at this training budget — noticeably
+better detection quality; YOLO26's ~1 ms latency edge is irrelevant against
+the ~100 ms geometric measurement budget. YOLO26's NMS-free export is genuinely
+nicer to deploy and its head typically needs longer training — worth re-running
+at the final training budget. Either way the detector only localizes/tracks:
+the B/C/D category always comes from measured geometry, so the model choice
+cannot affect classification correctness.
+
 ## Design details that came out of simulation (for the report)
 
 - Chute contact friction must be surface-dominated (`priority=1`, polished

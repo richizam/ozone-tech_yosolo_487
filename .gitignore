@@ -7,6 +7,12 @@ __pycache__/
 # simulation outputs (regenerable; keep them out of the submission repo)
 runs/
 
+# ML training artifacts (regenerable via perception/synth_dataset.py + yolo_compare.py;
+# final weights go to cloud storage per the submission rules)
+datasets/
+*.pt
+*.onnx
+
 # large organizer binaries: the extracted STL working set stays in git;
 # STEP originals and the source zips go to cloud storage per the submission rules
 extracted/**/Step/
