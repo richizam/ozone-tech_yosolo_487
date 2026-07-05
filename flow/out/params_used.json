@@ -1,0 +1,8 @@
+{
+  "pick_mean_s": 0.622,
+  "cycle_mean_s": 2.596,
+  "cycle_p95_s": 3.572,
+  "arm_service_s": 3.596,
+  "capacity_per_h": 1001.2,
+  "samples": 195
+}

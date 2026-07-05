@@ -1,0 +1,211 @@
+[
+  {
+    "file": "Бутылка.stl",
+    "dims_mm": [
+      305.0,
+      91.3,
+      91.2
+    ],
+    "undersize": false,
+    "oversize": false,
+    "axis_ratios": {
+      "X": 0.441,
+      "Y": 0.439,
+      "Z": 0.997
+    },
+    "max_ratio": 0.997,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "reason": "circle in section: r_in/R_circ=0.997 >= 0.8 (axis Z)"
+  },
+  {
+    "file": "Короб 300х200х200.stl",
+    "dims_mm": [
+      301.0,
+      200.5,
+      200.0
+    ],
+    "undersize": false,
+    "oversize": false,
+    "axis_ratios": {
+      "X": 0.567,
+      "Y": 0.568,
+      "Z": 0.72
+    },
+    "max_ratio": 0.72,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "reason": "max r_in/R_circ=0.720 < 0.8"
+  },
+  {
+    "file": "Короб 400х400х300.stl",
+    "dims_mm": [
+      401.0,
+      400.0,
+      300.5
+    ],
+    "undersize": false,
+    "oversize": true,
+    "axis_ratios": {
+      "X": 0.716,
+      "Y": 0.608,
+      "Z": 0.607
+    },
+    "max_ratio": 0.716,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "reason": "oversize: dims [401.0, 400.0, 300.5] exceed [450, 320, 320]"
+  },
+  {
+    "file": "ЛанчБокс.stl",
+    "dims_mm": [
+      201.0,
+      152.4,
+      62.3
+    ],
+    "undersize": false,
+    "oversize": false,
+    "axis_ratios": {
+      "X": 0.656,
+      "Y": 0.315,
+      "Z": 0.414
+    },
+    "max_ratio": 0.656,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "reason": "max r_in/R_circ=0.656 < 0.8"
+  },
+  {
+    "file": "Мешок.stl",
+    "dims_mm": [
+      201.6,
+      176.2,
+      169.6
+    ],
+    "undersize": false,
+    "oversize": false,
+    "axis_ratios": {
+      "X": 0.878,
+      "Y": 0.886,
+      "Z": 0.869
+    },
+    "max_ratio": 0.886,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "reason": "circle in section: r_in/R_circ=0.886 >= 0.8 (axis Y)"
+  },
+  {
+    "file": "Моющее средство.STL",
+    "dims_mm": [
+      279.6,
+      259.8,
+      179.2
+    ],
+    "undersize": false,
+    "oversize": false,
+    "axis_ratios": {
+      "X": 0.728,
+      "Y": 0.643,
+      "Z": 0.684
+    },
+    "max_ratio": 0.728,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "reason": "max r_in/R_circ=0.728 < 0.8"
+  },
+  {
+    "file": "Пуфик.stl",
+    "dims_mm": [
+      488.9,
+      488.9,
+      264.0
+    ],
+    "undersize": false,
+    "oversize": true,
+    "axis_ratios": {
+      "X": 0.999,
+      "Y": 0.751,
+      "Z": 0.751
+    },
+    "max_ratio": 0.999,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "reason": "oversize: dims [488.9, 488.9, 264.0] exceed [450, 320, 320]"
+  },
+  {
+    "file": "Ручка.stl",
+    "dims_mm": [
+      148.5,
+      13.1,
+      9.0
+    ],
+    "undersize": true,
+    "oversize": false,
+    "axis_ratios": {
+      "X": 0.088,
+      "Y": 0.634,
+      "Z": 0.997
+    },
+    "max_ratio": 0.997,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "reason": "undersize: min dim 9.0 mm < 10 mm"
+  },
+  {
+    "file": "Тарелка.stl",
+    "dims_mm": [
+      209.5,
+      209.4,
+      26.5
+    ],
+    "undersize": false,
+    "oversize": false,
+    "axis_ratios": {
+      "X": 0.999,
+      "Y": 0.177,
+      "Z": 0.177
+    },
+    "max_ratio": 0.999,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "reason": "circle in section: r_in/R_circ=0.999 >= 0.8 (axis X)"
+  },
+  {
+    "file": "Цилиндр.stl",
+    "dims_mm": [
+      435.0,
+      50.0,
+      43.0
+    ],
+    "undersize": false,
+    "oversize": false,
+    "axis_ratios": {
+      "X": 0.124,
+      "Y": 0.118,
+      "Z": 0.867
+    },
+    "max_ratio": 0.867,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "reason": "circle in section: r_in/R_circ=0.867 >= 0.8 (axis Z)"
+  },
+  {
+    "file": "Шлем.stl",
+    "dims_mm": [
+      352.1,
+      297.6,
+      281.6
+    ],
+    "undersize": false,
+    "oversize": false,
+    "axis_ratios": {
+      "X": 0.852,
+      "Y": 0.894,
+      "Z": 0.828
+    },
+    "max_ratio": 0.894,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "reason": "circle in section: r_in/R_circ=0.894 >= 0.8 (axis Y)"
+  }
+]

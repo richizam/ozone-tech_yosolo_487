@@ -1,0 +1,13 @@
+# environments & caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# simulation outputs (regenerable; keep them out of the submission repo)
+runs/
+
+# large organizer binaries: the extracted STL working set stays in git;
+# STEP originals and the source zips go to cloud storage per the submission rules
+extracted/**/Step/
+doc-*.zip

@@ -1,0 +1,14 @@
+# Pinned dependencies — reproducibility is a scored criterion.
+# Environment: Python 3.12 (.venv via uv). Note: PyBullet publishes no Windows
+# wheels (Linux-only on PyPI) — physics engine is MuJoCo (also on the allowed
+# list), which ships wheels for Windows/Linux/macOS: identical dev and jury envs.
+numpy==2.5.1
+scipy==1.18.0
+trimesh==4.12.2
+shapely==2.1.2
+mujoco==3.10.0
+simpy==4.1.2
+pyyaml==6.0.3
+pandas==3.0.3
+matplotlib==3.11.0
+pytest==9.1.1

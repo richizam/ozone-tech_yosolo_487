@@ -1,0 +1,7 @@
+* text=auto
+*.stl binary
+*.STL binary
+*.stp binary
+*.glb binary
+*.pdf binary
+*.png binary

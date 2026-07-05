@@ -1,0 +1,17 @@
+# Nominal scenario: one of each official item, generous spacing.
+seed: 42
+items:
+  bottle: 1
+  box_s: 1
+  box_l: 1
+  lunchbox: 1
+  sack: 1
+  detergent: 1
+  pouf: 1
+  pen: 1
+  plate: 1
+  cylinder: 1
+  helmet: 1
+spawn_gap_s: [6.0, 8.0]
+perception_latency_s: 0.15   # look-ahead classification finishes well before arrival
+max_sim_s: 400

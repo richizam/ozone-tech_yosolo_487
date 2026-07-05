@@ -1,0 +1,38 @@
+[
+  {
+    "point": "PICK accumulator",
+    "xy_mm": [
+      7800,
+      3000
+    ],
+    "dist_mm": 650,
+    "reachable": true
+  },
+  {
+    "point": "PLACE B (sorter)",
+    "xy_mm": [
+      8400,
+      4350
+    ],
+    "dist_mm": 1100,
+    "reachable": true
+  },
+  {
+    "point": "DROP C (oversize)",
+    "xy_mm": [
+      8900,
+      2950
+    ],
+    "dist_mm": 583,
+    "reachable": true
+  },
+  {
+    "point": "DROP D (repack)",
+    "xy_mm": [
+      8350,
+      2150
+    ],
+    "dist_mm": 1101,
+    "reachable": true
+  }
+]

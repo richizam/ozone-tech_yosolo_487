@@ -1,0 +1,167 @@
+[
+  {
+    "slug": "bottle",
+    "source": "Бутылка.stl",
+    "file": "bottle.stl",
+    "dims_m": [
+      0.305,
+      0.0913,
+      0.0912
+    ],
+    "half_z": 0.0456,
+    "mass_kg": 0.305,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "hull_faces": 602
+  },
+  {
+    "slug": "box_s",
+    "source": "Короб 300х200х200.stl",
+    "file": "box_s.stl",
+    "dims_m": [
+      0.301,
+      0.2005,
+      0.2
+    ],
+    "half_z": 0.1,
+    "mass_kg": 3.0,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "hull_faces": 188
+  },
+  {
+    "slug": "box_l",
+    "source": "Короб 400х400х300.stl",
+    "file": "box_l.stl",
+    "dims_m": [
+      0.401,
+      0.4,
+      0.3005
+    ],
+    "half_z": 0.15025,
+    "mass_kg": 6.0,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "hull_faces": 156
+  },
+  {
+    "slug": "lunchbox",
+    "source": "ЛанчБокс.stl",
+    "file": "lunchbox.stl",
+    "dims_m": [
+      0.201,
+      0.1524,
+      0.0623
+    ],
+    "half_z": 0.03115,
+    "mass_kg": 0.412,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "hull_faces": 1846
+  },
+  {
+    "slug": "sack",
+    "source": "Мешок.stl",
+    "file": "sack.stl",
+    "dims_m": [
+      0.2016,
+      0.1762,
+      0.1696
+    ],
+    "half_z": 0.0848,
+    "mass_kg": 0.817,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "hull_faces": 3576
+  },
+  {
+    "slug": "detergent",
+    "source": "Моющее средство.STL",
+    "file": "detergent.stl",
+    "dims_m": [
+      0.2784,
+      0.2603,
+      0.1793
+    ],
+    "half_z": 0.08965,
+    "mass_kg": 2.002,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "hull_faces": 6976
+  },
+  {
+    "slug": "pouf",
+    "source": "Пуфик.stl",
+    "file": "pouf.stl",
+    "dims_m": [
+      0.4889,
+      0.4889,
+      0.264
+    ],
+    "half_z": 0.132,
+    "mass_kg": 6.0,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "hull_faces": 2172
+  },
+  {
+    "slug": "pen",
+    "source": "Ручка.stl",
+    "file": "pen.stl",
+    "dims_m": [
+      0.1485,
+      0.0131,
+      0.009
+    ],
+    "half_z": 0.0045,
+    "mass_kg": 0.05,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "hull_faces": 1554
+  },
+  {
+    "slug": "plate",
+    "source": "Тарелка.stl",
+    "file": "plate.stl",
+    "dims_m": [
+      0.2095,
+      0.2094,
+      0.0265
+    ],
+    "half_z": 0.01325,
+    "mass_kg": 0.175,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "hull_faces": 850
+  },
+  {
+    "slug": "cylinder",
+    "source": "Цилиндр.stl",
+    "file": "cylinder.stl",
+    "dims_m": [
+      0.435,
+      0.05,
+      0.043
+    ],
+    "half_z": 0.0215,
+    "mass_kg": 0.187,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "hull_faces": 194
+  },
+  {
+    "slug": "helmet",
+    "source": "Шлем.stl",
+    "file": "helmet.stl",
+    "dims_m": [
+      0.3531,
+      0.2974,
+      0.2808
+    ],
+    "half_z": 0.1404,
+    "mass_kg": 4.323,
+    "zone": "D",
+    "category": "Не подходит для сортировки без доупаковки",
+    "hull_faces": 9746
+  }
+]
