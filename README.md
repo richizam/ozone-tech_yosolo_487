@@ -128,9 +128,15 @@ uv pip install --python .venv -r requirements.txt
 # Prepare sim assets, then run the FULL CELL end to end (headless), sensing included
 .venv/Scripts/python cell/prep_assets.py
 .venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --seed 42
-# → runs/<stamp>_seed42_camera/events.csv + summary.json (classification /
-#   executive / end-to-end accuracy, unsafe vs conservative errors, cycle times)
-# --perception oracle for the ground-truth-fed regression mode; --viewer to watch
+# → runs/<stamp>_seed42_camera_table/events.csv + summary.json (classification /
+#   executive / end-to-end accuracy, unsafe vs conservative errors, throughput,
+#   arm interventions & recovery success)
+# --executive table (default) = transfer-table routing, arm on exceptions;
+# --executive arm = the preserved arm-primary baseline;
+# --perception oracle for ground-truth-fed regression; --viewer to watch live
+
+# Fault drill: injected snag on the table → jam detection → arm recovery
+.venv/Scripts/python -m cell.run_sim --scenario scenarios/fault_jam.yaml
 
 # Perception validation campaign: 11 items x N randomized poses, camera data only
 .venv/Scripts/python -m perception.validate --poses 10 --seed 5
