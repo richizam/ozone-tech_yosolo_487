@@ -1,0 +1,280 @@
+{
+  "engine": "NVIDIA Isaac Sim 6.0.1 / PhysX 5",
+  "perception_mode": "oracle_lookahead",
+  "oracle_used_for_classification": true,
+  "executive": "table",
+  "seed": 3,
+  "physics_hz": 240,
+  "control_hz": 60,
+  "n_items": 11,
+  "n_delivered": 11,
+  "n_routed_ok": 11,
+  "routing_accuracy": 1.0,
+  "unsafe_errors": 0,
+  "containment": {
+    "tracked": 8,
+    "violations": 0,
+    "containment_rate": 1.0,
+    "cage_entry_speed_max_mps": 1.841,
+    "cage_max_z": 0.557
+  },
+  "cycle_s": {
+    "mean": 4.598,
+    "p95": 6.575,
+    "max": 6.733
+  },
+  "throughput_items_per_h": 488.1,
+  "flow": {
+    "escapement_gate_activations": 11,
+    "spacing_gate_activations": 11,
+    "multi_object_window_events": 0,
+    "conveyor_a_stop_count": 0
+  },
+  "sim_s": 81.14,
+  "wall_s": 63.3,
+  "realtime_factor": 1.28,
+  "frames": 0,
+  "items": [
+    {
+      "slug": "cylinder",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 1.017,
+      "t_detected": 6.95,
+      "t_route_cmd": 7.5,
+      "t_table_entry": 8.1,
+      "t_delivered": 11.033,
+      "final_pos": [
+        7.999,
+        1.974,
+        0.426
+      ],
+      "contained": true,
+      "v_entry": 1.395,
+      "cage_max_z": 0.426,
+      "cage_settle_s": null,
+      "cycle_s": 4.083,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "pen",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 7.983,
+      "t_detected": 13.9,
+      "t_route_cmd": 14.45,
+      "t_table_entry": 15.033,
+      "t_delivered": 17.867,
+      "final_pos": [
+        9.076,
+        2.999,
+        0.373
+      ],
+      "contained": true,
+      "v_entry": 1.658,
+      "cage_max_z": 0.373,
+      "cage_settle_s": null,
+      "cycle_s": 3.967,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "bottle",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 14.317,
+      "t_detected": 20.167,
+      "t_route_cmd": 20.7,
+      "t_table_entry": 21.25,
+      "t_delivered": 23.9,
+      "final_pos": [
+        8.01,
+        1.965,
+        0.445
+      ],
+      "contained": true,
+      "v_entry": 1.841,
+      "cage_max_z": 0.445,
+      "cage_settle_s": null,
+      "cycle_s": 3.733,
+      "command_margin_s": 0.55
+    },
+    {
+      "slug": "box_l",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 21.8,
+      "t_detected": 27.733,
+      "t_route_cmd": 28.283,
+      "t_table_entry": 28.883,
+      "t_delivered": 31.683,
+      "final_pos": [
+        9.088,
+        2.994,
+        0.539
+      ],
+      "contained": true,
+      "v_entry": 1.706,
+      "cage_max_z": 0.539,
+      "cage_settle_s": null,
+      "cycle_s": 3.95,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "box_s",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 28.033,
+      "t_detected": 33.983,
+      "t_route_cmd": 34.533,
+      "t_table_entry": 35.117,
+      "t_delivered": 40.4,
+      "final_pos": [
+        8.395,
+        5.702,
+        0.8
+      ],
+      "cycle_s": 6.417,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "sack",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 34.817,
+      "t_detected": 40.533,
+      "t_route_cmd": 41.05,
+      "t_table_entry": 41.633,
+      "t_delivered": 44.217,
+      "final_pos": [
+        8.005,
+        1.979,
+        0.52
+      ],
+      "contained": true,
+      "v_entry": 1.677,
+      "cage_max_z": 0.52,
+      "cage_settle_s": null,
+      "cycle_s": 3.683,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "pouf",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 41.867,
+      "t_detected": 47.8,
+      "t_route_cmd": 48.35,
+      "t_table_entry": 48.95,
+      "t_delivered": 51.85,
+      "final_pos": [
+        9.073,
+        3.003,
+        0.527
+      ],
+      "contained": true,
+      "v_entry": 0.663,
+      "cage_max_z": 0.527,
+      "cage_settle_s": null,
+      "cycle_s": 4.05,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "helmet",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 48.733,
+      "t_detected": 54.467,
+      "t_route_cmd": 54.983,
+      "t_table_entry": 55.567,
+      "t_delivered": 58.133,
+      "final_pos": [
+        8.025,
+        1.951,
+        0.557
+      ],
+      "contained": true,
+      "v_entry": 1.704,
+      "cage_max_z": 0.557,
+      "cage_settle_s": null,
+      "cycle_s": 3.667,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "detergent",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 55.917,
+      "t_detected": 61.867,
+      "t_route_cmd": 62.383,
+      "t_table_entry": 62.983,
+      "t_delivered": 68.283,
+      "final_pos": [
+        8.379,
+        5.709,
+        0.767
+      ],
+      "cycle_s": 6.417,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "lunchbox",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 63.4,
+      "t_detected": 69.4,
+      "t_route_cmd": 69.95,
+      "t_table_entry": 70.55,
+      "t_delivered": 76.133,
+      "final_pos": [
+        8.359,
+        5.706,
+        0.731
+      ],
+      "cycle_s": 6.733,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "plate",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 71.317,
+      "t_detected": 77.25,
+      "t_route_cmd": 77.8,
+      "t_table_entry": 78.4,
+      "t_delivered": 81.133,
+      "final_pos": [
+        8.006,
+        1.962,
+        0.408
+      ],
+      "contained": true,
+      "v_entry": 1.624,
+      "cage_max_z": 0.408,
+      "cage_settle_s": null,
+      "cycle_s": 3.883,
+      "command_margin_s": 0.6
+    }
+  ]
+}

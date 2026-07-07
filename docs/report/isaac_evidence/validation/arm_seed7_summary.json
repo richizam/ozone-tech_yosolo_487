@@ -1,0 +1,288 @@
+{
+  "engine": "NVIDIA Isaac Sim 6.0.1 / PhysX 5",
+  "perception_mode": "rtx_depth_3head",
+  "oracle_used_for_classification": false,
+  "sensor_model": "3x RTX depth cameras (overhead 1024x768 + 2 side profiler heads 768x576), multi-read fusion, guard-banded official rule order",
+  "classification": {
+    "n": 11,
+    "n_correct": 11,
+    "accuracy": 1.0,
+    "sensor_misses": 0,
+    "reads_per_item": 2.0
+  },
+  "executive": "table",
+  "seed": 7,
+  "physics_hz": 240,
+  "control_hz": 60,
+  "n_items": 11,
+  "n_delivered": 11,
+  "n_routed_ok": 11,
+  "routing_accuracy": 1.0,
+  "unsafe_errors": 0,
+  "containment": {
+    "tracked": 8,
+    "violations": 0,
+    "containment_rate": 1.0,
+    "cage_entry_speed_max_mps": 1.698,
+    "cage_max_z": 0.55
+  },
+  "cycle_s": {
+    "mean": 5.397,
+    "p95": 9.242,
+    "max": 9.333
+  },
+  "throughput_items_per_h": 507.7,
+  "flow": {
+    "escapement_gate_activations": 11,
+    "spacing_gate_activations": 11,
+    "multi_object_window_events": 0,
+    "conveyor_a_stop_count": 0
+  },
+  "sim_s": 78.0,
+  "wall_s": 67.1,
+  "realtime_factor": 1.16,
+  "frames": 0,
+  "items": [
+    {
+      "slug": "sack",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 1.017,
+      "t_detected": 3.1,
+      "t_route_cmd": 3.3,
+      "t_table_entry": 3.4,
+      "t_delivered": 6.15,
+      "final_pos": [
+        8.12,
+        1.979,
+        0.507
+      ],
+      "contained": true,
+      "v_entry": 1.486,
+      "cage_max_z": 0.507,
+      "cage_settle_s": null,
+      "cycle_s": 3.05,
+      "command_margin_s": 0.1
+    },
+    {
+      "slug": "pouf",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 8.667,
+      "t_detected": 10.483,
+      "t_route_cmd": 10.683,
+      "t_table_entry": 10.783,
+      "t_delivered": 14.983,
+      "final_pos": [
+        9.072,
+        2.993,
+        0.527
+      ],
+      "contained": true,
+      "v_entry": 1.522,
+      "cage_max_z": 0.527,
+      "cage_settle_s": null,
+      "cycle_s": 4.5,
+      "command_margin_s": 0.1
+    },
+    {
+      "slug": "helmet",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 16.267,
+      "t_detected": 18.267,
+      "t_route_cmd": 18.483,
+      "t_table_entry": 18.617,
+      "t_delivered": 21.333,
+      "final_pos": [
+        8.008,
+        1.917,
+        0.545
+      ],
+      "contained": true,
+      "v_entry": 1.698,
+      "cage_max_z": 0.545,
+      "cage_settle_s": null,
+      "cycle_s": 3.067,
+      "command_margin_s": 0.133
+    },
+    {
+      "slug": "bottle",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 23.217,
+      "t_detected": 25.083,
+      "t_route_cmd": 25.283,
+      "t_table_entry": 25.567,
+      "t_delivered": 29.733,
+      "final_pos": [
+        7.994,
+        1.979,
+        0.445
+      ],
+      "contained": true,
+      "v_entry": 1.553,
+      "cage_max_z": 0.445,
+      "cage_settle_s": null,
+      "cycle_s": 4.65,
+      "command_margin_s": 0.283
+    },
+    {
+      "slug": "box_s",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 29.833,
+      "t_detected": 31.65,
+      "t_route_cmd": 31.85,
+      "t_table_entry": 32.1,
+      "t_delivered": 40.983,
+      "final_pos": [
+        8.32,
+        5.714,
+        0.8
+      ],
+      "cycle_s": 9.333,
+      "command_margin_s": 0.25
+    },
+    {
+      "slug": "lunchbox",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 36.4,
+      "t_detected": 38.217,
+      "t_route_cmd": 38.417,
+      "t_table_entry": 38.6,
+      "t_delivered": 45.683,
+      "final_pos": [
+        8.27,
+        5.701,
+        0.731
+      ],
+      "cycle_s": 7.467,
+      "command_margin_s": 0.183
+    },
+    {
+      "slug": "plate",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 42.917,
+      "t_detected": 44.733,
+      "t_route_cmd": 44.933,
+      "t_table_entry": 45.05,
+      "t_delivered": 48.5,
+      "final_pos": [
+        8.039,
+        1.974,
+        0.416
+      ],
+      "contained": true,
+      "v_entry": 1.507,
+      "cage_max_z": 0.416,
+      "cage_settle_s": null,
+      "cycle_s": 3.767,
+      "command_margin_s": 0.117
+    },
+    {
+      "slug": "pen",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 49.817,
+      "t_detected": 51.633,
+      "t_route_cmd": 51.833,
+      "t_table_entry": 51.933,
+      "t_delivered": 56.1,
+      "final_pos": [
+        9.084,
+        2.999,
+        0.368
+      ],
+      "contained": true,
+      "v_entry": 1.544,
+      "cage_max_z": 0.368,
+      "cage_settle_s": null,
+      "cycle_s": 4.467,
+      "command_margin_s": 0.1
+    },
+    {
+      "slug": "box_l",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 56.833,
+      "t_detected": 58.65,
+      "t_route_cmd": 58.85,
+      "t_table_entry": 59.033,
+      "t_delivered": 64.333,
+      "final_pos": [
+        9.075,
+        3.02,
+        0.55
+      ],
+      "contained": true,
+      "v_entry": 0.672,
+      "cage_max_z": 0.55,
+      "cage_settle_s": null,
+      "cycle_s": 5.683,
+      "command_margin_s": 0.183
+    },
+    {
+      "slug": "detergent",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 63.95,
+      "t_detected": 65.783,
+      "t_route_cmd": 66.0,
+      "t_table_entry": 66.283,
+      "t_delivered": 74.933,
+      "final_pos": [
+        8.3,
+        5.704,
+        0.767
+      ],
+      "cycle_s": 9.15,
+      "command_margin_s": 0.283
+    },
+    {
+      "slug": "cylinder",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 71.95,
+      "t_detected": 73.767,
+      "t_route_cmd": 73.967,
+      "t_table_entry": 74.083,
+      "t_delivered": 78.0,
+      "final_pos": [
+        8.062,
+        1.974,
+        0.426
+      ],
+      "contained": true,
+      "v_entry": 1.486,
+      "cage_max_z": 0.426,
+      "cage_settle_s": null,
+      "cycle_s": 4.233,
+      "command_margin_s": 0.117
+    }
+  ]
+}

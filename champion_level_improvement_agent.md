@@ -1,5 +1,11 @@
 # SortMaster Engineering Improvement Agent Brief
 
+> ⚠️ **Partially superseded (2026-07-06).** The instruction below to *not*
+> migrate to Isaac Sim is an OLD-version constraint. Current direction: the
+> Isaac Sim implementation is **obligatory** and lives in `isaac/` (built from
+> the same `cell/params.py`, run on the team GPU server). The MuJoCo engine
+> remains the deterministic validation twin. See README §5.1.
+
 ## Purpose
 
 This document is written for an AI coding/engineering agent that will modify the SortMaster repository.

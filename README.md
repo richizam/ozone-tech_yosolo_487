@@ -139,6 +139,8 @@ Machine-readable: [docs/ground_truth/item_ground_truth.json](docs/ground_truth/i
 │   └── assets/                  ← true-surface meshes (official + synthetic borderline) + manifests
 ├── configs/
 │   └── validation_matrix.yaml   ← scenario × seed matrix with pass/fail expectations
+├── isaac/                       ← Isaac Sim digital twin: USD scene from cell/params.py,
+│                                  PhysX closed loop, RTX video + depth captures (§5.1)
 ├── flow/                        ← SimPy flow model: capacity, queues (physics-measured times)
 ├── scenarios/                   ← base, borderline, close_spacing, low_confidence,
 │                                  fault_jam, failed_transfer, stress_mix
@@ -212,11 +214,51 @@ uv pip install --python .venv -r requirements.txt
 
 🔜 `docker compose up` — the exact environment the jury can run.
 
+### 5.1 Isaac Sim digital twin (`isaac/`) — the same cell, real sensors, real drives
+
+The full closed loop also runs in **NVIDIA Isaac Sim 6.0.1** (PhysX 5 physics,
+RTX rendering) — a port from the same single source of truth
+(`cell/params.py`) that goes a step *beyond* the MuJoCo twin on sensor and
+actuator realism:
+
+- **Classification comes from a real rendered sensor.** The 3-head RTX depth
+  station (overhead + two side profiler heads — the `VIRTUAL_SENSOR` geometry)
+  measures each item **in motion**; multi-read fusion with legal-metrology
+  guard bands applies the official rule order. Static calibration:
+  **33/33 = 100%** over the official set × 3 rest poses
+  (`isaac/validate_rtx.py`); closed loop at seed 42: **11/11 classified,
+  11/11 routed, 0 unsafe, containment 1.0**, ~1.2× real time.
+- **The executive is contact physics.** Conveyors carry items via PhysX
+  surface velocity (the Isaac Conveyor-Belt-utility mechanism), the routing
+  zone is a switchable-vector ARB sorter, flow discipline is physical pop-up
+  stop blades, and discharge is guided by powered nose-overs onto the 32°
+  brake chutes — no scripted per-item velocities in the nominal flow.
+- **Faults are handled on camera data.** A routing-zone depth camera
+  localizes a stuck item by background subtraction (best fix ~20–30 mm); the
+  4-axis exception arm picks at the **camera fix** (same `cell/arm_ik.py`
+  IK, same controller cycle) and re-delivers onto the item's lane; repeats
+  escalate to an operator call-out.
+
+```bash
+# on the GPU server, inside the official isaac-sim:6.0.1 container
+/isaac-sim/python.sh isaac/run_isaac.py --seed 42 --record --camera overview \
+    --out /tmp/sortmaster_out/final_seed42
+# → summary.json + events.csv (same metric vocabulary as the MuJoCo runs),
+#   frames/*.png -> MP4, vision_rgb/depth stills, jam_located events
+```
+
+Cross-engine agreement on the physics envelope (zero unsafe errors,
+containment 1.0, cage-entry speed and bounce height inside the MuJoCo-measured
+bounds, command margin ≥ 0.5 s) is exactly the «validated simulation
+cross-checked» УГТ bar — and the Isaac twin adds the sensor-in-the-loop proof.
+Evidence: [docs/report/isaac_evidence/](docs/report/isaac_evidence/); package
+details: [isaac/README.md](isaac/README.md).
+
 ## 6. Toolchain (all from the organizers' allowed list)
 
 | Purpose | Tool |
 |---|---|
-| Physics simulation of the cell | **MuJoCo 3** (primary — deterministic, scriptable, headless; ships wheels for Windows *and* Linux, so the dev and jury environments are identical. PyBullet was the original pick but publishes **no Windows wheels** — verified empirically; decision documented in the report). Isaac Sim optional for the demo video |
+| Physics simulation of the cell | **Two engines, one cell** (both on the organizers' allowed list). **MuJoCo 3** — the deterministic validation engine (22/22 scenario matrix, headless, identical on any jury box). **NVIDIA Isaac Sim 6.0.1 (PhysX 5 + RTX)** — the high-fidelity digital twin of the SAME cell, built from the same `cell/params.py` single source of truth and run on the team GPU server (RTX 5070 Ti); cross-engine agreement of the physics envelope is itself validation evidence (see §5.1). PyBullet was the original pick but publishes **no Windows wheels** — verified empirically; decision documented in the report |
 | Discrete-event flow & cycle time | **SimPy** (+ pandas, matplotlib for metrics) |
 | Perception | **OpenCV**, **Open3D**, **Trimesh**, **Shapely**; **Ultralytics YOLO** for belt detection (synthetic training data rendered in **Blender**) |
 | CAD / layout | **FreeCAD** (reads the official STEP models), exports STEP/STL |

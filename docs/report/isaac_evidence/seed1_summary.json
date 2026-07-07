@@ -1,0 +1,280 @@
+{
+  "engine": "NVIDIA Isaac Sim 6.0.1 / PhysX 5",
+  "perception_mode": "oracle_lookahead",
+  "oracle_used_for_classification": true,
+  "executive": "table",
+  "seed": 1,
+  "physics_hz": 240,
+  "control_hz": 60,
+  "n_items": 11,
+  "n_delivered": 11,
+  "n_routed_ok": 11,
+  "routing_accuracy": 1.0,
+  "unsafe_errors": 0,
+  "containment": {
+    "tracked": 8,
+    "violations": 0,
+    "containment_rate": 1.0,
+    "cage_entry_speed_max_mps": 1.892,
+    "cage_max_z": 0.55
+  },
+  "cycle_s": {
+    "mean": 4.864,
+    "p95": 8.058,
+    "max": 9.633
+  },
+  "throughput_items_per_h": 464.2,
+  "flow": {
+    "escapement_gate_activations": 11,
+    "spacing_gate_activations": 11,
+    "multi_object_window_events": 0,
+    "conveyor_a_stop_count": 0
+  },
+  "sim_s": 85.32,
+  "wall_s": 65.8,
+  "realtime_factor": 1.3,
+  "frames": 0,
+  "items": [
+    {
+      "slug": "pen",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 1.017,
+      "t_detected": 6.95,
+      "t_route_cmd": 7.5,
+      "t_table_entry": 8.1,
+      "t_delivered": 10.883,
+      "final_pos": [
+        9.078,
+        3.002,
+        0.372
+      ],
+      "contained": true,
+      "v_entry": 1.718,
+      "cage_max_z": 0.372,
+      "cage_settle_s": null,
+      "cycle_s": 3.933,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "helmet",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 7.85,
+      "t_detected": 13.583,
+      "t_route_cmd": 14.117,
+      "t_table_entry": 14.683,
+      "t_delivered": 17.283,
+      "final_pos": [
+        8.064,
+        1.917,
+        0.55
+      ],
+      "contained": true,
+      "v_entry": 1.892,
+      "cage_max_z": 0.55,
+      "cage_settle_s": null,
+      "cycle_s": 3.7,
+      "command_margin_s": 0.567
+    },
+    {
+      "slug": "detergent",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 14.95,
+      "t_detected": 20.85,
+      "t_route_cmd": 21.433,
+      "t_table_entry": 21.983,
+      "t_delivered": 27.317,
+      "final_pos": [
+        8.392,
+        5.713,
+        0.775
+      ],
+      "cycle_s": 6.467,
+      "command_margin_s": 0.55
+    },
+    {
+      "slug": "sack",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 21.017,
+      "t_detected": 26.767,
+      "t_route_cmd": 27.3,
+      "t_table_entry": 27.883,
+      "t_delivered": 30.417,
+      "final_pos": [
+        8.027,
+        1.964,
+        0.498
+      ],
+      "contained": true,
+      "v_entry": 1.726,
+      "cage_max_z": 0.498,
+      "cage_settle_s": null,
+      "cycle_s": 3.65,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "bottle",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 28.533,
+      "t_detected": 34.25,
+      "t_route_cmd": 34.783,
+      "t_table_entry": 35.367,
+      "t_delivered": 37.967,
+      "final_pos": [
+        7.971,
+        1.968,
+        0.445
+      ],
+      "contained": true,
+      "v_entry": 1.838,
+      "cage_max_z": 0.445,
+      "cage_settle_s": null,
+      "cycle_s": 3.717,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "box_s",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 35.617,
+      "t_detected": 41.55,
+      "t_route_cmd": 42.1,
+      "t_table_entry": 42.7,
+      "t_delivered": 48.033,
+      "final_pos": [
+        8.39,
+        5.712,
+        0.8
+      ],
+      "cycle_s": 6.483,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "plate",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 42.283,
+      "t_detected": 48.233,
+      "t_route_cmd": 48.783,
+      "t_table_entry": 49.383,
+      "t_delivered": 52.117,
+      "final_pos": [
+        8.005,
+        1.962,
+        0.409
+      ],
+      "contained": true,
+      "v_entry": 1.617,
+      "cage_max_z": 0.409,
+      "cage_settle_s": null,
+      "cycle_s": 3.883,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "box_l",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 49.867,
+      "t_detected": 55.8,
+      "t_route_cmd": 56.35,
+      "t_table_entry": 56.95,
+      "t_delivered": 59.75,
+      "final_pos": [
+        9.078,
+        2.994,
+        0.545
+      ],
+      "contained": true,
+      "v_entry": 1.691,
+      "cage_max_z": 0.545,
+      "cage_settle_s": null,
+      "cycle_s": 3.95,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "cylinder",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 56.483,
+      "t_detected": 62.417,
+      "t_route_cmd": 62.967,
+      "t_table_entry": 63.567,
+      "t_delivered": 66.467,
+      "final_pos": [
+        7.997,
+        1.965,
+        0.423
+      ],
+      "contained": true,
+      "v_entry": 1.41,
+      "cage_max_z": 0.423,
+      "cage_settle_s": null,
+      "cycle_s": 4.05,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "pouf",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 63.4,
+      "t_detected": 69.333,
+      "t_route_cmd": 69.883,
+      "t_table_entry": 70.483,
+      "t_delivered": 73.367,
+      "final_pos": [
+        9.071,
+        3.0,
+        0.53
+      ],
+      "contained": true,
+      "v_entry": 0.54,
+      "cage_max_z": 0.53,
+      "cage_settle_s": null,
+      "cycle_s": 4.033,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "lunchbox",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 69.683,
+      "t_detected": 75.683,
+      "t_route_cmd": 76.233,
+      "t_table_entry": 76.85,
+      "t_delivered": 85.317,
+      "final_pos": [
+        8.341,
+        5.701,
+        0.745
+      ],
+      "cycle_s": 9.633,
+      "command_margin_s": 0.617
+    }
+  ]
+}

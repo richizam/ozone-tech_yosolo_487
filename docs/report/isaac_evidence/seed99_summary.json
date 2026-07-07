@@ -1,0 +1,276 @@
+{
+  "engine": "NVIDIA Isaac Sim 6.0.1 / PhysX 5",
+  "perception_mode": "oracle_lookahead",
+  "oracle_used_for_classification": true,
+  "executive": "table",
+  "seed": 99,
+  "physics_hz": 240,
+  "control_hz": 60,
+  "n_items": 11,
+  "n_delivered": 11,
+  "n_routed_ok": 10,
+  "routing_accuracy": 0.9091,
+  "unsafe_errors": 0,
+  "containment": {
+    "tracked": 7,
+    "violations": 0,
+    "containment_rate": 1.0,
+    "cage_entry_speed_max_mps": 1.853,
+    "cage_max_z": 0.558
+  },
+  "cycle_s": {
+    "mean": 7.288,
+    "p95": 18.841,
+    "max": 20.9
+  },
+  "throughput_items_per_h": 421.4,
+  "flow": {
+    "escapement_gate_activations": 11,
+    "spacing_gate_activations": 11,
+    "multi_object_window_events": 0,
+    "conveyor_a_stop_count": 0
+  },
+  "sim_s": 93.97,
+  "wall_s": 73.5,
+  "realtime_factor": 1.28,
+  "frames": 0,
+  "items": [
+    {
+      "slug": "bottle",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 1.017,
+      "t_detected": 6.733,
+      "t_route_cmd": 7.267,
+      "t_table_entry": 7.85,
+      "t_delivered": 10.45,
+      "final_pos": [
+        7.964,
+        1.968,
+        0.441
+      ],
+      "contained": true,
+      "v_entry": 1.853,
+      "cage_max_z": 0.441,
+      "cage_settle_s": null,
+      "cycle_s": 3.717,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "helmet",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 8.133,
+      "t_detected": 13.85,
+      "t_route_cmd": 14.383,
+      "t_table_entry": 14.967,
+      "t_delivered": 17.55,
+      "final_pos": [
+        7.953,
+        1.952,
+        0.558
+      ],
+      "contained": true,
+      "v_entry": 1.682,
+      "cage_max_z": 0.558,
+      "cage_settle_s": null,
+      "cycle_s": 3.7,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "detergent",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 15.083,
+      "t_detected": 20.95,
+      "t_route_cmd": 21.533,
+      "t_table_entry": 22.1,
+      "t_delivered": 27.283,
+      "final_pos": [
+        8.374,
+        5.706,
+        0.772
+      ],
+      "cycle_s": 6.333,
+      "command_margin_s": 0.567
+    },
+    {
+      "slug": "box_l",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 22.317,
+      "t_detected": 28.25,
+      "t_route_cmd": 28.8,
+      "t_table_entry": 29.4,
+      "t_delivered": 32.2,
+      "final_pos": [
+        9.083,
+        2.992,
+        0.542
+      ],
+      "contained": true,
+      "v_entry": 1.699,
+      "cage_max_z": 0.542,
+      "cage_settle_s": null,
+      "cycle_s": 3.95,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "sack",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 30.183,
+      "t_detected": 35.933,
+      "t_route_cmd": 36.483,
+      "t_table_entry": 37.05,
+      "t_delivered": 39.567,
+      "final_pos": [
+        8.004,
+        1.964,
+        0.49
+      ],
+      "contained": true,
+      "v_entry": 1.754,
+      "cage_max_z": 0.49,
+      "cage_settle_s": null,
+      "cycle_s": 3.633,
+      "command_margin_s": 0.567
+    },
+    {
+      "slug": "lunchbox",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 36.683,
+      "t_detected": 42.7,
+      "t_route_cmd": 43.25,
+      "t_table_entry": 43.9,
+      "t_delivered": 49.433,
+      "final_pos": [
+        8.337,
+        5.706,
+        0.731
+      ],
+      "cycle_s": 6.733,
+      "command_margin_s": 0.65
+    },
+    {
+      "slug": "plate",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 43.317,
+      "t_detected": 49.267,
+      "t_route_cmd": 49.817,
+      "t_table_entry": 50.4,
+      "t_delivered": 53.183,
+      "final_pos": [
+        8.005,
+        1.967,
+        0.412
+      ],
+      "contained": true,
+      "v_entry": 1.607,
+      "cage_max_z": 0.412,
+      "cage_settle_s": null,
+      "cycle_s": 3.917,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "pouf",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 50.1,
+      "t_detected": 56.033,
+      "t_route_cmd": 56.583,
+      "t_table_entry": 57.183,
+      "t_delivered": 60.1,
+      "final_pos": [
+        9.074,
+        2.999,
+        0.526
+      ],
+      "contained": true,
+      "v_entry": 0.592,
+      "cage_max_z": 0.526,
+      "cage_settle_s": null,
+      "cycle_s": 4.067,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "box_s",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 56.65,
+      "t_detected": 62.583,
+      "t_route_cmd": 63.133,
+      "t_table_entry": 63.733,
+      "t_delivered": 69.017,
+      "final_pos": [
+        8.373,
+        5.703,
+        0.825
+      ],
+      "cycle_s": 6.433,
+      "command_margin_s": 0.6
+    },
+    {
+      "slug": "pen",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "MANUAL",
+      "ok": false,
+      "t_spawn": 63.367,
+      "t_detected": 69.317,
+      "t_route_cmd": 69.867,
+      "t_table_entry": 70.45,
+      "t_delivered": 90.217,
+      "final_pos": [
+        8.947,
+        2.997,
+        0.455
+      ],
+      "cycle_s": 20.9,
+      "command_margin_s": 0.583
+    },
+    {
+      "slug": "cylinder",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 71.25,
+      "t_detected": 77.183,
+      "t_route_cmd": 90.533,
+      "t_table_entry": 91.117,
+      "t_delivered": 93.967,
+      "final_pos": [
+        7.981,
+        1.967,
+        0.421
+      ],
+      "contained": true,
+      "v_entry": 1.47,
+      "cage_max_z": 0.421,
+      "cage_settle_s": null,
+      "cycle_s": 16.783,
+      "command_margin_s": 0.583
+    }
+  ]
+}

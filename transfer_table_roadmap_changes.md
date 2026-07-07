@@ -1,5 +1,9 @@
 # Roadmap Update: Transfer Table as Main Routing Mechanism + Robotic Arm for Exceptions
 
+> ⚠️ **Note (2026-07-06):** the "Isaac Sim optional" stance in this document
+> is an OLD version. Isaac Sim is now an **obligatory deliverable**: the port
+> lives in `isaac/` and runs on the team GPU server. See README §5.1.
+
 ## Context
 
 The current simulation proves the closed loop: items enter through conveyor A, are classified, and are routed to B/C/D. However, the current execution concept relies on a robotic arm as the primary actor that picks and places every object.
