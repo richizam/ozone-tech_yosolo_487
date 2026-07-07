@@ -676,9 +676,9 @@ class SceneBuilder:
 
         # industrial presentation layer (visuals only — physics/sensor-safe)
         from isaac.dressing import dress_scene
-        dress_scene(st)
+        viz = dress_scene(st)
         return {"gates": gate_info, "items": item_info, "cams": cams,
-                "conveyors": conveyors, "blades": blades}
+                "conveyors": conveyors, "blades": blades, "viz": viz}
 
 
 def load_manifest(repo_root):

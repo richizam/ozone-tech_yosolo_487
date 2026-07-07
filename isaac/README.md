@@ -51,7 +51,7 @@ containment 1.0 (0 violations, cage entry ≤ 1.73 m/s) · ~1.2× real time.
 | `jam_locator.py` | Background-subtraction jam localization on the routing-zone depth camera (grid clustering, hardware exclusions, route-corridor association). |
 | `arm.py` | Kinematic 4-axis palletizer (MuJoCo parity: collision-free links, item carried at the TCP) + the recovery state machine. |
 | `validate_rtx.py` | Static calibration: 11 items × N yaws under the real cameras vs ground truth → `rtx_validation.json`. |
-| `dressing.py` | Industrial presentation layer (visuals only, physics/sensor-safe): dark rubber belts + end drums + skirts, roller deck + omni-puck field on the table, safety-yellow guards, labeled roll cages («C OVERSIZE»/«D REPACK», tubes, casters), camera gantry + black sensor housings, warehouse lighting + backdrop. Verified bit-identical physics with the layer on (same sim time, same 11/11). |
+| `dressing.py` | Industrial presentation + route-storytelling layer (visuals only, physics/sensor-safe): dark rubber belts + end drums + skirts + hazard-striped edges + support legs + white direction chevrons, roller deck + omni-puck field, labeled roll cages («C OVERSIZE»/«D REPACK», tubes, casters), Intel RealSense D455 sensor assets (official Isaac models, hand-made housings as offline fallback), Ozon design language (wall wordmark, blue/magenta accents), warehouse lighting. Runtime route storytelling (`RouteVizRuntime`): items tint with their category, carry a floating «>> B SORTER / C OVERSIZE / D REPACK» flag, the ACTIVE ROUTE lamp panel + routing-deck arrows + chevron trails to each container brighten for the commanded route. Verified bit-identical physics with the layer on (same sim time, same 11/11). |
 
 ## Run it (inside the isaac-sim container)
 

@@ -239,10 +239,12 @@ class Dressing:
                 self.label(txt, fn, (cx, cy - hy - 0.30, 1.55), 1.05,
                            yaw_deg=0.0)
             else:
-                self.label(txt, fn, (cx - hx - 0.02, cy, 0.45), 0.85,
-                           yaw_deg=-90.0)
-                self.label(txt, fn, (cx - hx - 0.35, cy, 1.55), 1.05,
-                           yaw_deg=-90.0)
+                # both D signs face SOUTH: the routing camera sits due south
+                # and read the west-facing mast mirrored on video
+                self.label(txt, fn, (cx, cy - hy - 0.02, 0.45), 0.85,
+                           yaw_deg=0.0)
+                self.label(txt, fn, (cx - hx - 0.35, cy - 0.2, 1.55), 1.05,
+                           yaw_deg=0.0)
         # B lane label on the sorter infeed (west face)
         b = P.BELT_B
         self.label("B SORTER", "lane_b.png",
@@ -319,12 +321,290 @@ class Dressing:
         self.box((9.9, 3.05, 0.003), (0.045, 2.5, 0.001), YELLOW,
                  tag="floorline")
 
+    # ------------------------------------------------------ conveyor details
+    def conveyor_details(self):
+        """Hazard striping, plinth + legs cladding, and white direction
+        chevrons painted on the belts (the visible roller/flow direction)."""
+        a, b, tb, cb = P.BELT_A, P.BELT_B, P.TABLE, P.CONNECT_B
+        # black dashes over the yellow side guides -> yellow/black safety edge
+        for x in np.arange(0.3, 6.5, 0.45):
+            for sgn in (-1, 1):
+                self.box((float(x), a["y"] + sgn * (a["width"] / 2 + 0.015),
+                          a["top"] + 0.041), (0.11, 0.017, 0.051), BLACK,
+                         tag="hzA")
+        # plinth band + proud legs on belt A and belt B (reads as supports)
+        for x in np.arange(0.6, tb["x0"] - 0.2, 1.2):
+            for sgn in (-1, 1):
+                self.box((float(x), a["y"] + sgn * (a["width"] / 2 + 0.045),
+                          0.26), (0.045, 0.028, 0.26), FRAME, tag="legA2")
+        for y in np.arange(b["y0"] + 0.4, b["y1"] - 0.2, 1.2):
+            for sgn in (-1, 1):
+                self.box((b["cx"] + sgn * (b["width"] / 2 + 0.045), float(y),
+                          0.26), (0.028, 0.045, 0.26), FRAME, tag="legB2")
+        # white direction chevrons ON the belts (1 mm thick, far below the
+        # perception z-margin) — the flow direction is unmistakable
+        wht = (0.92, 0.92, 0.95)
+        for x in np.arange(0.6, tb["x0"] - 0.15, 0.55):
+            for j, sw in ((0, 40.0), (1, -40.0)):
+                self.box((float(x) - 0.03 * j, a["y"] + (0.05 if j else -0.05),
+                          a["top"] + 0.0005), (0.075, 0.012, 0.0004), wht,
+                         tag="dirA", euler_deg=(0, 0, sw))
+        for nm, cx, y0, y1 in (("B", b["cx"], b["y0"] + 0.3, b["y1"] - 0.2),
+                               ("Cn", cb["cx"], cb["y0"] + 0.1, cb["y1"] - 0.05)):
+            for y in np.arange(y0, y1, 0.5):
+                for j, sw in ((0, 50.0), (1, 130.0)):
+                    self.box((cx + (0.05 if j else -0.05), float(y),
+                              b["top"] + 0.0005), (0.075, 0.012, 0.0004), wht,
+                             tag=f"dir{nm}", euler_deg=(0, 0, sw))
+
+    # ------------------------------------------------------- route visuals
+    def _chevron(self, center, yaw_deg, color, size=0.075, z_thick=0.0005,
+                 tag="chev"):
+        """V-shaped arrowhead from two rotated bars; points along yaw
+        (0 deg = +x)."""
+        paths = []
+        for sw in (140.0, -140.0):
+            wa = math.radians(yaw_deg + sw)
+            c = (center[0] + size * 0.55 * math.cos(wa),
+                 center[1] + size * 0.55 * math.sin(wa), center[2])
+            p = self.box(c, (size, 0.016, z_thick), color, tag=tag,
+                         euler_deg=(0, 0, yaw_deg + sw))
+            paths.append(p.GetPath().pathString)
+        return paths
+
+    def route_viz(self):
+        """Everything that answers 'where is THIS item going': zone arrows on
+        the routing deck, chevron trails to each container, and the ACTIVE
+        ROUTE indicator panel. Returns prim paths for runtime brightness."""
+        tb, cb, b = P.TABLE, P.CONNECT_B, P.BELT_B
+        cc, cd = P.CHUTE_C, P.CHUTE_D
+        viz = {"zone_arrows": {}, "trails": {}, "lamps": {}}
+        dim = {z: tuple(0.35 * v for v in P.ROUTE_RGBA[z]) for z in "BCD"}
+        # big direction arrows on the routing deck (brightened per command)
+        deck = tb["top"] + 0.0058
+        heads = {"B": ((tb["lane_B_cx"], tb["y"] + 0.38, deck), 90.0),
+                 "C": ((tb["x1"] - 0.07, tb["lane_C_cy"], deck), 0.0),
+                 "D": ((tb["lane_D_cx"], tb["y"] - 0.38, deck), -90.0)}
+        for z, (c, yaw) in heads.items():
+            shaft = self.box((c[0] - 0.1 * math.cos(math.radians(yaw)),
+                              c[1] - 0.1 * math.sin(math.radians(yaw)), c[2]),
+                             (0.14, 0.03, 0.0005), dim[z], tag=f"zarrow{z}",
+                             euler_deg=(0, 0, yaw))
+            paths = [shaft.GetPath().pathString]
+            paths += self._chevron(c, yaw, dim[z], size=0.11,
+                                   tag=f"zarrow{z}h")
+            viz["zone_arrows"][z] = paths
+        # chevron trails: routing table -> container
+        trails = {"B": [], "C": [], "D": []}
+        for y in np.arange(cb["y0"] + 0.12, b["y1"] - 0.3, 0.42):
+            trails["B"] += self._chevron((cb["cx"], float(y), b["top"] + 0.004),
+                                         90.0, dim["B"], tag="trB")
+        ang_c = math.degrees(math.atan2(cc["z0"] - cc["z1"], cc["x1"] - cc["x0"]))
+        for x in np.arange(cc["x0"] + 0.12, cc["x1"] - 0.05, 0.28):
+            zc = cc["z0"] - (float(x) - cc["x0"]) * math.tan(math.radians(ang_c)) + 0.006
+            for sw in (140.0, -140.0):
+                wa = math.radians(sw)
+                c = (float(x) + 0.06 * 0.55 * math.cos(wa), cc["cy"]
+                     + 0.06 * 0.55 * math.sin(wa), zc)
+                p = self.box(c, (0.07, 0.015, 0.0005), dim["C"], tag="trC",
+                             euler_deg=(0, -ang_c, sw))
+                trails["C"].append(p.GetPath().pathString)
+        ang_d = math.degrees(math.atan2(cd["z0"] - cd["z1"], cd["y0"] - cd["y1"]))
+        for y in np.arange(cd["y0"] - 0.12, cd["y1"] + 0.05, -0.28):
+            zc = cd["z0"] - (cd["y0"] - float(y)) * math.tan(math.radians(ang_d)) + 0.006
+            for sw in (140.0, -140.0):
+                wa = math.radians(-90.0 + sw)
+                c = (cd["cx"] + 0.06 * 0.55 * math.cos(wa),
+                     float(y) + 0.06 * 0.55 * math.sin(wa), zc)
+                p = self.box(c, (0.07, 0.015, 0.0005), dim["D"], tag="trD",
+                             euler_deg=(ang_d, 0, -90.0 + sw))
+                trails["D"].append(p.GetPath().pathString)
+        viz["trails"] = trails
+        # ACTIVE ROUTE indicator panel by the table (mast + 3 lamps)
+        px, py = 7.95, 4.15
+        self.box((px, py, 0.95), (0.025, 0.025, 0.95), FRAME, tag="armast")
+        self.label("ACTIVE ROUTE", "active_route.png", (px, py - 0.03, 2.05),
+                   0.85, yaw_deg=0.0)
+        for i, z in enumerate("BCD"):
+            lp = self.box((px - 0.26 + 0.26 * i, py - 0.03, 1.72),
+                          (0.09, 0.02, 0.09), dim[z], tag=f"lamp{z}")
+            viz["lamps"][z] = lp.GetPath().pathString
+            self.label(z, f"lampcap_{z}.png",
+                       (px - 0.26 + 0.26 * i, py - 0.035, 1.52), 0.17,
+                       yaw_deg=0.0, bg=tuple(0.55 * v for v in P.ROUTE_RGBA[z]))
+        # floating per-item route flags: textures made here, quads at runtime
+        flags = {
+            "B": str(self._label_texture(">> B SORTER", "flag_b.png",
+                                         bg=OZON_BLUE)),
+            "C": str(self._label_texture(">> C OVERSIZE", "flag_c.png",
+                                         bg=(0.80, 0.42, 0.08))),
+            "D": str(self._label_texture(">> D REPACK", "flag_d.png",
+                                         bg=(0.10, 0.55, 0.22))),
+        }
+        viz["flag_textures"] = flags
+        return viz
+
+    # ---------------------------------------------------------- Ozon brand
+    def ozon_brand(self):
+        """Ozon design language (brandlab.ozon.ru): Ozon blue + magenta
+        accent, white lowercase wordmark, clean panels."""
+        MAGENTA = (0.83, 0.07, 0.55)
+        # big wordmark on the backdrop wall
+        self.label("ozon", "ozon_wall.png", (5.0, 6.27, 3.4), 2.6, yaw_deg=0.0)
+        self.box((5.0, 6.26, 2.94), (1.3, 0.012, 0.035), MAGENTA,
+                 tag="brand_accent")
+        # blue band along the table skirt + magenta kick strip
+        tb = P.TABLE
+        self.box(((tb["x0"] + tb["x1"]) / 2, tb["y"] - tb["width"] / 2 - 0.036,
+                  0.50), ((tb["x1"] - tb["x0"]) / 2 + 0.03, 0.006, 0.045),
+                 OZON_BLUE, tag="ozon_band")
+        self.box(((tb["x0"] + tb["x1"]) / 2, tb["y"] - tb["width"] / 2 - 0.036,
+                  0.42), ((tb["x1"] - tb["x0"]) / 2 + 0.03, 0.006, 0.014),
+                 MAGENTA, tag="ozon_kick")
+        # blue crossbeam accent on the vision gantry
+        vs = P.VIRTUAL_SENSOR
+        self.box((vs["overhead_pos"][0], vs["overhead_pos"][1], 2.46),
+                 (0.052, 1.10, 0.012), OZON_BLUE, tag="gantry_accent")
+
+    # ------------------------------------------------- real sensor assets
+    def sensor_assets(self):
+        """Reference official Isaac Sim sensor models (Intel RealSense D455)
+        as the visible camera bodies; fall back to the hand-made housings on
+        any failure (offline jury box). Purely visual references — no physics
+        APIs, mounted just above each lens plane."""
+        try:
+            try:
+                from isaacsim.storage.native import get_assets_root_path
+            except ImportError:
+                from isaacsim.core.utils.nucleus import get_assets_root_path
+            root = get_assets_root_path()
+            if not root:
+                raise RuntimeError("no assets root")
+            usd = root + "/Isaac/Sensors/Intel/RealSense/rsd455.usd"
+            vs = P.VIRTUAL_SENSOR
+            spots = [("rs_overhead", vs["overhead_pos"], (0, 180, 0)),
+                     ("rs_side_l", (vs["overhead_pos"][0],
+                                    vs["overhead_pos"][1] - vs["side_head_offset_m"],
+                                    vs["side_head_z_m"]), (0, 140, 90)),
+                     ("rs_side_r", (vs["overhead_pos"][0],
+                                    vs["overhead_pos"][1] + vs["side_head_offset_m"],
+                                    vs["side_head_z_m"]), (0, 140, -90)),
+                     ("rs_jam", (8.3, 2.6, 3.8), (0, 180, 0))]
+            for nm, pos, rot in spots:
+                path = f"{ROOT}/sensors/{nm}"
+                prim = self.stage.DefinePrim(path, "Xform")
+                prim.GetReferences().AddReference(usd)
+                xf = UsdGeom.Xformable(prim)
+                xf.AddTranslateOp().Set(Gf.Vec3d(pos[0], pos[1],
+                                                 float(pos[2]) + 0.045))
+                xf.AddRotateXYZOp().Set(Gf.Vec3f(*[float(r) for r in rot]))
+            print("[dressing] RealSense D455 sensor assets referenced",
+                  flush=True)
+            return True
+        except Exception as exc:
+            print(f"[dressing] sensor assets unavailable ({exc}); using "
+                  f"built housings", flush=True)
+            return False
+
     def dress(self):
         self.rollers()
+        self.conveyor_details()
         self.cages_detail()
         self.sensors_hw()
+        self.sensor_assets()
         self.lighting_env()
+        self.ozon_brand()
+        return self.route_viz()
 
 
 def dress_scene(stage):
-    Dressing(stage).dress()
+    return Dressing(stage).dress()
+
+
+class RouteVizRuntime:
+    """Per-tick route storytelling (visuals only): floating route flags that
+    follow each classified item, the ACTIVE ROUTE lamp panel, the routing-deck
+    arrows and the chevron trails all brighten for the commanded route."""
+
+    def __init__(self, stage, viz):
+        self.stage = stage
+        self.viz = viz or {}
+        self.bright = {z: Gf.Vec3f(*P.ROUTE_RGBA[z]) for z in "BCD"}
+        self.dim = {z: Gf.Vec3f(*[0.30 * v for v in P.ROUTE_RGBA[z]])
+                    for z in "BCD"}
+        self._color_attrs = {"lamps": {}, "zone_arrows": {}, "trails": {}}
+        for z, p in self.viz.get("lamps", {}).items():
+            self._color_attrs["lamps"][z] = [self._attr(p)]
+        for z, ps in self.viz.get("zone_arrows", {}).items():
+            self._color_attrs["zone_arrows"][z] = [self._attr(p) for p in ps]
+        for z, ps in self.viz.get("trails", {}).items():
+            self._color_attrs["trails"][z] = [self._attr(p) for p in ps]
+        self._flags = {}                 # slug -> (translate_op, route)
+        self._flag_i = 0
+        self._last_route = "?"
+
+    def _attr(self, path):
+        return UsdGeom.Gprim(self.stage.GetPrimAtPath(path)).GetDisplayColorAttr()
+
+    # --------------------------------------------------------------- flags
+    def make_flag(self, slug, route):
+        """Small floating billboard «>> B SORTER» that follows the item."""
+        tex = self.viz.get("flag_textures", {}).get(route)
+        if tex is None or slug in self._flags:
+            return
+        self._flag_i += 1
+        path = f"{ROOT}/flags/flag_{self._flag_i}"
+        mesh = UsdGeom.Mesh.Define(self.stage, path)
+        w2, h2 = 0.34, 0.085
+        mesh.CreatePointsAttr(Vt.Vec3fArray([Gf.Vec3f(-w2, 0, -h2),
+                                             Gf.Vec3f(w2, 0, -h2),
+                                             Gf.Vec3f(w2, 0, h2),
+                                             Gf.Vec3f(-w2, 0, h2)]))
+        mesh.CreateFaceVertexIndicesAttr(Vt.IntArray([0, 1, 2, 3]))
+        mesh.CreateFaceVertexCountsAttr(Vt.IntArray([4]))
+        mesh.CreateDoubleSidedAttr(True)
+        st_pv = UsdGeom.PrimvarsAPI(mesh.GetPrim()).CreatePrimvar(
+            "st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying)
+        st_pv.Set(Vt.Vec2fArray([Gf.Vec2f(0, 0), Gf.Vec2f(1, 0),
+                                 Gf.Vec2f(1, 1), Gf.Vec2f(0, 1)]))
+        mpath = f"{path}_mat"
+        mat = UsdShade.Material.Define(self.stage, mpath)
+        sh = UsdShade.Shader.Define(self.stage, f"{mpath}/pbr")
+        sh.CreateIdAttr("UsdPreviewSurface")
+        sh.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.5)
+        tx = UsdShade.Shader.Define(self.stage, f"{mpath}/tex")
+        tx.CreateIdAttr("UsdUVTexture")
+        tx.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(tex)
+        rd = UsdShade.Shader.Define(self.stage, f"{mpath}/st")
+        rd.CreateIdAttr("UsdPrimvarReader_float2")
+        rd.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
+        tx.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(
+            rd.ConnectableAPI(), "result")
+        sh.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
+            tx.ConnectableAPI(), "rgb")
+        mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(), "surface")
+        UsdShade.MaterialBindingAPI.Apply(mesh.GetPrim()).Bind(mat)
+        tr = UsdGeom.Xformable(mesh.GetPrim()).AddTranslateOp()
+        tr.Set(Gf.Vec3d(0, 0, -5))
+        self._flags[slug] = tr
+
+    def drop_flag(self, slug):
+        tr = self._flags.get(slug)
+        if tr is not None:
+            tr.Set(Gf.Vec3d(0, 0, -5))
+
+    # -------------------------------------------------------------- update
+    def update(self, active_route, item_positions):
+        """active_route: commanded zone route or None; item_positions:
+        {slug: (x, y, top_z)} for items that should carry their flag."""
+        if active_route != self._last_route:
+            self._last_route = active_route
+            for group in ("lamps", "zone_arrows", "trails"):
+                for z, attrs in self._color_attrs[group].items():
+                    col = self.bright[z] if z == active_route else self.dim[z]
+                    for at in attrs:
+                        at.Set([col])
+        for slug, (x, y, top_z) in item_positions.items():
+            tr = self._flags.get(slug)
+            if tr is not None:
+                tr.Set(Gf.Vec3d(float(x), float(y) - 0.02, float(top_z) + 0.17))

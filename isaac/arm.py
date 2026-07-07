@@ -100,8 +100,14 @@ class ArmController:
         self.base = rig["base"]
         self.place = P.PLACE_BY_MODE[mode]
         self.vmax = np.array(P.ARM["joint_vmax"])
-        hx, hy = P.ARM_HOME_XY[mode]
-        self.q_home = ik(np.array([hx, hy, P.LIFT_Z]), base=self.base)
+        # park pose: FOLDED UP in joint space (upper arm raised, forearm
+        # tucked), yawed toward the open south-east floor. An IK'd XY home
+        # folds the elbow OUT over cage C and the retract sweep clips the
+        # chute hood on video; a compact high fold keeps every link within
+        # ~0.35 m of the column at all yaws — clips nothing, anywhere.
+        q2h, q3h = math.radians(-78.0), math.radians(132.0)
+        self.q_fold = (q2h, q3h)
+        self.q_home = np.array([math.radians(-40.0), q2h, q3h, -(q2h + q3h)])
         self.q_ref = self.q_home.copy()
         self.state = "IDLE"
         self.job = None
@@ -177,7 +183,7 @@ class ArmController:
             self._apply()
             return
         if self.state in ("MOVE_ABOVE", "DESCEND", "LIFT", "TRANSFER",
-                          "LOWER", "RETRACT", "ABORT_RETRACT"):
+                          "LOWER", "RETRACT", "FOLD", "ABORT_RETRACT"):
             self._rate_toward(self._target, dt)
             self._apply()
             at = (np.allclose(self.q_ref, self._target, atol=1e-9))
@@ -268,6 +274,14 @@ class ArmController:
             wp = j["place_wp"]
             self._set_target(self._wp((wp[0], wp[1], P.LIFT_Z)), t)
         elif self.state == "RETRACT":
+            # FOLD at the current yaw BEFORE swinging home: folding and
+            # yawing simultaneously sweeps a half-extended forearm across
+            # the C-chute hood on video
+            q2h, q3h = self.q_fold
+            self.state = "FOLD"
+            self._set_target(np.array([self.q_ref[0], q2h, q3h,
+                                       -(q2h + q3h)]), t)
+        elif self.state == "FOLD":
             self.pub(t, "job_done", j["slug"])
             self.state = "IDLE"
             self.job = None

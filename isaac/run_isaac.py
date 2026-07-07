@@ -244,6 +244,9 @@ def main():
 
     arm = ArmController(arm_rig, items_rp, entries, ev, mode="table")
     recovery = {"active": None}
+    from isaac.dressing import RouteVizRuntime
+    route_viz = RouteVizRuntime(stage, info.get("viz"))
+    zone_cmd = {"route": None}          # visual bookkeeping only
 
     def pose(slug):
         p, q = items_rp[slug].get_world_pose()
@@ -283,6 +286,7 @@ def main():
         return None
 
     def deliver(slug, zone_actual, t):
+        route_viz.drop_flag(slug)
         st = active.pop(slug)
         e = entries[slug]
         ok = zone_actual == e["zone"]
@@ -485,6 +489,7 @@ def main():
                 owner, owner_t, owner_x = s2, st2["routed_t"], float(p2[0])
         set_blade("induct",
                   owner is not None and owner_x > tb["route_x"] + 0.18)
+        zone_cmd["route"] = routes.get(owner) if owner is not None else None
         if owner is not None:
             po, _ = pose(owner)
             route = routes.get(owner)
@@ -650,6 +655,7 @@ def main():
                            mode="oracle_lookahead")
                     st["t_route_cmd"] = t
                     tint(slug, st["zone"])
+                    route_viz.make_flag(slug, st["zone"])
                 # route assignment as the item commits to the table
                 if "zone" in st and "routed_t" not in st and p[0] > tb["x0"] - 0.25:
                     routes[slug] = st["zone"]
@@ -755,6 +761,15 @@ def main():
             else:
                 drive_belts(t)
             drive_gates()
+            # route storytelling (visuals only): lamps/arrows/trails follow
+            # the commanded route; each classified item carries its flag
+            flag_pos = {}
+            for s2, st2 in active.items():
+                if "zone" in st2:
+                    p2, _ = pose(s2)
+                    top2 = p2[2] + max(entries[s2]["dims_m"]) / 2
+                    flag_pos[s2] = (p2[0], p2[1], top2)
+            route_viz.update(zone_cmd["route"], flag_pos)
             if arm is not None:
                 arm.step(dt_ctrl, t)
                 if recovery["active"] and not arm.busy:
