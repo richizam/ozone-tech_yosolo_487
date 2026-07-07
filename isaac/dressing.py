@@ -100,10 +100,18 @@ class Dressing:
         img.save(p)
         return str(p)
 
+    def _textured_quad(self, tag, tex, center, width, yaw_deg=0.0,
+                       tilt_deg=90.0):
+        return self._quad_with_texture(tex, center, width, yaw_deg, tilt_deg)
+
     def label(self, text, fname, center, width, yaw_deg=0.0, bg=OZON_BLUE,
               tilt_deg=90.0):
         """Textured label quad (UsdPreviewSurface + UsdUVTexture)."""
         tex = self._label_texture(text, fname, bg=bg)
+        return self._quad_with_texture(tex, center, width, yaw_deg, tilt_deg)
+
+    def _quad_with_texture(self, tex, center, width, yaw_deg=0.0,
+                           tilt_deg=90.0):
         path = self._path("label")
         mesh = UsdGeom.Mesh.Define(self.stage, path)
         w2, h2 = width / 2, width / 8               # 4:1 board
@@ -164,6 +172,8 @@ class Dressing:
         which is exactly the point)."""
         a, b, tb, cb = P.BELT_A, P.BELT_B, P.TABLE, P.CONNECT_B
         r = 0.035
+        if getattr(self, "shells", False):
+            return                                  # official assets carry the look
         # belt A: side skirts + end drums peeking beyond the band ends
         for sgn in (-1, 1):
             self.box(((tb["x0"]) / 2, a["y"] + sgn * (a["width"] / 2 + 0.035),
@@ -333,11 +343,16 @@ class Dressing:
                           a["top"] + 0.041), (0.11, 0.017, 0.051), BLACK,
                          tag="hzA")
         # plinth band + proud legs on belt A and belt B (reads as supports)
-        for x in np.arange(0.6, tb["x0"] - 0.2, 1.2):
+        if getattr(self, "shells", False):
+            for x in []:
+                pass
+        legs_needed = not getattr(self, "shells", False)
+        for x in (np.arange(0.6, tb["x0"] - 0.2, 1.2) if legs_needed else []):
             for sgn in (-1, 1):
                 self.box((float(x), a["y"] + sgn * (a["width"] / 2 + 0.045),
                           0.26), (0.045, 0.028, 0.26), FRAME, tag="legA2")
-        for y in np.arange(b["y0"] + 0.4, b["y1"] - 0.2, 1.2):
+        for y in (np.arange(b["y0"] + 0.4, b["y1"] - 0.2, 1.2)
+                  if legs_needed else []):
             for sgn in (-1, 1):
                 self.box((b["cx"] + sgn * (b["width"] / 2 + 0.045), float(y),
                           0.26), (0.028, 0.045, 0.26), FRAME, tag="legB2")
@@ -449,8 +464,25 @@ class Dressing:
         """Ozon design language (brandlab.ozon.ru): Ozon blue + magenta
         accent, white lowercase wordmark, clean panels."""
         MAGENTA = (0.83, 0.07, 0.55)
-        # big wordmark on the backdrop wall
-        self.label("ozon", "ozon_wall.png", (5.0, 6.27, 3.4), 2.6, yaw_deg=0.0)
+        # big wordmark on the backdrop wall: the OFFICIAL logo image
+        # (wikimedia Ozon_logo_clear.svg), composited onto a white panel
+        try:
+            from PIL import Image
+            logo = Image.open(str(SIGN_DIR / "ozon_logo.png")).convert("RGBA")
+            W = 1280
+            H = W // 4
+            panel = Image.new("RGBA", (W, H), (255, 255, 255, 255))
+            lw = int(W * 0.72)
+            lh = int(lw * logo.height / logo.width)
+            lg = logo.resize((lw, lh))
+            panel.alpha_composite(lg, ((W - lw) // 2, (H - lh) // 2))
+            panel.convert("RGB").save(str(SIGN_DIR / "ozon_wall.png"))
+            self._textured_quad("ozon_wall", str(SIGN_DIR / "ozon_wall.png"),
+                                (5.0, 6.27, 3.4), 2.6, yaw_deg=0.0)
+        except Exception as exc:
+            print(f"[dressing] logo board fallback ({exc})", flush=True)
+            self.label("ozon", "ozon_wall_txt.png", (5.0, 6.27, 3.4), 2.6,
+                       yaw_deg=0.0)
         self.box((5.0, 6.26, 2.94), (1.3, 0.012, 0.035), MAGENTA,
                  tag="brand_accent")
         # blue band along the table skirt + magenta kick strip
@@ -480,7 +512,23 @@ class Dressing:
             root = get_assets_root_path()
             if not root:
                 raise RuntimeError("no assets root")
-            usd = root + "/Isaac/Sensors/Intel/RealSense/rsd455.usd"
+            import omni.client
+            usd = None
+            for cand in ("/Isaac/Sensors/RealSense/D455/rsd455.usd",
+                         "/Isaac/Sensors/RealSense/D455/d455.usd",
+                         "/Isaac/Sensors/RealSense/D455/D455.usd"):
+                res, _e = omni.client.stat(root + cand)
+                if res == omni.client.Result.OK:
+                    usd = root + cand
+                    break
+            if usd is None:
+                res, entries = omni.client.list(
+                    root + "/Isaac/Sensors/RealSense/D455")
+                names = [e.relative_path for e in entries]
+                usds = [n for n in names if n.endswith(".usd")]
+                if not usds:
+                    raise RuntimeError(f"no D455 usd in {names[:8]}")
+                usd = root + "/Isaac/Sensors/RealSense/D455/" + usds[0]
             vs = P.VIRTUAL_SENSOR
             spots = [("rs_overhead", vs["overhead_pos"], (0, 180, 0)),
                      ("rs_side_l", (vs["overhead_pos"][0],
@@ -507,6 +555,20 @@ class Dressing:
             return False
 
     def dress(self):
+        try:
+            from isaac.asset_shells import conveyor_shells
+            from pxr import UsdGeom as _UG
+            self.shells = bool(conveyor_shells(self.stage, top=P.BELT_A["top"]))
+        except Exception as exc:
+            print(f"[dressing] conveyor shells unavailable ({exc})", flush=True)
+            self.shells = False
+        if self.shells:
+            print("[dressing] official conveyor shells referenced", flush=True)
+            from pxr import UsdGeom as _UG2
+            for nm in ("beltA", "beltB", "entry", "zone", "connectB"):
+                pr = self.stage.GetPrimAtPath(f"/World/conveyors/{nm}")
+                if pr:
+                    _UG2.Imageable(pr).MakeInvisible()
         self.rollers()
         self.conveyor_details()
         self.cages_detail()

@@ -108,6 +108,18 @@ Nothing to install — the official `nvcr.io/nvidia/isaac-sim:6.0.1` container
 ships Python 3.12, USD/PhysX and PIL. The repo inputs are pure Python
 (`cell/params.py`, `cell/assets/manifest.json`) and the 11 official STL meshes.
 
+## Conveyor design choice (defense note)
+
+The official test set includes a **9 mm pen**, so every item-contact surface
+in the cell is **continuous**: belt conveyors (official A05 asset) for
+infeed/vision/entry and an **Intralox-class Activated Roller Belt** for the
+routing zone — a continuous belt with small steering rollers embedded flush
+in its surface. This is deliberately NOT an open roller bed: small items
+cannot fall between or jam under anything, which is exactly what the physics
+simulates (vectored surface velocity on a continuous surface) and exactly how
+real mixed-parcel ARB sorters are built. Roller drive hardware remains
+visible where it belongs — end drums, side frames, and the flush ARB caps.
+
 ## Design parity & documented deltas
 
 The flow logic mirrors `cell/belt.py`, `cell/table.py` and `cell/run_sim.py`;

@@ -24,9 +24,35 @@ from cell import params as P
 from cell.arm_ik import fk, ik, unwrap_yaw
 
 
+UR = {"L1": 0.6127, "L2": 0.5716, "D1": 0.1807, "TOOL": 0.20, "DLAT": 0.29}
+
+
 def build_arm(builder, mode="table"):
-    """Kinematic arm visuals: nested Xforms with runtime-set rotations.
-    Returns the xform paths + geometry constants for runtime driving."""
+    """Exception-arm body: official UR10e asset (joints driven by our
+    validated controller) with the capsule rig as offline fallback."""
+    from pxr import Gf, UsdGeom
+    bx_, by_ = __import__("cell.params", fromlist=["params"]).ARM_BASE[mode]
+    try:
+        from isaac.asset_shells import ur10e_arm
+        info = ur10e_arm(builder.stage, (bx_, by_),
+                         pedestal_h=0.65)
+        if info:
+            stage = builder.stage
+            attrs = {}
+            for nm, jp in info["joints"].items():
+                prim = stage.GetPrimAtPath(jp)
+                a = prim.GetAttribute("drive:angular:physics:targetPosition")
+                attrs[nm] = a
+            print("[arm] official UR10e referenced", flush=True)
+            return {"mode": "ur", "joint_attrs": attrs,
+                    "flange_prim": stage.GetPrimAtPath(info["flange"]),
+                    "base": (bx_, by_)}
+    except Exception as exc:
+        print(f"[arm] UR10e unavailable ({exc}); capsule fallback", flush=True)
+    return _build_capsule_arm(builder, mode)
+
+
+def _build_capsule_arm(builder, mode="table"):
     from pxr import Gf, UsdGeom
 
     bx, by = P.ARM_BASE[mode]
@@ -85,6 +111,40 @@ def build_arm(builder, mode="table"):
             "wrist": rot_wrist, "base": (bx, by)}
 
 
+def _fk_ur(q, base):
+    bx, by = base
+    q1, q2, q3, _ = q
+    shz = 0.65 + UR["D1"]
+    r = UR["L1"] * np.cos(q2) + UR["L2"] * np.cos(q2 + q3)
+    z = -(UR["L1"] * np.sin(q2) + UR["L2"] * np.sin(q2 + q3))
+    wrist = np.array([bx + r * np.cos(q1), by + r * np.sin(q1), shz + z])
+    return wrist - np.array([0.0, 0.0, UR["TOOL"]]), wrist
+
+
+def _ik_ur(tcp_xyz, base, q1_hint=0.0):
+    bx, by = base
+    x, y, z = tcp_xyz
+    wz = z + UR["TOOL"]
+    dx, dy = x - bx, y - by
+    q1 = np.arctan2(dy, dx)
+    r = np.hypot(dx, dy)
+    shz = 0.65 + UR["D1"]
+    h = -(wz - shz)
+    D = (r * r + h * h - UR["L1"] ** 2 - UR["L2"] ** 2) / (
+        2 * UR["L1"] * UR["L2"])
+    if not (-1.0 <= D <= 1.0):
+        raise ValueError(f"UR target {tcp_xyz} out of reach (D={D:.3f})")
+    best = None
+    for q3 in (np.arccos(D), -np.arccos(D)):
+        q2 = np.arctan2(h, r) - np.arctan2(UR["L2"] * np.sin(q3),
+                                           UR["L1"] + UR["L2"] * np.cos(q3))
+        elbow_z = shz - UR["L1"] * np.sin(q2)
+        cand = (elbow_z, (q1, q2, q3, -(q2 + q3)))
+        if best is None or cand[0] > best[0]:
+            best = cand
+    return np.array(best[1])
+
+
 class ArmController:
     """Rate-limited kinematic execution of the pick/recover cycle."""
 
@@ -118,26 +178,56 @@ class ArmController:
         self._apply()
 
     # ------------------------------------------------------------- kinematics
+    def _fk(self, q):
+        if self.rig.get("mode") == "ur":
+            return _fk_ur(q, self.base)
+        return fk(q, base=self.base)
+
+    def _ik(self, xyz):
+        if self.rig.get("mode") == "ur":
+            return _ik_ur(xyz, self.base)
+        return ik(xyz, base=self.base)
+
+    def flange_pos(self):
+        from pxr import Usd, UsdGeom
+        m = UsdGeom.Xformable(self.rig["flange_prim"]).            ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+        return np.array([m[3][0], m[3][1], m[3][2]])
+
     def _apply(self):
         from pxr import Gf
         q1, q2, q3, q4 = [math.degrees(float(v)) for v in self.q_ref]
-        self.rig["yaw"].Set(Gf.Vec3f(0, 0, q1))
-        # MuJoCo hinge about +y: positive pitches DOWN; USD rotateXYZ Y
-        # rotation is the same right-handed axis
-        self.rig["upper"].Set(Gf.Vec3f(0, q2, 0))
-        self.rig["fore"].Set(Gf.Vec3f(0, q3, 0))
-        self.rig["wrist"].Set(Gf.Vec3f(0, q4, 0))
+        if self.rig.get("mode") == "ur":
+            # UR10e mapping (calibrated by probe): zero pose = stretched
+            # horizontally along +X; lift/elbow signs match ours; pan gets
+            # the classic lateral-offset correction (flange rides DLAT to
+            # the side of the shoulder plane)
+            tcp, _ = self._fk(self.q_ref)
+            r = max(float(np.hypot(tcp[0] - self.base[0],
+                                   tcp[1] - self.base[1])), UR["DLAT"] + 0.05)
+            pan = q1 - math.degrees(math.asin(UR["DLAT"] / r))
+            a = self.rig["joint_attrs"]
+            a["shoulder_pan_joint"].Set(pan)
+            a["shoulder_lift_joint"].Set(q2)
+            a["elbow_joint"].Set(q3)
+            a["wrist_1_joint"].Set(q4 - 90.0)
+            a["wrist_2_joint"].Set(-90.0)
+            a["wrist_3_joint"].Set(0.0)
+        else:
+            self.rig["yaw"].Set(Gf.Vec3f(0, 0, q1))
+            self.rig["upper"].Set(Gf.Vec3f(0, q2, 0))
+            self.rig["fore"].Set(Gf.Vec3f(0, q3, 0))
+            self.rig["wrist"].Set(Gf.Vec3f(0, q4, 0))
         if self.carry is not None:
-            slug, dz = self.carry
-            tcp, _ = fk(self.q_ref, base=self.base)
+            slug, off = self.carry
+            anchor = (self.flange_pos() if self.rig.get("mode") == "ur"
+                      else np.array(self._fk(self.q_ref)[0]))
             rp = self.items_rp[slug]
-            rp.set_world_pose(np.array([tcp[0], tcp[1], tcp[2] - dz]),
-                              np.array([1.0, 0.0, 0.0, 0.0]))
+            rp.set_world_pose(anchor - off, np.array([1.0, 0.0, 0.0, 0.0]))
             rp.set_linear_velocity(np.zeros(3))
             rp.set_angular_velocity(np.zeros(3))
 
     def tcp(self):
-        return fk(self.q_ref, base=self.base)[0]
+        return self._fk(self.q_ref)[0]
 
     def _rate_toward(self, q_target, dt):
         dq = np.clip(q_target - self.q_ref, -self.vmax * dt, self.vmax * dt)
@@ -149,7 +239,7 @@ class ArmController:
         self._deadline = t + 3.0 * travel + 2.0
 
     def _wp(self, xyz):
-        q = ik(np.asarray(xyz, dtype=float), base=self.base)
+        q = self._ik(np.asarray(xyz, dtype=float))
         q[0] = unwrap_yaw(q[0], self.q_ref[0])
         return q
 
@@ -227,15 +317,17 @@ class ArmController:
         elif self.state == "DESCEND":
             slug = j["slug"]
             p, _ = self.items_rp[slug].get_world_pose()
-            tcp = self.tcp()
+            tcp = (self.flange_pos() if self.rig.get("mode") == "ur"
+                   else self.tcp())
             xy_err = float(np.hypot(tcp[0] - p[0], tcp[1] - p[1]))
             if xy_err > self.GRASP_XY_TOL + 0.10:
                 self.pub(t, "grasp_check_failed", slug,
                          xy_err=round(xy_err, 3))
                 self._abort(t)
                 return
-            dz = float(tcp[2] - p[2])              # TCP to item centre
-            self.carry = (slug, dz)
+            anchor = (self.flange_pos() if self.rig.get("mode") == "ur"
+                      else np.array(tcp))
+            self.carry = (slug, anchor - np.asarray(p, dtype=float))
             self.timer = P.ARM["settle_attach_s"]
             self.state = "ATTACH"
             self.pub(t, "attached", slug)
@@ -256,7 +348,7 @@ class ArmController:
                 clear = place["z_clear"]
             slug = j["slug"]
             half_z = self.entries[slug]["dims_m"][2] / 2
-            dz = self.carry[1] if self.carry else half_z
+            dz = float(self.carry[1][2]) if self.carry else half_z
             j["place_wp"] = (tx, ty, surface + dz + half_z + clear + 0.01)
             self.state = "TRANSFER"
             self._set_target(self._wp((tx, ty, j["lift_z"])), t)

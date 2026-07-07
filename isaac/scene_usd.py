@@ -185,7 +185,27 @@ class SceneBuilder:
         geom.CreateSizeAttr(2.0)
         half = ((t2, width / 2, h2) if along == "y" else (width / 2, t2, h2))
         UsdGeom.Xformable(geom.GetPrim()).AddScaleOp().Set(Gf.Vec3f(*half))
-        geom.CreateDisplayColorAttr([Gf.Vec3f(0.9, 0.45, 0.1)])
+        # industrial pneumatic blade stop: dark anodized body, thin hazard
+        # strip on the crest, side actuator cylinders (visual only)
+        geom.CreateDisplayColorAttr([Gf.Vec3f(0.16, 0.17, 0.20)])
+        strip = UsdGeom.Cube.Define(self.stage, f"{body_path}/strip")
+        strip.CreateSizeAttr(2.0)
+        sxf = UsdGeom.Xformable(strip.GetPrim())
+        sxf.AddTranslateOp().Set(Gf.Vec3d(0, 0, float(h2)))
+        sxf.AddScaleOp().Set(Gf.Vec3f(half[0] + 0.001, half[1] + 0.001, 0.006))
+        strip.CreateDisplayColorAttr([Gf.Vec3f(0.95, 0.78, 0.06)])
+        for sgn in (-1, 1):
+            act = UsdGeom.Cylinder.Define(self.stage,
+                                          f"{body_path}/act{'lr'[sgn > 0]}")
+            act.CreateRadiusAttr(0.014)
+            act.CreateHeightAttr(float(h2 * 1.6))
+            act.CreateAxisAttr("Z")
+            axf = UsdGeom.Xformable(act.GetPrim())
+            off = (half[1] if along == "y" else half[0]) - 0.02
+            axf.AddTranslateOp().Set(
+                Gf.Vec3d(0, sgn * off, -0.02) if along == "y"
+                else Gf.Vec3d(sgn * off, 0, -0.02))
+            act.CreateDisplayColorAttr([Gf.Vec3f(0.62, 0.64, 0.68)])
         UsdPhysics.CollisionAPI.Apply(geom.GetPrim())
         if filter_paths:
             # the lowered blade parks inside the conveyor volume — filter that

@@ -426,7 +426,9 @@ def main():
             elif abs(x - b["cx"]) <= b["width"] / 2 + 0.22 and cb["y1"] < y <= b["y1"]:
                 set_v(slug, 0.8 * (b["cx"] - x), b["speed"])
 
-    BLADE_UP = 0.24                                 # deep park -> longer stroke
+    BLADE_UP = 0.186                # raised crest ~0.14 above belt: stops every
+                                # item (helmet R=0.14 cannot roll over) without
+                                # the launched-board look
     blade_x = {"egate": P.BELT_A["gate_x"] + 0.02,
                "hold2": P.BELT_A["hold2_x"] + 0.02,
                "zoneq1": P.BELT_A["hold2_x"] - 0.60,
