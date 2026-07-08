@@ -59,7 +59,7 @@ class JamLocator:
     """Background-subtraction localizer on the routing-zone depth camera."""
 
     def __init__(self, camera, fg_tau=0.008, cell_m=0.04, min_cells=4,
-                 min_points=60, blade_lines=()):
+                 min_points=60, blade_lines=(), hood_zones=()):
         # fg_tau 8 mm: RTX depth is noise-free, and a 9 mm pen must clear the
         # threshold. Known blind spot: the chute discharge HOODS occlude the
         # overhead view — a hang-up under a guard is an operator call-out in
@@ -71,6 +71,7 @@ class JamLocator:
         self.min_cells = min_cells
         self.min_points = min_points
         self.blade_lines = list(blade_lines)       # x of pop-up stop blades
+        self.hood_zones = list(hood_zones)         # (x0,x1,y0,y1) guarded
         self.bg = None
 
     # -------------------------------------------------- shared with perception
@@ -187,6 +188,18 @@ class JamLocator:
             # exactly on a known blade line is hardware, not a stuck item
             if half[0] < 0.02 and any(abs(ctr[0] - bx) < 0.06
                                       for bx in self.blade_lines):
+                continue
+            # razor-thin sliver in ANY horizontal axis = an occlusion-edge
+            # artifact (e.g. the chute hood's rim over an item stalled in
+            # the hood blind spot), never freight
+            if min(half[0], half[1]) < 0.018:
+                continue
+            # clusters centred inside a chute-hood footprint are the guarded
+            # blind spot: partial item slices merged with hood-edge returns
+            # give a biased fix — a hang-up under a guard is an operator
+            # (lockout/tagout) case, never an arm dispatch
+            if any(x0 <= ctr[0] <= x1 and y0 <= ctr[1] <= y1
+                   for x0, x1, y0, y1 in self.hood_zones):
                 continue
             cands.append({"pos": ctr, "half": half, "n": int(len(pts))})
         if not cands:

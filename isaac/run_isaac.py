@@ -191,18 +191,31 @@ def main():
         jc = Camera(prim_path=info["cams"]["jamcam"], resolution=(1024, 768))
         jc.initialize()
         jc.add_distance_to_image_plane_to_frame()
+        cages_t = P.cages_for("table")
+        wall_c = (cages_t["C"]["center"][0] - cages_t["C"]["inner"][0] / 2
+                  - cages_t["C"]["wall_t"] / 2)
+        wall_d = (cages_t["D"]["center"][1] + cages_t["D"]["inner"][1] / 2
+                  + cages_t["D"]["wall_t"] / 2)
+        hood = P.HOOD
         jam_loc = JamLocator(jc, blade_lines=[
             P.BELT_A["gate_x"] + 0.02, P.BELT_A["hold2_x"] + 0.02,
             P.BELT_A["hold2_x"] - 0.60, P.BELT_A["hold2_x"] - 1.20,
-            P.TABLE["route_x"] - 0.02])
+            P.TABLE["route_x"] - 0.02],
+            hood_zones=[
+                # C hood footprint (+margins): x along the slope, y = chute
+                (wall_c - hood["up"] - 0.06, wall_c + hood["into"] + 0.16,
+                 P.CHUTE_C["cy"] - 0.37, P.CHUTE_C["cy"] + 0.37),
+                # D hood footprint: y along the slope, x = chute
+                (P.CHUTE_D["cx"] - 0.37, P.CHUTE_D["cx"] + 0.37,
+                 wall_d - hood["into"] - 0.16, wall_d + hood["up"] + 0.16),
+            ])
 
     for _ in range(12):                             # warm the render pipeline
         world.step(render=True)
-    if jam_loc is not None:
-        # empty-cell depth background for jam localization (before any spawn)
-        ok_bg = jam_loc.build_background(n=5, renderer=world.render)
-        print(f"[isaac] jam-locator background: {'OK' if ok_bg else 'FAILED'}",
-              flush=True)
+    # NOTE: the jam-locator background is captured LATER, after the arm has
+    # folded to its home pose — capturing it here bakes the asset's default
+    # straight-up pose into the background, and the folded arm then reads as
+    # a permanent foreground blob at its own home position.
 
     # ------------------------------------------------------------- run state
     rng = np.random.default_rng(args.seed)
@@ -244,6 +257,14 @@ def main():
 
     arm = ArmController(arm_rig, items_rp, entries, ev, mode="table")
     recovery = {"active": None}
+    if jam_loc is not None:
+        # empty-cell depth background, with the cell in its true idle state:
+        # arm folded home, gates closed, blades parked (before any spawn)
+        for _ in range(6):
+            world.step(render=True)
+        ok_bg = jam_loc.build_background(n=5, renderer=world.render)
+        print(f"[isaac] jam-locator background: {'OK' if ok_bg else 'FAILED'}",
+              flush=True)
     from isaac.dressing import RouteVizRuntime
     route_viz = RouteVizRuntime(stage, info.get("viz"))
     zone_cmd = {"route": None}          # visual bookkeeping only
@@ -300,6 +321,21 @@ def main():
                       "final_pos": [round(float(v), 3) for v in p]}
         ev(t, "item_delivered", slug, zone=zone_actual, zone_true=e["zone"], ok=ok,
            pos=[round(float(v), 3) for v in p])
+        if zone_actual == "MANUAL":
+            frozen.discard(slug)
+            # the operator call-out is a real action: the item is REMOVED to
+            # the manual-review station. Leaving the body in the cell creates
+            # ghost obstacles that block the chute and poison every later
+            # jam-camera fix (helmet stalled, then sack/cylinder/plate piled
+            # against it and the pile became the "jam" the arm chased)
+            n_manual = sum(1 for d2 in done.values()
+                           if d2["delivered"] == "MANUAL")
+            items_rp[slug].set_world_pose(
+                np.array([10.4, 0.6 + 0.45 * (n_manual - 1), 0.15]),
+                np.array([1.0, 0.0, 0.0, 0.0]))
+            items_rp[slug].set_linear_velocity(np.zeros(3))
+            items_rp[slug].set_angular_velocity(np.zeros(3))
+            ev(t, "operator_removed", slug, station=[10.4, 0.6])
         if zone_actual in ("C", "D"):
             v0 = float(np.linalg.norm(vel(slug)))
             watch[slug] = {"zone": zone_actual, "t_entry": t, "v_entry": v0,
@@ -711,12 +747,26 @@ def main():
                                     err = float(np.hypot(
                                         loc["pos_xyz"][0] - p[0],
                                         loc["pos_xyz"][1] - p[1]))
-                                    ev(t, "jam_located", slug,
-                                       cam_pos=loc["pos_xyz"],
-                                       half_extents=loc["half_extents"],
-                                       n_points=loc["n_points"],
-                                       true_pos=[round(float(v), 3) for v in p],
-                                       err_mm=round(err * 1000, 1))
+                                    # ODOMETRY SANITY GATE: the cell tracks
+                                    # every item, so a camera fix far from
+                                    # the last tracked position is a bad
+                                    # localization (occlusion artifact) —
+                                    # never dispatch the arm on it
+                                    if err > 0.30:
+                                        ev(t, "jam_locate_rejected", slug,
+                                           cam_pos=loc["pos_xyz"],
+                                           track_pos=[round(float(v), 3)
+                                                      for v in p],
+                                           err_mm=round(err * 1000, 1))
+                                        loc = None
+                                    else:
+                                        ev(t, "jam_located", slug,
+                                           cam_pos=loc["pos_xyz"],
+                                           half_extents=loc["half_extents"],
+                                           n_points=loc["n_points"],
+                                           true_pos=[round(float(v), 3)
+                                                     for v in p],
+                                           err_mm=round(err * 1000, 1))
                                 else:
                                     ev(t, "jam_locate_failed", slug)
                             # dispatch the exception arm on the CAMERA fix;
@@ -732,7 +782,10 @@ def main():
                                                       pick, top_z, t):
                                     st["recovering"] = True
                                     recovery["active"] = slug
-                                    frozen.discard(slug)
+                                    # the snag stays FROZEN until the arm has
+                                    # it: unfreezing at dispatch lets the belt
+                                    # re-drive the item away mid-descent and
+                                    # the grasp check fails on a moved target
                                     continue
                             deliver(slug, "MANUAL", t)
                             continue
@@ -780,7 +833,9 @@ def main():
                     st_r = active.get(slug_r)
                     if st_r is not None:
                         # re-arm the watchdog: route stays assigned, the zone
-                        # conveyor re-delivers through the normal guided path
+                        # conveyor re-delivers through the normal guided path.
+                        # The snag clears NOW (arm done), not at dispatch
+                        frozen.discard(slug_r)
                         st_r["recovering"] = False
                         st_r["recoveries"] = st_r.get("recoveries", 0) + 1
                         st_r["jam_reported"] = False

@@ -336,12 +336,16 @@ class Dressing:
         """Hazard striping, plinth + legs cladding, and white direction
         chevrons painted on the belts (the visible roller/flow direction)."""
         a, b, tb, cb = P.BELT_A, P.BELT_B, P.TABLE, P.CONNECT_B
-        # black dashes over the yellow side guides -> yellow/black safety edge
-        for x in np.arange(0.3, 6.5, 0.45):
-            for sgn in (-1, 1):
-                self.box((float(x), a["y"] + sgn * (a["width"] / 2 + 0.015),
-                          a["top"] + 0.041), (0.11, 0.017, 0.051), BLACK,
-                         tag="hzA")
+        # black dashes over the yellow side guides -> yellow/black safety
+        # edge. ONLY when the official shells are absent: the shells carry
+        # their own side rails, and doubled rail hardware crowds the freight
+        # corridor on camera (items read as clipping through the stripes)
+        if not getattr(self, "shells", False):
+            for x in np.arange(0.3, 6.5, 0.45):
+                for sgn in (-1, 1):
+                    self.box((float(x), a["y"] + sgn * (a["width"] / 2 + 0.015),
+                              a["top"] + 0.041), (0.11, 0.017, 0.051), BLACK,
+                             tag="hzA")
         # plinth band + proud legs on belt A and belt B (reads as supports)
         if getattr(self, "shells", False):
             for x in []:
@@ -394,6 +398,10 @@ class Dressing:
         tb, cb, b = P.TABLE, P.CONNECT_B, P.BELT_B
         cc, cd = P.CHUTE_C, P.CHUTE_D
         viz = {"zone_arrows": {}, "trails": {}, "lamps": {}}
+        # name the mechanism on the hardware: the deck IS an ARB sorter
+        self.label("ARB SORTER DECK", "arb_deck.png",
+                   (8.25, tb["y"] - tb["width"] / 2 - 0.02, 0.52), 0.62,
+                   yaw_deg=0.0)
         dim = {z: tuple(0.35 * v for v in P.ROUTE_RGBA[z]) for z in "BCD"}
         # big direction arrows on the routing deck (brightened per command)
         deck = tb["top"] + 0.0058
@@ -567,6 +575,13 @@ class Dressing:
             from pxr import UsdGeom as _UG2
             for nm in ("beltA", "beltB", "entry", "zone", "connectB"):
                 pr = self.stage.GetPrimAtPath(f"/World/conveyors/{nm}")
+                if pr:
+                    _UG2.Imageable(pr).MakeInvisible()
+            # the shells carry their own side rails: hide the primitive
+            # belt-A guides VISUALLY (their collision stays authoritative)
+            # so the freight corridor shows one rail system, not two
+            for nm in ("beltA_guide_l", "beltA_guide_r"):
+                pr = self.stage.GetPrimAtPath(f"/World/statics/{nm}")
                 if pr:
                     _UG2.Imageable(pr).MakeInvisible()
         self.rollers()

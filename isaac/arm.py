@@ -38,13 +38,8 @@ def build_arm(builder, mode="table"):
                          pedestal_h=0.65)
         if info:
             stage = builder.stage
-            attrs = {}
-            for nm, jp in info["joints"].items():
-                prim = stage.GetPrimAtPath(jp)
-                a = prim.GetAttribute("drive:angular:physics:targetPosition")
-                attrs[nm] = a
             print("[arm] official UR10e referenced", flush=True)
-            return {"mode": "ur", "joint_attrs": attrs,
+            return {"mode": "ur", "art_root": info["art_root"],
                     "flange_prim": stage.GetPrimAtPath(info["flange"]),
                     "base": (bx_, by_)}
     except Exception as exc:
@@ -193,6 +188,27 @@ class ArmController:
         m = UsdGeom.Xformable(self.rig["flange_prim"]).            ComputeLocalToWorldTransform(Usd.TimeCode.Default())
         return np.array([m[3][0], m[3][1], m[3][2]])
 
+    def _ur_articulation(self):
+        """Lazy SingleArticulation wrapper + dof index map (needs physics
+        running, so created on first use, not in __init__)."""
+        if getattr(self, "_art", None) is None:
+            try:
+                from isaacsim.core.prims import SingleArticulation
+            except ImportError:
+                from omni.isaac.core.articulations import (
+                    Articulation as SingleArticulation)
+            art = SingleArticulation(self.rig["art_root"], name="ur10e_arm")
+            if hasattr(art, "initialize"):
+                art.initialize()
+            names = list(art.dof_names)
+            order = ("shoulder_pan_joint", "shoulder_lift_joint",
+                     "elbow_joint", "wrist_1_joint", "wrist_2_joint",
+                     "wrist_3_joint")
+            self._dof_idx = np.array([names.index(n) for n in order],
+                                     dtype=int)
+            self._art = art
+        return self._art
+
     def _apply(self):
         from pxr import Gf
         q1, q2, q3, q4 = [math.degrees(float(v)) for v in self.q_ref]
@@ -200,18 +216,24 @@ class ArmController:
             # UR10e mapping (calibrated by probe): zero pose = stretched
             # horizontally along +X; lift/elbow signs match ours; pan gets
             # the classic lateral-offset correction (flange rides DLAT to
-            # the side of the shoulder plane)
+            # the side of the shoulder plane). Joint STATES are written
+            # directly (no PD drives): exact, gravity-proof tracking — the
+            # drive-target version sagged and read as "stuck" on video.
             tcp, _ = self._fk(self.q_ref)
             r = max(float(np.hypot(tcp[0] - self.base[0],
                                    tcp[1] - self.base[1])), UR["DLAT"] + 0.05)
             pan = q1 - math.degrees(math.asin(UR["DLAT"] / r))
-            a = self.rig["joint_attrs"]
-            a["shoulder_pan_joint"].Set(pan)
-            a["shoulder_lift_joint"].Set(q2)
-            a["elbow_joint"].Set(q3)
-            a["wrist_1_joint"].Set(q4 - 90.0)
-            a["wrist_2_joint"].Set(-90.0)
-            a["wrist_3_joint"].Set(0.0)
+            q6 = np.radians([pan, q2, q3, q4 - 90.0, -90.0, 0.0])
+            try:
+                art = self._ur_articulation()
+                art.set_joint_positions(q6, joint_indices=self._dof_idx)
+                art.set_joint_velocities(np.zeros(6),
+                                         joint_indices=self._dof_idx)
+            except Exception as exc:
+                if not getattr(self, "_art_warned", False):
+                    self._art_warned = True
+                    print(f"[arm] articulation state write failed: {exc}",
+                          flush=True)
         else:
             self.rig["yaw"].Set(Gf.Vec3f(0, 0, q1))
             self.rig["upper"].Set(Gf.Vec3f(0, q2, 0))

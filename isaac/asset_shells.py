@@ -127,12 +127,10 @@ def conveyor_shells(stage, top=0.70):
         xf.AddScaleOp().Set(Gf.Vec3f(length / 2, width / 2 - 0.035, 0.007))
         band.CreateDisplayColorAttr([RUBBER])
 
-    # belt A: 3 full tiles + remainder (2.0 m native)
-    x = 0.0
-    seg = [2.3, 2.3, 2.3]
-    for i, L in enumerate(seg):
-        belt(f"beltA_{i}", x + L / 2, 3.0, L, 0.56)
-        x += L
+    # belt A: a SINGLE stretched tile — tile seams put the asset's end-cap
+    # hardware mid-span ABOVE the belt surface and items visibly clipped
+    # through it; one tile keeps head/tail structures at the true ends only
+    belt("beltA_0", 6.9 / 2, 3.0, 6.9, 0.56)
     # table: continuous belts (see docstring), ARB caps overlaid on the zone
     belt("entry", (6.9 + 7.95) / 2, 3.0, 1.05, 1.12)
     belt("zone", (7.95 + 8.55) / 2, 3.0, 0.60, 1.16)
@@ -144,31 +142,49 @@ def conveyor_shells(stage, top=0.70):
 
 
 def arb_overlay(stage, parent, top):
-    """Activated-Roller-Belt look on the routing zone: a dense grid of small
-    roller caps embedded FLUSH in the continuous belt surface (≤1 mm proud,
-    purely visual). The caps make the steering hardware visible without ever
-    opening a gap under the freight — matching both the real Intralox ARB
-    design and the simulated vectored surface velocity."""
+    """Activated-Roller-Belt deck on the routing zone — the industrial
+    mechanism for 3-way ORTHOGONAL sortation in a sub-metre footprint with
+    small items in the mix (the official fork diverts A45/A46 are 45-degree
+    branch modules with a 4.0 x 4.5 m footprint: they cannot serve the fixed
+    N/E/S exits of this cell — evaluated and documented). The look: dense
+    staggered rows of ANGLED pill rollers embedded flush in a lighter belt
+    band (dark metal on light deck reads as machinery, not dots); the
+    ACTIVE-ROUTE deck arrows brighten over it at runtime. Purely visual —
+    the contact surface stays continuous, exactly like a real Intralox ARB."""
     import numpy as np
     UsdGeom.Xform.Define(stage, f"{parent}/arb")
+    # lighter deck band over the rubber (the ARB belt itself)
+    deck = UsdGeom.Cube.Define(stage, f"{parent}/arb/deck")
+    deck.CreateSizeAttr(2.0)
+    xf = UsdGeom.Xformable(deck.GetPrim())
+    xf.AddTranslateOp().Set(Gf.Vec3d(8.25, 3.0, top - 0.0055))
+    xf.AddScaleOp().Set(Gf.Vec3f(0.29, 0.52, 0.006))
+    deck.CreateDisplayColorAttr([Gf.Vec3f(0.34, 0.36, 0.40)])
+    # angled pill rollers, flush in the deck (embedded-roller signature)
     i = 0
-    for col, x in enumerate(np.arange(7.99, 8.53, 0.065)):
-        row_off = 0.0325 * (col % 2)               # staggered rows, ARB-style
-        for y in np.arange(2.50 + row_off, 3.48, 0.065):
-            cap = UsdGeom.Cylinder.Define(stage, f"{parent}/arb/cap_{i}")
-            cap.CreateRadiusAttr(0.022)
-            cap.CreateHeightAttr(0.0016)
-            cap.CreateAxisAttr("Z")
-            UsdGeom.Xformable(cap.GetPrim()).AddTranslateOp().Set(
-                Gf.Vec3d(float(x), float(y), top + 0.0008))
-            cap.CreateDisplayColorAttr([Gf.Vec3f(0.58, 0.60, 0.65)])
+    for col, x in enumerate(np.arange(7.99, 8.53, 0.055)):
+        row_off = 0.0275 * (col % 2)
+        for y in np.arange(2.51 + row_off, 3.47, 0.055):
+            cap = UsdGeom.Capsule.Define(stage, f"{parent}/arb/pill_{i}")
+            cap.CreateRadiusAttr(0.0085)
+            cap.CreateHeightAttr(0.024)
+            cap.CreateAxisAttr("X")
+            pxf = UsdGeom.Xformable(cap.GetPrim())
+            pxf.AddTranslateOp().Set(Gf.Vec3d(float(x), float(y),
+                                              top - 0.0075))
+            pxf.AddRotateXYZOp().Set(Gf.Vec3f(0, 0, 45.0))
+            cap.CreateDisplayColorAttr([Gf.Vec3f(0.14, 0.145, 0.16)])
             i += 1
 
 
 def ur10e_arm(stage, base_xy, pedestal_h=0.65):
-    """Official UR10e + mount as the exception arm's body. Joints/drives kept
-    (we command targetPosition), collisions disabled (kinematic-visual parity
-    with the MuJoCo twin). Returns (arm_prim_path, joint_paths dict) or None."""
+    """Official UR10e + mount as the exception arm's body. The articulation
+    stays ENABLED but is posed by direct joint-STATE writes each control tick
+    (SingleArticulation.set_joint_positions) — PD drives sag under gravity
+    and lag the reference, which read as "the arm is stuck" on video.
+    Collisions disabled + gravity disabled on every link (kinematic-visual
+    parity with the MuJoCo twin). Returns paths dict or None."""
+    from pxr import PhysxSchema
     root = assets_root()
     if not root:
         return None
@@ -178,10 +194,11 @@ def ur10e_arm(stage, base_xy, pedestal_h=0.65):
     prim = reference(stage, "/World/ur10e", root + ASSETS["ur10e"],
                      (bx, by, pedestal_h), (0, 0, 0), (1, 1, 1),
                      keep_joints=True)
-    # find the revolute joints by name
+    # find the revolute joints by name + the articulation root + the flange;
+    # kill gravity on every link so the pose cannot sag between state writes
     names = ("shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint",
              "wrist_1_joint", "wrist_2_joint", "wrist_3_joint")
-    joints, flange = {}, None
+    joints, flange, art_root = {}, None, None
     for p in Usd.PrimRange(prim):
         nm = p.GetName()
         if nm in names:
@@ -189,7 +206,12 @@ def ur10e_arm(stage, base_xy, pedestal_h=0.65):
         if nm in ("tool0", "flange", "wrist_3_link"):
             flange = p.GetPath().pathString if nm != "wrist_3_link" or \
                 flange is None else flange
+        if p.HasAPI(UsdPhysics.ArticulationRootAPI) and art_root is None:
+            art_root = p.GetPath().pathString
+        if p.HasAPI(UsdPhysics.RigidBodyAPI):
+            PhysxSchema.PhysxRigidBodyAPI.Apply(p).CreateDisableGravityAttr(
+                True)
     if len(joints) < 6:
         return None
     return {"prim": prim.GetPath().pathString, "joints": joints,
-            "flange": flange}
+            "flange": flange, "art_root": art_root or prim.GetPath().pathString}
