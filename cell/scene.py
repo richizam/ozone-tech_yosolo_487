@@ -506,6 +506,23 @@ def _executive_geoms(mode):
     for cname, cage in P.cages_for("table").items():
         g += _cage_xml(cname, cage)
 
+    # reject / manual-review bin on the arm's SE side (open-top steel tote):
+    # the exception arm drops a recovered B jam here for a human to inspect
+    rj = P.REJECT_STATION
+    rcx, rcy = rj["center"]
+    rix, riy = rj["inner"]
+    rt, rh, rfz = rj["wall_t"], rj["wall_h"], rj["floor_z"]
+    g.append(f'<geom name="reject_floor" type="box" '
+             f'size="{rix / 2 + rt} {riy / 2 + rt} 0.02" '
+             f'pos="{rcx} {rcy} {rfz}" rgba="0.28 0.30 0.34 1"/>')
+    for nm, dx, dy, sx, sy in (("py", 0, riy / 2 + rt / 2, rix / 2 + rt, rt / 2),
+                               ("my", 0, -(riy / 2 + rt / 2), rix / 2 + rt, rt / 2),
+                               ("px", rix / 2 + rt / 2, 0, rt / 2, riy / 2),
+                               ("mx", -(rix / 2 + rt / 2), 0, rt / 2, riy / 2)):
+        g.append(f'<geom name="reject_w_{nm}" type="box" size="{sx} {sy} {rh / 2}" '
+                 f'pos="{rcx + dx} {rcy + dy} {rfz + rh / 2}" '
+                 f'rgba="0.62 0.30 0.10 1"/>')
+
     g += _lane_visuals()
     g += _beacons()
     return g, acts

@@ -27,7 +27,23 @@ class Controller:
         self.m, self.d, self.bus = model, data, bus
         self.mode = mode
         self.base = P.ARM_BASE[mode]
-        self.place = P.PLACE_BY_MODE[mode]
+        # UNIFIED recovery policy (matches the Isaac twin): a jammed item is
+        # recovered to its CORRECT category, not coerced or re-fed to the
+        # sorter — C -> cage C, D -> cage D, B -> reject/review bin. The arm
+        # places directly (no table gate is reopened for re-delivery).
+        if mode == "table":
+            rj = P.REJECT_STATION
+            cw = P.CAGE_WALL_TOP
+            self.place = {
+                "B": {"xy": rj["center"], "mode": "drop", "z_clear": 0.06,
+                      "surface_z": rj["floor_z"], "dest": "REJECT"},
+                "C": {"xy": (9.2, 3.0), "mode": "drop", "z_clear": 0.05,
+                      "surface_z": cw},
+                "D": {"xy": (8.05, 1.55), "mode": "drop", "z_clear": 0.05,
+                      "surface_z": cw},
+            }
+        else:
+            self.place = P.PLACE_BY_MODE[mode]
         self.jids = [model.joint(j).id for j in JOINTS]
         self.qadr = [model.jnt_qposadr[j] for j in self.jids]
         self.aids = [model.actuator(f"a{i+1}").id for i in range(4)]

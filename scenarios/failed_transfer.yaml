@@ -5,8 +5,10 @@
 # stalled item never continues to the sorter), and the cell must not deadlock.
 #
 # Expected: arm_interventions >= 1, recovery_success = 1.0, deadlocks = 0,
-# zero unsafe errors. The true-B item lands in D = a CONSERVATIVE outcome by
-# design (safe side), so conservative errors do not fail this run.
+# zero unsafe errors. Unified policy: a jammed B item is REMOVED to the
+# reject/review bin (never re-fed to the sorter) — a SAFE REVIEW RECOVERY,
+# not a correct B delivery and not a failure. allow_conservative keeps the
+# run green on that safe review diversion.
 seed: 42
 perception: camera
 executive: table

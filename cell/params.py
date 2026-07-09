@@ -225,13 +225,13 @@ ARM_BASE = {
     # and removes them to the reject/review bin; it never reaches into the
     # gated sortation deck, so no link ever crosses a gate frame. This mirrors
     # a real cell: the exception robot works the discharge, not the live deck.
-    # (MuJoCo twin base; the Isaac build overrides to the SE reject corner —
-    # see ARM_BASE_ISAAC / isaac/arm.build_arm)
+    # MuJoCo twin keeps its validated base; the Isaac build overrides to the
+    # SE reject corner (ARM_BASE_ISAAC) where it also clears every gate frame.
     "table": (8.55, 2.2),
 }
-# Isaac-only exception-arm base: pushed to the OPEN south-east corner so the
-# arm reaches jams at the discharge chute mouths and removes them to the
-# reject bin WITHOUT any link crossing a gate frame (reach-verified).
+# Isaac-only exception-arm base: the OPEN south-east corner so the arm reaches
+# the discharge chute mouths, cage entries and reject bin WITHOUT any link
+# crossing a gate frame (reach-verified for the UR10e model).
 ARM_BASE_ISAAC = {"table": (8.8, 2.05)}
 # reject / manual-review bin on the arm's south-east side: the exception arm
 # drops a recovered snag here for a human to inspect (it is REMOVED from the

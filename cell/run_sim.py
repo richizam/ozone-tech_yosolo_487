@@ -288,6 +288,13 @@ class ItemManager:
         if zone is not None and pos[2] < 0.56:
             self._deliver(slug, zone, t)
             return
+        # recovered a B jam into the reject/review bin (safe removal — not a
+        # correct B delivery, but a successful safe recovery). Gate on the
+        # weld release (released_t) so it can't deliver while the arm still
+        # holds it mid-descent.
+        if st.get("released_t") is not None and self._in_reject(pos):
+            self._deliver(slug, "REJECT", t)
+            return
         # routing watchdog: a jam is NO DISPLACEMENT over the timeout window
         # (an item creeping through a queue is flow, not a fault)
         if "routed_t" in st and not st.get("jam_reported") and not st["picked"]:
@@ -511,6 +518,14 @@ class ItemManager:
             if self._in_cage_region(pos, cage, 0.05, 0.30) and pos[2] < 0.9:
                 return zone
         return None
+
+    def _in_reject(self, pos):
+        """Item settled in the reject/review bin on the arm's SE side."""
+        rj = P.REJECT_STATION
+        cx, cy = rj["center"]
+        return (abs(pos[0] - cx) < rj["inner"][0] / 2 + 0.10
+                and abs(pos[1] - cy) < rj["inner"][1] / 2 + 0.10
+                and pos[2] < 0.55)
 
     def _deliver(self, slug, zone_actual, t):
         st = self.active.pop(slug)
@@ -825,15 +840,17 @@ def main(argv=None):
                         table.paused = True
                         st_r = items.active[slug]
                         st_r["picked"] = True
-                        # the route STAYS assigned: after the arm places the
-                        # item back on its lane the table drive re-delivers it
-                        # a confidently dimension-gated item still belongs in C;
-                        # everything else uncertain goes to D / manual review
-                        rzone = "C" if st_r.get("zone") == "C" else "D"
-                        table.routes[slug] = rzone
-                        table.hold_open.add(rzone)     # recovery path crosses this gate
+                        # UNIFIED policy: recover to the item's CORRECT
+                        # category (no C-else-D coercion) — C -> cage C,
+                        # D -> cage D, B -> reject/review (never re-feed an
+                        # uncertain item to the sorter). The arm places
+                        # DIRECTLY into the cage/reject bin, so the table gate
+                        # is NOT reopened for a re-delivery pass.
+                        rzone = st_r.get("zone") or "D"
+                        st_r["recovery_dest"] = ("REJECT" if rzone == "B"
+                                                 else rzone)
                         bus.publish("cell_event", t=t, event="recovery_start",
-                                    slug=slug, target=rzone)
+                                    slug=slug, target=st_r["recovery_dest"])
                         bus.publish("table_state", t=t, slug=slug,
                                     state="TABLE_RECOVERY_LOCKOUT")
                         ctrl.start_job(slug, rzone, items.entries[slug], t)
@@ -914,21 +931,31 @@ def main(argv=None):
         **flow_stats,
     })
     print(json.dumps(summary, indent=2))
-    misrouted = [s for s, z in items.done.items() if z != items.entries[s]["zone"]]
+    # outcome classes (unified recovery policy): REJECT / MANUAL are SAFE
+    # review diversions (a successful safe recovery, NOT a correct delivery
+    # and NOT a failure); FLOOR is always a failure.
+    review = [s for s, z in items.done.items() if z in ("REJECT", "MANUAL")]
+    floor = [s for s, z in items.done.items() if z == "FLOOR"]
+    misrouted = [s for s, z in items.done.items()
+                 if z != items.entries[s]["zone"]
+                 and z not in ("REJECT", "MANUAL", "FLOOR")]
     escaped = [s for s, w in items.cage_watch.items() if w["violated"]]
-    # fault scenarios may accept CONSERVATIVE outcomes (a sortable item diverted
-    # to inspection during recovery); UNSAFE outcomes (bad item delivered to the
-    # sorter) always fail the run
+    # UNSAFE outcomes (a C/D item delivered to the B sorter) always fail; a
+    # fault scenario may accept CONSERVATIVE wrong-cage outcomes
     unsafe = [s for s in misrouted if items.done[s] == "B"]
     if sc.get("allow_conservative"):
         misrouted = unsafe
+    if review:
+        print(f"SAFE REVIEW RECOVERY: {review}")
     if misrouted:
         print(f"MISROUTED: {misrouted}")
+    if floor:
+        print(f"FLOOR DROPS: {floor}")
     if unfinished:
         print(f"UNFINISHED: {unfinished} items (timeout at t={data.time:.0f}s)")
     if escaped:
         print(f"CONTAINMENT VIOLATED: {escaped}")
-    return 1 if (misrouted or unfinished or escaped) else 0
+    return 1 if (misrouted or unfinished or escaped or floor) else 0
 
 
 if __name__ == "__main__":
