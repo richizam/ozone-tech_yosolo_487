@@ -323,40 +323,85 @@ class Dressing:
             self.box((ox + 0.055, hy, hz), (0.006, 0.006, 0.006),
                      (0.15, 0.75, 0.25), tag="camled")
 
+    def _truss(self, x0, x1, y, z_bot=5.15, z_top=5.55):
+        """A visible steel roof-truss girder running along x at height z:
+        top + bottom chords with a zig-zag web (the ceiling structure the
+        area lights hang from). Non-colliding, sensor-invisible dressing."""
+        col = (0.34, 0.36, 0.40)
+        hx = (x1 - x0) / 2
+        cx = (x0 + x1) / 2
+        for zc in (z_bot, z_top):                       # chords
+            self.box((cx, y, zc), (hx, 0.03, 0.025), col, tag="truss_chord")
+        n = max(2, int((x1 - x0) / 0.7))
+        for i in range(n):                              # zig-zag web
+            xa = x0 + (i + 0.5) * (x1 - x0) / n
+            self.cyl((xa, y, (z_bot + z_top) / 2), 0.012,
+                     (z_top - z_bot) / 2 + 0.02, col, axis="Z",
+                     tag="truss_web")
+        for xa in (x0 + 0.05, x1 - 0.05):               # end posts to roof
+            self.box((xa, y, z_top + 0.25), (0.03, 0.03, 0.25), col,
+                     tag="truss_post")
+
+    def _highbay(self, cx, cy, w, d, intensity):
+        """Overhead LED high-bay AREA light on the truss: a downward RectLight
+        (even, soft, shadow-friendly illumination over the whole cell — no
+        local hot spots) inside a visible fixture housing + reflector.
+
+        A USD RectLight emits from its -Z face; with the prim unrotated at
+        the ceiling that is straight down, so NO rotation is applied (an
+        earlier RotateX(180) flipped it to light the roof — the whole cell
+        went black). The visible housing/reflector geometry sits ABOVE the
+        emitter plane so it never occludes the downward light."""
+        st = self.stage
+        z = 5.05
+        self._i += 1
+        lp = f"/World/lights/highbay_{self._i}"
+        rect = UsdLux.RectLight.Define(st, lp)
+        rect.CreateWidthAttr(float(w))
+        rect.CreateHeightAttr(float(d))
+        rect.CreateIntensityAttr(float(intensity))
+        rect.GetPrim().CreateAttribute("inputs:normalize",
+                                       Sdf.ValueTypeNames.Bool).Set(True)
+        rect.GetPrim().CreateAttribute("inputs:color",
+                                       Sdf.ValueTypeNames.Color3f).Set(
+            Gf.Vec3f(1.0, 0.96, 0.89))
+        UsdGeom.Xformable(rect.GetPrim()).AddTranslateOp().Set(
+            Gf.Vec3d(cx, cy, z))                        # unrotated -> emits -Z
+        # visible fixture ABOVE the emitter: dark housing + bright diffuser
+        # face (reads as a lit LED panel from below without blocking light)
+        self.box((cx, cy, z + 0.12), (w / 2 + 0.03, d / 2 + 0.03, 0.05),
+                 (0.12, 0.13, 0.15), tag="hb_housing")
+        self.box((cx, cy, z + 0.055), (w / 2, d / 2, 0.004),
+                 (0.95, 0.95, 0.92), tag="hb_face")
+
     def lighting_env(self):
         st = self.stage
-        # dim the white dome, warm the sun, lift shadows softly
+        # soft neutral ambient FILL only (the area lights are the key light)
         dome = UsdLux.DomeLight(st.GetPrimAtPath("/World/lights/dome"))
         if dome:
-            dome.GetIntensityAttr().Set(260.0)
+            dome.GetIntensityAttr().Set(150.0)
             dome.GetPrim().CreateAttribute(
                 "inputs:color", Sdf.ValueTypeNames.Color3f).Set(
                 Gf.Vec3f(0.55, 0.58, 0.64))
+        # kill the hard directional sun: overhead area lights carry the scene
         sun = UsdLux.DistantLight(st.GetPrimAtPath("/World/lights/sun"))
         if sun:
-            sun.GetIntensityAttr().Set(400.0)
+            sun.GetIntensityAttr().Set(120.0)
             sun.GetPrim().CreateAttribute(
-                "inputs:angle", Sdf.ValueTypeNames.Float).Set(4.0)
-        # high-bay fixtures: sphere lights with radius -> soft shadows.
-        # AUDIT FIX (§5): bay_2/bay_3 both sat over the C-bin/arm corner at
-        # 28k and overexposed it (the arm read as the visual focus, hot
-        # specular spots on the belt). Even spacing, lower intensity, higher
-        # dome fill — the deck/gates/freight carry the exposure, not the arm.
-        for i, (lx, ly) in enumerate([(2.5, 3.0), (5.5, 3.0), (7.6, 3.8),
-                                      (9.4, 1.6)]):
-            lp = f"/World/lights/bay_{i}"
-            lgt = UsdLux.SphereLight.Define(st, lp)
-            lgt.CreateRadiusAttr(0.30)
-            lgt.CreateIntensityAttr(13000.0)
-            lgt.GetPrim().CreateAttribute(
-                "inputs:color", Sdf.ValueTypeNames.Color3f).Set(
-                Gf.Vec3f(1.0, 0.97, 0.90))
-            UsdGeom.Xformable(lgt.GetPrim()).AddTranslateOp().Set(
-                Gf.Vec3d(lx, ly, 4.6))
-            self.cyl((lx, ly, 4.85), 0.16, 0.05, (0.15, 0.16, 0.18),
-                     tag="fixture")
-            self.box((lx, ly, 5.15), (0.012, 0.012, 0.25), FRAME,
-                     tag="fixture_rod")
+                "inputs:angle", Sdf.ValueTypeNames.Float).Set(3.0)
+        # ceiling truss girders spanning the whole cell (two bays along y)
+        for ty in (2.0, 4.0):
+            self._truss(0.4, 9.7, ty)
+        # roof deck panel above the truss (so lights read as ceiling-mounted,
+        # not floating) — dark, high, out of every camera's action framing
+        self.box((5.0, 3.0, 5.75), (5.0, 3.1, 0.04), (0.12, 0.13, 0.15),
+                 tag="roofdeck")
+        # AREA-light grid on the truss: even overhead coverage of the whole
+        # 10x6 cell — no local spotlight near the arm, no blown-out corner.
+        # RectLights emit downward; normalize keeps brightness size-stable.
+        for (lx, ly, w, d) in ((1.6, 3.0, 2.4, 3.0), (4.2, 3.0, 2.6, 3.0),
+                               (6.6, 3.0, 2.4, 3.2), (8.7, 2.6, 2.6, 3.4)):
+            self._highbay(lx, ly, w, d, 18000.0)
         # backdrop walls: kill the white void on the camera-facing sides
         self.box((5.0, 6.35, 2.6), (7.5, 0.06, 2.6), (0.16, 0.18, 0.22),
                  tag="wall_n")

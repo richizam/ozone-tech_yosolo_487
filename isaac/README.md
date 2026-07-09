@@ -233,11 +233,19 @@ ships a lateral ARB mechanism (full A01–A49 sweep documented); (4) the
 forensics to **light prims shipped inside the referenced UR10e / gripper /
 RealSense assets** — `sanitize()` now disables lights in every referenced
 shell; the powered discharge belts were also recolored from pale steel to
-dark rubber, the classification tint desaturated, high-bays rebalanced
-(even spacing, 13 k, quieter sun), and all statics carry matte industrial
-PBR materials with per-prim value variation instead of glossy
-displayColor plastic. Before/after evidence:
-[docs/report/isaac_evidence/final_arb/](../docs/report/isaac_evidence/final_arb/).
+dark rubber, the classification tint desaturated, and all statics carry
+matte industrial PBR materials with per-prim value variation instead of
+glossy displayColor plastic; (5) lighting was rebuilt as a **ceiling truss
+carrying downward-facing RectLight area high-bays** (`Dressing._truss` +
+`_highbay`): visible steel roof girders + roof deck over the whole cell,
+four soft area lights illuminating the floor evenly — no local point light
+near the arm, no hot specular spots. Two fixture bugs were caught (a
+RectLight emits from its −Z face, so an earlier RotateX(180) lit the roof
+not the floor; the visible reflector panel was moved above the emitter so
+it stops occluding the beam), and exposure is pinned
+(`/rtx/post/histogram/enabled=False`) so hundreds of mixed-camera renders
+don't auto-brighten into a clipped bin. Before/after evidence:
+[docs/report/isaac_evidence/final_arb/before_after_cbin_lighting.png](../docs/report/isaac_evidence/final_arb/before_after_cbin_lighting.png).
 
 **PhysX gotcha worth knowing (found by probing, fixed 2026-07-08):**
 `PhysxSurfaceVelocityAPI.surfaceVelocity` is applied in the prim's *local
