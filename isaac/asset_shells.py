@@ -128,22 +128,24 @@ def conveyor_shells(stage, top=0.70):
     RUBBER = Gf.Vec3f(0.075, 0.078, 0.085)
 
     def belt(name, cx, cy, length, width, yaw=0.0, kind="belt",
-             native_len=2.0):
+             native_len=2.0, band=True):
         reference(stage, f"{parent}/{name}", root + ASSETS[kind],
                   (cx, cy, 0.0), (0, 0, yaw),
                   (length / native_len, width / 0.62, zs))
+        if not band:                    # the ARB modules ARE the surface
+            return
         # CONTINUOUS rubber belt band riding the asset's roller bed (a real
         # belted-roller conveyor): the official asset supplies frames/stands/
         # drive rollers, the band supplies the continuous contact surface —
         # the 9 mm pen can never read as "about to fall between rollers".
-        band = UsdGeom.Cube.Define(stage, f"{parent}/{name}_band")
-        band.CreateSizeAttr(2.0)
-        xf = UsdGeom.Xformable(band.GetPrim())
+        band_c = UsdGeom.Cube.Define(stage, f"{parent}/{name}_band")
+        band_c.CreateSizeAttr(2.0)
+        xf = UsdGeom.Xformable(band_c.GetPrim())
         xf.AddTranslateOp().Set(Gf.Vec3d(float(cx), float(cy), top - 0.007))
         if abs(yaw) > 1e-6:
             xf.AddRotateXYZOp().Set(Gf.Vec3f(0, 0, float(yaw)))
         xf.AddScaleOp().Set(Gf.Vec3f(length / 2, width / 2 - 0.035, 0.007))
-        band.CreateDisplayColorAttr([RUBBER])
+        band_c.CreateDisplayColorAttr([RUBBER])
 
     # belt A: a SINGLE stretched tile — tile seams put the asset's end-cap
     # hardware mid-span ABOVE the belt surface and items visibly clipped
@@ -151,67 +153,205 @@ def conveyor_shells(stage, top=0.70):
     belt("beltA_0", 6.9 / 2, 3.0, 6.9, 0.56)
     # table: continuous belts (see docstring), ARB caps overlaid on the zone
     belt("entry", (6.9 + 7.95) / 2, 3.0, 1.05, 1.12)
-    belt("zone", (7.95 + 8.55) / 2, 3.0, 0.60, 1.16)
-    arb_pills = arb_overlay(stage, parent, top)
+    arb_viz = arb_overlay(stage, parent, top, root)
     # powered connector + belt B (along Y)
     belt("connectB", 8.4, (3.55 + 4.20) / 2, 0.65, 0.56, yaw=90.0)
     belt("beltB", 8.4, (4.20 + 6.00) / 2, 1.80, 0.56, yaw=90.0)
-    return {"arb_pills": arb_pills}
+    return {"arb_pills": arb_viz["leds"], "arb_rollers": arb_viz["rollers"]}
 
 
-def arb_overlay(stage, parent, top):
-    """Activated-Roller-Belt deck on the routing zone — the industrial
-    mechanism for 3-way ORTHOGONAL sortation in a sub-metre footprint with
-    small items in the mix (the official fork diverts A45/A46 are 45-degree
-    branch modules with a 4.0 x 4.5 m footprint: they cannot serve the fixed
-    N/E/S exits of this cell — evaluated and documented). The look: dense
-    staggered rows of ANGLED pill rollers embedded flush in a lighter belt
-    band (dark metal on light deck reads as machinery, not dots); the
-    ACTIVE-ROUTE deck arrows brighten over it at runtime, and each pill
-    roller belongs to its ARB PATCH (cell/params.arb_patches grid) so the
-    runtime can tint exactly the patches whose actuators are commanded.
-    Purely visual — the contact surface stays continuous, exactly like a
-    real Intralox ARB. Returns {patch_id: [pill prim paths]}."""
-    import numpy as np
+def _pbr(stage, path, color, metallic=0.0, roughness=0.6):
+    """Shared UsdPreviewSurface PBR material (real metal/rubber response
+    instead of flat displayColor)."""
+    from pxr import Sdf, UsdShade
+    mat = UsdShade.Material.Define(stage, path)
+    sh = UsdShade.Shader.Define(stage, f"{path}/pbr")
+    sh.CreateIdAttr("UsdPreviewSurface")
+    sh.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(
+        Gf.Vec3f(*color))
+    sh.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(float(metallic))
+    sh.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(float(roughness))
+    mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(), "surface")
+    return mat
+
+
+def arb_overlay(stage, parent, top, root=None):
+    """ARB actuator deck — the OFFICIAL right-angle transfer module
+    ConveyorBelt_A49 (found by sweeping the full A42-A49 tail of the 6.0
+    conveyor set: A49 is a standalone 1.06 x 1.08 m transfer deck — silver
+    carry rollers with interleaved pop-up transfer wheel packs, the exact
+    industrial mechanism class of this cell's routing zone). Referenced as
+    a sanitized visual shell fitted over the zone: deck top exactly at the
+    ride plane, so freight visibly rides the real rollers.
+
+    Module state is shown on a 4x7 STATUS LED MATRIX on the deck's south
+    face (the machine-HMI idiom real sorters use) — one LED per physics
+    patch, tinted by the actuator state at runtime. No dots, pills or
+    painted arrows on the deck.
+
+    Honesty note (documented in isaac/README): the validated physics is
+    PATCH-LEVEL surface actuation (PhysxSurfaceVelocityAPI per module with
+    latency/ramp/saturation/noise); the A49 shell is the mechanical/visual
+    embodiment. Roller-by-roller bearing/contact simulation is intentionally
+    not used — neither required by the evidence nor validated.
+
+    Returns {"leds": {patch_id: [prim paths]}, "rollers": {}}."""
+    from cell import params as _P
+    tb = _P.TABLE
+    zone_cx = (tb["route_x"] + tb["x1"]) / 2
+    zone_len = tb["x1"] - tb["route_x"]
+    if root:
+        prim = stage.DefinePrim(f"{parent}/arb_a49", "Xform")
+        prim.GetReferences().AddReference(
+            root + "/Isaac/Props/Conveyors/ConveyorBelt_A49.usd")
+        _set_ops(prim, (0.0, 0.0, 0.0), (0, 0, 0),
+                 (zone_len / 1.06, (tb["width"] + 0.06) / 1.08, top / 0.80))
+        sanitize(prim)
+        # fit by measured bounds: center the deck on the zone, top at the
+        # ride plane (the asset's origin is not its bbox center)
+        bbox = UsdGeom.BBoxCache(Usd.TimeCode.Default(),
+                                 [UsdGeom.Tokens.default_]
+                                 ).ComputeWorldBound(prim).ComputeAlignedRange()
+        mn, mx = bbox.GetMin(), bbox.GetMax()
+        _set_ops(prim, (zone_cx - (mn[0] + mx[0]) / 2,
+                        tb["y"] - (mn[1] + mx[1]) / 2,
+                        top - mx[2]))
+        print("[dressing] ARB deck = official ConveyorBelt_A49 transfer "
+              "module (sanitized shell)", flush=True)
+    # ---- 4x7 module status LED matrix on the south face (routing-cam side)
+    m_panel = _pbr(stage, f"{parent}/arb_panel_mat", (0.10, 0.11, 0.13),
+                   metallic=0.2, roughness=0.5)
+    from pxr import UsdShade
+    panel = UsdGeom.Cube.Define(stage, f"{parent}/arb_panel")
+    panel.CreateSizeAttr(2.0)
+    py = tb["y"] - tb["width"] / 2 - 0.045
+    pxf = UsdGeom.Xformable(panel.GetPrim())
+    pxf.AddTranslateOp().Set(Gf.Vec3d(zone_cx, py, 0.575))
+    pxf.AddScaleOp().Set(Gf.Vec3f(0.155, 0.008, 0.062))
+    UsdShade.MaterialBindingAPI.Apply(panel.GetPrim()).Bind(m_panel)
+    leds = {}
+    for p in _P.arb_patches():
+        pid = f"r{p['r']}c{p['c']}"
+        # matrix layout: columns follow the patch x-column (flow), rows
+        # follow the patch y-row — the panel mirrors the deck top-down
+        lx = zone_cx - 0.155 + 0.048 + p["c"] * 0.072
+        lz = 0.575 - 0.048 + p["r"] * 0.016
+        led = UsdGeom.Cube.Define(stage, f"{parent}/arb_led_{pid}")
+        led.CreateSizeAttr(2.0)
+        lxf = UsdGeom.Xformable(led.GetPrim())
+        lxf.AddTranslateOp().Set(Gf.Vec3d(lx, py - 0.006, lz))
+        lxf.AddScaleOp().Set(Gf.Vec3f(0.026, 0.003, 0.0055))
+        led.CreateDisplayColorAttr([Gf.Vec3f(0.22, 0.24, 0.26)])
+        leds[pid] = [f"{parent}/arb_led_{pid}"]
+    return {"leds": leds, "rollers": {}}
+
+
+def _unused_procedural_arb_modules(stage, parent, top):
+    """Procedural angled-roller module field — kept as the documented
+    fallback if the official asset server is unreachable offline. The A49
+    shell above won the side-by-side render comparison."""
     from cell import params as _P
     UsdGeom.Xform.Define(stage, f"{parent}/arb")
-    # lighter deck band over the rubber (the ARB belt itself)
-    deck = UsdGeom.Cube.Define(stage, f"{parent}/arb/deck")
-    deck.CreateSizeAttr(2.0)
-    xf = UsdGeom.Xformable(deck.GetPrim())
-    xf.AddTranslateOp().Set(Gf.Vec3d(8.25, 3.0, top - 0.0055))
-    xf.AddScaleOp().Set(Gf.Vec3f(0.29, 0.52, 0.006))
-    deck.CreateDisplayColorAttr([Gf.Vec3f(0.34, 0.36, 0.40)])
-    patches = _P.arb_patches()
-    pills = {f"r{p['r']}c{p['c']}": [] for p in patches}
+    m_roller = _pbr(stage, f"{parent}/arb/mat_roller", (0.045, 0.047, 0.052),
+                    metallic=0.0, roughness=0.85)      # rubber-lagged
+    m_steel = _pbr(stage, f"{parent}/arb/mat_steel", (0.72, 0.73, 0.75),
+                   metallic=0.95, roughness=0.35)      # shafts/bearings
+    m_frame = _pbr(stage, f"{parent}/arb/mat_frame", (0.16, 0.17, 0.20),
+                   metallic=0.30, roughness=0.55)      # anthracite frame
+    m_plate = _pbr(stage, f"{parent}/arb/mat_plate", (0.23, 0.25, 0.29),
+                   metallic=0.15, roughness=0.70)      # module plate
 
-    def patch_of(x, y):
-        for p in patches:
-            if (abs(x - p["cx"]) <= p["hx"] + 1e-9
-                    and abs(y - p["cy"]) <= p["hy"] + 1e-9):
-                return f"r{p['r']}c{p['c']}"
-        return None
+    from pxr import UsdShade
 
-    # angled pill rollers, flush in the deck (embedded-roller signature)
-    i = 0
-    for col, x in enumerate(np.arange(7.99, 8.53, 0.055)):
-        row_off = 0.0275 * (col % 2)
-        for y in np.arange(2.51 + row_off, 3.47, 0.055):
-            path = f"{parent}/arb/pill_{i}"
-            cap = UsdGeom.Capsule.Define(stage, path)
-            cap.CreateRadiusAttr(0.0085)
-            cap.CreateHeightAttr(0.024)
-            cap.CreateAxisAttr("X")
-            pxf = UsdGeom.Xformable(cap.GetPrim())
-            pxf.AddTranslateOp().Set(Gf.Vec3d(float(x), float(y),
-                                              top - 0.0075))
-            pxf.AddRotateXYZOp().Set(Gf.Vec3f(0, 0, 45.0))
-            cap.CreateDisplayColorAttr([Gf.Vec3f(0.14, 0.145, 0.16)])
-            pid = patch_of(float(x), float(y))
-            if pid is not None:
-                pills[pid].append(path)
-            i += 1
-    return pills
+    def bind(prim, mat):
+        UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat)
+
+    R_ROLL = 0.016            # roller radius (50 mm class hardware: 32 mm OD)
+    L_ROLL = 0.058            # rubber sleeve length
+    L_SHAFT = 0.082           # shaft protrudes into the bearing blocks
+    leds, rollers = {}, {}
+    for p in _P.arb_patches():
+        pid = f"r{p['r']}c{p['c']}"
+        leds[pid], rollers[pid] = [], []
+        mod = f"{parent}/arb/mod_{pid}"
+        UsdGeom.Xform.Define(stage, mod)
+        # module plate: rollers sit proud of it up to the ride plane
+        plate = UsdGeom.Cube.Define(stage, f"{mod}/plate")
+        plate.CreateSizeAttr(2.0)
+        pxf = UsdGeom.Xformable(plate.GetPrim())
+        pxf.AddTranslateOp().Set(Gf.Vec3d(p["cx"], p["cy"], top - 0.012))
+        pxf.AddScaleOp().Set(Gf.Vec3f(p["hx"] - 0.005, p["hy"] - 0.005, 0.004))
+        bind(plate.GetPrim(), m_plate)
+        # frame bars around the module perimeter
+        for k, (dx, dy, sx, sy) in enumerate((
+                (0.0, p["hy"] - 0.003, p["hx"], 0.003),
+                (0.0, -p["hy"] + 0.003, p["hx"], 0.003),
+                (p["hx"] - 0.003, 0.0, 0.003, p["hy"] - 0.006),
+                (-p["hx"] + 0.003, 0.0, 0.003, p["hy"] - 0.006))):
+            bar = UsdGeom.Cube.Define(stage, f"{mod}/frame_{k}")
+            bar.CreateSizeAttr(2.0)
+            bxf = UsdGeom.Xformable(bar.GetPrim())
+            bxf.AddTranslateOp().Set(Gf.Vec3d(p["cx"] + dx, p["cy"] + dy,
+                                              top - 0.007))
+            bxf.AddScaleOp().Set(Gf.Vec3f(sx, sy, 0.005))
+            bind(bar.GetPrim(), m_frame)
+        # six angled rollers: 2 columns x 3 rows per module
+        ri = 0
+        for ox in (-p["hx"] / 2, p["hx"] / 2):
+            for oy in (-0.052, 0.0, 0.052):
+                base = f"{mod}/roller_{ri}"
+                bx = UsdGeom.Xform.Define(stage, base)
+                bxf = UsdGeom.Xformable(bx.GetPrim())
+                bxf.AddTranslateOp().Set(Gf.Vec3d(p["cx"] + ox,
+                                                  p["cy"] + oy,
+                                                  top - R_ROLL))
+                bxf.AddRotateXYZOp().Set(Gf.Vec3f(0, 0, 45.0))
+                # fixed steel shaft + bearing blocks (the roller spins
+                # AROUND the shaft, as real hardware does)
+                shaft = UsdGeom.Cylinder.Define(stage, f"{base}/shaft")
+                shaft.CreateRadiusAttr(0.0045)
+                shaft.CreateHeightAttr(L_SHAFT)
+                shaft.CreateAxisAttr("X")
+                bind(shaft.GetPrim(), m_steel)
+                for sgn, nm in ((-1, "a"), (1, "b")):
+                    brg = UsdGeom.Cube.Define(stage, f"{base}/bearing_{nm}")
+                    brg.CreateSizeAttr(2.0)
+                    gxf = UsdGeom.Xformable(brg.GetPrim())
+                    gxf.AddTranslateOp().Set(
+                        Gf.Vec3d(sgn * (L_SHAFT / 2 - 0.004), 0, -0.004))
+                    gxf.AddScaleOp().Set(Gf.Vec3f(0.006, 0.009, 0.010))
+                    bind(brg.GetPrim(), m_frame)
+                # spinning rubber sleeve (runtime rotateX from ArbDeck)
+                spin = UsdGeom.Xform.Define(stage, f"{base}/spin")
+                spin_op = UsdGeom.Xformable(spin.GetPrim()).AddRotateXOp()
+                spin_op.Set(float((ri * 53) % 360))    # varied start phase
+                body = UsdGeom.Cylinder.Define(stage, f"{base}/spin/sleeve")
+                body.CreateRadiusAttr(R_ROLL)
+                body.CreateHeightAttr(L_ROLL)
+                body.CreateAxisAttr("X")
+                bind(body.GetPrim(), m_roller)
+                # machined groove ring: makes rotation readable on video
+                ring = UsdGeom.Cylinder.Define(stage, f"{base}/spin/ring")
+                ring.CreateRadiusAttr(R_ROLL + 0.0012)
+                ring.CreateHeightAttr(0.006)
+                ring.CreateAxisAttr("X")
+                rxf = UsdGeom.Xformable(ring.GetPrim())
+                rxf.AddTranslateOp().Set(Gf.Vec3d(0.014, 0, 0))
+                bind(ring.GetPrim(), m_steel)
+                # lateral sign: +1 pushes north (B), -1 south (D)
+                rollers[pid].append((f"{base}/spin", 1))
+                ri += 1
+        # module status LED bar on the south frame edge (subtle industrial
+        # indicator — replaces the old painted deck arrows)
+        led = UsdGeom.Cube.Define(stage, f"{mod}/led")
+        led.CreateSizeAttr(2.0)
+        lxf = UsdGeom.Xformable(led.GetPrim())
+        lxf.AddTranslateOp().Set(Gf.Vec3d(p["cx"], p["cy"] - p["hy"] + 0.003,
+                                          top - 0.0035))
+        lxf.AddScaleOp().Set(Gf.Vec3f(0.030, 0.0022, 0.0022))
+        led.CreateDisplayColorAttr([Gf.Vec3f(0.22, 0.24, 0.26)])
+        leds[pid].append(f"{mod}/led")
+    return {"leds": leds, "rollers": rollers}
 
 
 def ur10e_arm(stage, base_xy, pedestal_h=0.65):

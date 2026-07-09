@@ -241,20 +241,13 @@ class Dressing:
             # text front faces SOUTH (-y), yaw -90 = faces WEST (-x) — the
             # overview camera sits south-west, so fronts point that way
             # (double-sided quads show MIRRORED text from behind).
+            # wall-level printed label only — the tall mast boards were
+            # oversized signalization over the C/D boxes (user directive:
+            # keep the destinations readable, not billboarded)
             txt = "C OVERSIZE" if zone == "C" else "D REPACK"
             fn = f"cage_{zone.lower()}.png"
-            if zone == "C":
-                self.label(txt, fn, (cx, cy - hy - 0.02, 0.45), 0.85,
-                           yaw_deg=0.0)
-                self.label(txt, fn, (cx, cy - hy - 0.30, 1.55), 1.05,
-                           yaw_deg=0.0)
-            else:
-                # both D signs face SOUTH: the routing camera sits due south
-                # and read the west-facing mast mirrored on video
-                self.label(txt, fn, (cx, cy - hy - 0.02, 0.45), 0.85,
-                           yaw_deg=0.0)
-                self.label(txt, fn, (cx - hx - 0.35, cy - 0.2, 1.55), 1.05,
-                           yaw_deg=0.0)
+            self.label(txt, fn, (cx, cy - hy - 0.02, 0.45), 0.85,
+                       yaw_deg=0.0)
         # B lane label on the sorter infeed (west face)
         b = P.BELT_B
         self.label("B SORTER", "lane_b.png",
@@ -403,20 +396,9 @@ class Dressing:
                    (8.25, tb["y"] - tb["width"] / 2 - 0.02, 0.52), 0.62,
                    yaw_deg=0.0)
         dim = {z: tuple(0.35 * v for v in P.ROUTE_RGBA[z]) for z in "BCD"}
-        # big direction arrows on the routing deck (brightened per command)
-        deck = tb["top"] + 0.0058
-        heads = {"B": ((tb["lane_B_cx"], tb["y"] + 0.38, deck), 90.0),
-                 "C": ((tb["x1"] - 0.07, tb["lane_C_cy"], deck), 0.0),
-                 "D": ((tb["lane_D_cx"], tb["y"] - 0.38, deck), -90.0)}
-        for z, (c, yaw) in heads.items():
-            shaft = self.box((c[0] - 0.1 * math.cos(math.radians(yaw)),
-                              c[1] - 0.1 * math.sin(math.radians(yaw)), c[2]),
-                             (0.14, 0.03, 0.0005), dim[z], tag=f"zarrow{z}",
-                             euler_deg=(0, 0, yaw))
-            paths = [shaft.GetPath().pathString]
-            paths += self._chevron(c, yaw, dim[z], size=0.11,
-                                   tag=f"zarrow{z}h")
-            viz["zone_arrows"][z] = paths
+        # NO painted arrows on the deck (user directive: the deck is real
+        # hardware — angled roller modules with per-module status LEDs; the
+        # LEDs and the ACTIVE ROUTE panel carry the state story instead)
         # chevron trails: routing table -> container
         trails = {"B": [], "C": [], "D": []}
         for y in np.arange(cb["y0"] + 0.12, b["y1"] - 0.3, 0.42):
@@ -564,11 +546,13 @@ class Dressing:
 
     def dress(self):
         self.arb_pills = None
+        self.arb_rollers = None
         try:
             from isaac.asset_shells import conveyor_shells
             res = conveyor_shells(self.stage, top=P.BELT_A["top"])
             self.shells = bool(res)
             self.arb_pills = (res or {}).get("arb_pills")
+            self.arb_rollers = (res or {}).get("arb_rollers")
         except Exception as exc:
             print(f"[dressing] conveyor shells unavailable ({exc})", flush=True)
             self.shells = False
@@ -598,6 +582,7 @@ class Dressing:
         self.ozon_brand()
         viz = self.route_viz()
         viz["arb_pills"] = self.arb_pills
+        viz["arb_rollers"] = self.arb_rollers
         return viz
 
 

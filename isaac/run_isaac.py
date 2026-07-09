@@ -189,7 +189,8 @@ def main():
         from isaac.arb_deck import ArbDeck
         deck = ArbDeck(stage, info["arb_patches"], feed_speed=P.TABLE["speed"],
                        seed=args.seed,
-                       pill_paths=(info.get("viz") or {}).get("arb_pills"))
+                       pill_paths=(info.get("viz") or {}).get("arb_pills"),
+                       roller_paths=(info.get("viz") or {}).get("arb_rollers"))
         print(f"[isaac] ARB deck: {len(info['arb_patches'])} patches "
               f"({P.ARB_DECK['nx']}x{P.ARB_DECK['ny']}), latency "
               f"{P.ARB_DECK['latency_s']*1000:.0f}ms ramp "

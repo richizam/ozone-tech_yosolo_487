@@ -416,10 +416,33 @@ class SceneBuilder:
         geom.CreateSizeAttr(2.0)
         UsdGeom.Xformable(geom.GetPrim()).AddScaleOp().Set(Gf.Vec3f(*half))
         col = P.ROUTE_RGBA[zone]
-        geom.CreateDisplayColorAttr([Gf.Vec3f(*[c * 0.85 for c in col])])
-        geom.CreateDisplayOpacityAttr([0.9])
+        # industrial vertical-lift gate: dark anodized panel (opaque — the
+        # translucent colored ghost panel read as fake) with a slim
+        # route-color identification stripe along the top edge
+        geom.CreateDisplayColorAttr([Gf.Vec3f(0.24, 0.26, 0.30)])
         UsdPhysics.CollisionAPI.Apply(geom.GetPrim())
         self._bind_phys(geom.GetPrim(), mat_gate)
+        stripe = UsdGeom.Cube.Define(self.stage, f"{body_path}/stripe")
+        stripe.CreateSizeAttr(2.0)
+        sxf = UsdGeom.Xformable(stripe.GetPrim())
+        sxf.AddTranslateOp().Set(Gf.Vec3d(0, 0, float(h2 - 0.014)))
+        sxf.AddScaleOp().Set(Gf.Vec3f(half[0] + 0.001, half[1] + 0.001, 0.012))
+        stripe.CreateDisplayColorAttr([Gf.Vec3f(*col)])
+        # guided lift rods (visual, children of the moving body): silver
+        # rams that slide up past the fixed actuator bodies on the posts
+        for sgn, nm in ((-1, "l"), (1, "r")):
+            rod = UsdGeom.Cylinder.Define(self.stage, f"{body_path}/rod_{nm}")
+            rod.CreateRadiusAttr(0.010)
+            rod.CreateHeightAttr(0.55)
+            rod.CreateAxisAttr("Z")
+            rxf = UsdGeom.Xformable(rod.GetPrim())
+            if gp["axis"] == "x":
+                rxf.AddTranslateOp().Set(Gf.Vec3d(sgn * (span - 0.02), 0,
+                                                  float(h2 + 0.24)))
+            else:
+                rxf.AddTranslateOp().Set(Gf.Vec3d(0, sgn * (span - 0.02),
+                                                  float(h2 + 0.24)))
+            rod.CreateDisplayColorAttr([Gf.Vec3f(0.78, 0.79, 0.82)])
         # prismatic joint to the world, axis Z, normally closed
         joint = UsdPhysics.PrismaticJoint.Define(self.stage, f"{body_path}_joint")
         joint.CreateAxisAttr("Z")
@@ -434,10 +457,26 @@ class SceneBuilder:
         drive.CreateDampingAttr(2.0e3)
         drive.CreateMaxForceAttr(800.0)
         drive.CreateTargetPositionAttr(0.0)
-        for i, (qx, qy) in enumerate(posts):     # visual frame
+        for i, (qx, qy) in enumerate(posts):     # frame + actuator hardware
             top_z = tb["top"] + P.GATES["travel"] + P.GATES["panel_h"] + 0.06
             self.add_cylinder(f"gate{zone}_post{i}", (qx, qy, top_z / 2), 0.025,
                               top_z / 2, color=STEEL)
+            # fixed pneumatic actuator body the lift rod slides past
+            self.add_cylinder(f"gate{zone}_act{i}", (qx, qy, 1.05), 0.023,
+                              0.33, color=(0.09, 0.09, 0.11))
+            # photoeye bracket + lens at freight height (detection hardware
+            # the exit-verification events narrate)
+            pe = self.add_box(f"gate{zone}_pe{i}", (qx, qy, tb["top"] + 0.10),
+                              (0.016, 0.016, 0.016), color=(0.05, 0.05, 0.06),
+                              collide=False)
+            lens = UsdGeom.Cylinder.Define(
+                self.stage, f"{ROOT}/statics/gate{zone}_pel{i}")
+            lens.CreateRadiusAttr(0.007)
+            lens.CreateHeightAttr(0.006)
+            lens.CreateAxisAttr("Y" if gp["axis"] == "x" else "X")
+            UsdGeom.Xformable(lens.GetPrim()).AddTranslateOp().Set(
+                Gf.Vec3d(qx, qy, tb["top"] + 0.10))
+            lens.CreateDisplayColorAttr([Gf.Vec3f(0.95, 0.55, 0.10)])
         return joint.GetPrim().GetPath().pathString, zc
 
     # -------------------------------------------------------------------- items

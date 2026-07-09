@@ -43,7 +43,22 @@ run** · 6,064 logged actuator commands, **0 direct velocity writes** ·
   0.10 m pre-spin halo) receive the divert command; the rest keep feeding
   forward. Every command is logged (`actuator_log.csv`) and summarized
   (`actuator_commands_count`, `actuator_latency_ms`,
-  `max_surface_speed_mps`). Flow discipline is enforced by physical
+  `max_surface_speed_mps`).
+
+  **Mechanical embodiment (honest model statement):** the deck renders as
+  the **official `ConveyorBelt_A49` right-angle transfer module** (found by
+  sweeping the full A42–A49 tail of the 6.0 conveyor set; silver carry
+  rollers + interleaved transfer wheel packs — the real industrial
+  mechanism class), fitted as a sanitized shell with its deck top exactly
+  at the ride plane, plus a 4×7 **module-status LED matrix** on the south
+  face tinted per actuator state. The physics is and stays **patch-level
+  ARB actuation**; roller-by-roller bearing/contact simulation is
+  intentionally not used — neither required by the evidence nor validated.
+  (A procedural angled-roller module builder is kept in
+  `asset_shells.py` as the offline fallback; the A49 shell won the
+  side-by-side render comparison.) Exit gates carry industrial hardware:
+  anodized panels with route-color stripes, guided lift rams sliding past
+  fixed actuator bodies, and photoeye brackets at freight height. Flow discipline is enforced by physical
   **pop-up stop blades** (escapement, pre-gate hold, two zone-accumulation
   stops, table induction) with a raise-safety interlock; **powered
   nose-overs** guide discharge onto the 32° brake chutes. No per-item
@@ -147,8 +162,16 @@ bash /root/make_evidence.sh final_seed42        # frames -> MP4 + index.html
   reasons), `routing_cmd`, `table_entry` (command margin), `item_delivered`,
   `jam_detected`, `jam_located` (camera fix + error vs truth),
   `recovery_started/attached/released/job_done`, `containment_violation`.
-- `frames/*.png` → `demo_overview.mp4`; `vision_rgb_*.png`,
-  `vision_depth_*.{png,npy}`.
+- `frames/*.png` → MP4 (`/root/make_mp4.sh`); `vision_rgb_*.png`,
+  `vision_depth_*.{png,npy}` → jury-facing side-by-side perception panels
+  via `tools/make_perception_panels.py` (RGB | sensor's-eye depth with the
+  item segmented, measured dims, verdict chip, confidence, rule line).
+- Video set v2 (`isaac/showcase2.sh`, evidence in
+  `docs/report/isaac_evidence/final_arb/`): clean nominal runs FIRST
+  (full-cell overview with no arm intervention + per-route B/C/D deck
+  close-ups + sensor-station pass), then the fault program (jam → UR10e
+  recovery; gate stuck-closed → timeout → safe call-out), then the
+  cinematic metrics end-card (`tools/make_endcard.py`).
 
 ## Requirements
 

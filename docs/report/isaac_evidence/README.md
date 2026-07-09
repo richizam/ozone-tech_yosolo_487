@@ -55,13 +55,29 @@ Stage 3 hardware-fault injections all **fail safe**:
 correct; `C:delay:400` → measured latency rises to 422 ms, absorbed by the
 ~0.9 s command margin, 3/3 clean.
 
-### Video evidence
-[`final_arb/`](final_arb/): `nominal_overview.mp4` (whole cell, 11 items),
-`deck_closeup.mp4` (ARB deck + gates + blades at work),
-`sensor_station.mp4` (items through the RTX heads),
-`fault_recovery.mp4` (snag → watchdog → jam camera → UR10e + suction
-gripper recovery → re-delivery, plus the observer-fallback recovery).
-Calculations cross-check:
+### Video evidence (v2 — clean nominal first, faults second)
+[`final_arb/`](final_arb/), rendered on the **official ConveyorBelt_A49
+transfer-deck embodiment** with industrial gate hardware:
+
+*Normal operation (no arm, no stalls — the primary story):*
+`nominal_pure.mp4` (whole cell, all 11 items, zero interventions);
+`close_route_B/C/D.mp4` (deck close-ups, one per route: clean ARB
+actuation through gate → chute → cage); `nominal_sensor.mp4` (items
+passing the RTX heads).
+
+*What the sensor sees:* [`perception/`](final_arb/perception/) —
+side-by-side panels (real RGB | sensor's-eye depth with the item
+segmented) with measured dimensions, fused-read count, confidence and the
+official-rule verdict chip, + `perception_demo.mp4`.
+
+*Fault handling (exists, but not needed in normal flow):*
+`fault_recovery.mp4` (injected snag → watchdog → jam camera 33.9 mm fix →
+UR10e + suction gripper re-delivery); `gate_fault.mp4` (gate C stuck
+closed → `gate_timeout` in 2.02 s → item held → safe operator call-out,
+0 unsafe).
+
+*Closer:* `final_cinematic.mp4` — the clean nominal run + the validated
+metrics end card (`endcard.png`). Calculations cross-check:
 [calculations_vs_simulation.md](../calculations_vs_simulation.md).
 
 ## Headline results (previous build, kept for the record)

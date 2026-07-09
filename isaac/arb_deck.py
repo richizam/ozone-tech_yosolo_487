@@ -18,22 +18,28 @@ feeding forward. Every state change is a logged actuator command, so the
 evidence can show actuator_commands_count / latency / max attained speed and
 prove no direct velocity write ever moves an item during nominal routing.
 """
+import math
+
 import numpy as np
 from pxr import Gf, UsdGeom
 
 from cell import params as P
 
-IDLE_PILL = (0.14, 0.145, 0.16)         # embedded-roller dark metal
-FORWARD_PILL = (0.16, 0.18, 0.22)       # feeding: barely lighter (spinning)
+IDLE_PILL = (0.22, 0.24, 0.26)          # module LED: idle grey
+FORWARD_PILL = (0.10, 0.30, 0.16)       # module LED: feeding, dim green
+ROLLER_R = 0.016                        # visual roller radius (spin rate)
 
 
 class ArbDeck:
     def __init__(self, stage, patches, feed_speed, cfg=None, seed=0,
-                 pill_paths=None):
+                 pill_paths=None, roller_paths=None):
         """patches: [{path, r, c, cx, cy, hx, hy}] from the scene builder;
-        pill_paths: optional {"r{r}c{c}": [pill prim paths]} visual overlay
-        (official-asset shells); patch collider boxes are tinted too so the
-        activation is visible in the primitive fallback as well."""
+        pill_paths: optional {"r{r}c{c}": [LED prim paths]} — module status
+        indicators tinted per actuator state; roller_paths: optional
+        {"r{r}c{c}": [(spin_xform_path, lateral_sign)]} — the realistic
+        roller sleeves, spun VISUALLY per divert command (the physics stays
+        patch-level surface actuation; rollers are the embodiment). Patch
+        collider boxes are tinted too for the primitive fallback."""
         self.cfg = dict(P.ARB_DECK if cfg is None else cfg)
         self.patches = list(patches)
         self.n = len(self.patches)
@@ -54,6 +60,22 @@ class ArbDeck:
                 if pr:
                     cols.append(UsdGeom.Gprim(pr).GetDisplayColorAttr())
             self.color_attrs.append(cols)
+        # roller spin ops: per patch, the rotateX op of each sleeve xform
+        self.spin_ops = []
+        for pid in self.ids:
+            ops = []
+            for rp, sign in (roller_paths or {}).get(pid, ()):
+                pr = stage.GetPrimAtPath(rp)
+                if not pr:
+                    continue
+                op = None
+                for o in UsdGeom.Xformable(pr).GetOrderedXformOps():
+                    if o.GetOpType() == UsdGeom.XformOp.TypeRotateX:
+                        op = o
+                        break
+                if op is not None:
+                    ops.append((op, float(sign), float(op.Get() or 0.0)))
+            self.spin_ops.append([[op, sign, ang] for op, sign, ang in ops])
         self.pstate = [{"cmd_state": "forward", "cmd_vec": self.feed.copy(),
                         "pending": None, "state": "forward",
                         "target": self.feed.copy(), "v": self.feed.copy()}
@@ -135,6 +157,21 @@ class ArbDeck:
             p = self.patches[i]
             self.attrs[i].Set(Gf.Vec3f(float(st["v"][0] / p["hx"]),
                                        float(st["v"][1] / p["hy"]), 0.0))
+        # visual roller spin (embodiment only — never touches physics):
+        # diverting modules spin their sleeves; sign follows the commanded
+        # lateral direction (DARB-style bidirectional engagement)
+        for i, st in enumerate(self.pstate):
+            if not st["state"].startswith("divert") or not self.spin_ops[i]:
+                continue
+            vy = float(st["v"][1])
+            vmag = float(np.linalg.norm(st["v"]))
+            if vmag < 0.02:
+                continue
+            sgn = 1.0 if vy >= 0 else -1.0
+            ddeg = math.degrees(vmag / ROLLER_R) * dt
+            for rec in self.spin_ops[i]:
+                rec[2] = (rec[2] + rec[1] * sgn * ddeg) % 360.0
+                rec[0].Set(rec[2])
 
     def _tint(self, i, state):
         if state.startswith("divert:"):
