@@ -562,7 +562,11 @@ class SceneBuilder:
     # -------------------------------------------------------------------- items
     def build_item(self, e, index, mat_item, damping=(0.0, 0.05)):
         slug = e["slug"]
-        park = (0.6 + index * 0.85, -1.2, e["dims_m"][2] / 2 + 0.003)
+        # pre-spawn staging: park BEHIND the east backdrop wall (x=10.6) so
+        # the waiting items are occluded from every presentation camera —
+        # items resting on the open floor read as spilled clutter in the
+        # wide/cinematic "perfect run" shots. Teleported to belt A at spawn.
+        park = (11.5, 1.3 + index * 0.42, e["dims_m"][2] / 2 + 0.003)
         body_path = f"{ROOT}/items/item_{_sanitize(slug)}"
         xform = UsdGeom.Xform.Define(self.stage, body_path)
         UsdGeom.Xformable(xform.GetPrim()).AddTranslateOp().Set(Gf.Vec3d(*park))
