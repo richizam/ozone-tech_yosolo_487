@@ -560,18 +560,23 @@ class Dressing:
                              euler_deg=(ang_d, 0, -90.0 + sw), bind=False)
                 trails["D"].append(p.GetPath().pathString)
         viz["trails"] = trails
-        # ACTIVE ROUTE indicator panel by the table (mast + 3 lamps)
-        px, py = 7.95, 4.15
-        self.box((px, py, 0.95), (0.025, 0.025, 0.95), FRAME, tag="armast")
-        self.label("ACTIVE ROUTE", "active_route.png", (px, py - 0.03, 2.05),
-                   0.85, yaw_deg=0.0)
+        # ACTIVE ROUTE status as a LOW floor-standing HMI console (was a
+        # 1.9 m mast that read as a vertical stick beside the deck) — the
+        # requested HMI/status panel. Placed north-west of the table, out of
+        # the arm workspace and clear of the deck sightline.
+        px, py = 7.35, 4.75
+        self.box((px, py, 0.44), (0.22, 0.13, 0.44), FRAME, tag="hmi_body")
+        self.box((px, py - 0.12, 0.82), (0.22, 0.02, 0.14), (0.04, 0.04, 0.05),
+                 tag="hmi_screen_bezel")
+        self.label("ACTIVE ROUTE", "active_route.png", (px, py - 0.135, 0.95),
+                   0.44, yaw_deg=0.0)
         for i, z in enumerate("BCD"):
-            lp = self.box((px - 0.26 + 0.26 * i, py - 0.03, 1.72),
-                          (0.09, 0.02, 0.09), dim[z], tag=f"lamp{z}",
+            lp = self.box((px - 0.14 + 0.14 * i, py - 0.13, 0.80),
+                          (0.05, 0.02, 0.05), dim[z], tag=f"lamp{z}",
                           bind=False)
             viz["lamps"][z] = lp.GetPath().pathString
             self.label(z, f"lampcap_{z}.png",
-                       (px - 0.26 + 0.26 * i, py - 0.035, 1.52), 0.17,
+                       (px - 0.14 + 0.14 * i, py - 0.135, 0.68), 0.10,
                        yaw_deg=0.0, bg=tuple(0.55 * v for v in P.ROUTE_RGBA[z]))
         # floating per-item route flags: textures made here, quads at runtime
         flags = {
@@ -623,6 +628,84 @@ class Dressing:
         vs = P.VIRTUAL_SENSOR
         self.box((vs["overhead_pos"][0], vs["overhead_pos"][1], 2.46),
                  (0.052, 1.10, 0.012), OZON_BLUE, tag="gantry_accent")
+
+    # ---------------------------------------------------- industrial context
+    def industrial_context(self):
+        """Subtle warehouse context to fill the empty walls/floor WITHOUT
+        clutter — control cabinet, safety fencing, cable trays, structural
+        columns, an infeed light curtain, e-stops, and floor safety zones.
+        All on the NORTH/EAST backdrop side so nothing occludes the open
+        south-west presentation cameras; all non-colliding + sensor-safe
+        (flat floor decals sit under the 6 mm perception z-margin, and every
+        item is well clear of the vision window at x 5.85-6.28 and the
+        routing/jam camera crop)."""
+        FR = (0.28, 0.30, 0.34)
+        DK = (0.10, 0.11, 0.13)
+        RED = (0.55, 0.06, 0.06)
+        HAZ = (0.42, 0.36, 0.10)
+
+        # --- structural building columns at the far (N) corners: floor->truss
+        # I-beam-ish box columns with base plates (real structure, not sticks)
+        for cx in (0.5, 9.6):
+            self.box((cx, 6.15, 2.75), (0.08, 0.08, 2.75), FR, tag="col",
+                     textured=False)
+            self.box((cx, 6.15, 0.05), (0.16, 0.16, 0.05), DK, tag="col_base")
+        # --- wall-mounted electrical control cabinet on the north wall
+        ccx = 2.6
+        self.box((ccx, 6.16, 0.95), (0.45, 0.12, 0.62), FR, tag="ecab",
+                 textured=False)
+        self.box((ccx, 6.03, 0.95), (0.42, 0.02, 0.58), (0.20, 0.22, 0.26),
+                 tag="ecab_door")            # door face
+        self.box((ccx + 0.30, 6.00, 0.95), (0.03, 0.015, 0.10), DK,
+                 tag="ecab_handle")
+        for zz in (1.34, 1.40, 1.46):        # ventilation louvres
+            self.box((ccx, 6.02, zz), (0.30, 0.006, 0.012), DK, tag="ecab_vent")
+        self.box((ccx - 0.28, 6.00, 1.30), (0.05, 0.012, 0.05), RED,
+                 tag="ecab_estop")           # e-stop on the cabinet
+        # small wall HMI screen beside the cabinet
+        self.box((ccx + 0.75, 6.05, 1.20), (0.16, 0.02, 0.11),
+                 (0.05, 0.05, 0.06), tag="wall_hmi")
+        self.box((ccx + 0.75, 6.03, 1.20), (0.14, 0.008, 0.09),
+                 (0.10, 0.22, 0.30), tag="wall_hmi_scr")
+
+        # --- cable trays: along the north wall from the cabinet, + a drop
+        for x0, x1, yy, zz in ((1.0, 9.2, 6.22, 2.35),):
+            self.box(((x0 + x1) / 2, yy, zz), ((x1 - x0) / 2, 0.05, 0.02),
+                     (0.34, 0.36, 0.40), tag="cabletray_n")
+        self.box((ccx, 6.20, 1.75), (0.05, 0.03, 0.55), (0.34, 0.36, 0.40),
+                 tag="cabletray_drop")
+
+        # --- safety fence sections on the EAST backdrop edge (guarding the
+        # cell without blocking the SW cameras): posts + two horizontal rails
+        for fy in np.arange(1.4, 5.2, 0.95):
+            self.box((10.15, float(fy), 0.55), (0.03, 0.03, 0.55), FR,
+                     tag="fence_post")
+            for zz in (0.55, 0.95):
+                self.box((10.15, float(fy) + 0.475, zz), (0.02, 0.44, 0.02),
+                         HAZ, tag="fence_rail")
+        self.box((10.15, 5.0, 0.15), (0.03, 0.03, 0.15), RED,
+                 tag="fence_estop")          # e-stop on a fence post
+
+        # --- infeed light curtain at belt A start: emitter + receiver strips
+        a = P.BELT_A
+        for sgn in (-1, 1):
+            self.box((0.35, a["y"] + sgn * (a["width"] / 2 + 0.06), a["top"]
+                      + 0.28), (0.02, 0.02, 0.30), (0.10, 0.10, 0.12),
+                     tag="lc_strip")
+            for zz in np.arange(a["top"] + 0.06, a["top"] + 0.5, 0.08):
+                self.box((0.35, a["y"] + sgn * (a["width"] / 2 + 0.06),
+                          float(zz)), (0.012, 0.012, 0.006), (0.75, 0.10, 0.10),
+                         tag="lc_led")
+
+        # --- floor safety zones (flat decals, sensor-safe): hazard hatch
+        # around the arm base + a cage keep-clear band, painted markings
+        abx, aby = P.ARM_BASE["table"]
+        for k in range(-3, 4):
+            self.box((abx + 0.42 * math.cos(k), aby + 0.42 * math.sin(k),
+                      0.003), (0.34, 0.03, 0.001), HAZ, tag="arm_zone",
+                     euler_deg=(0, 0, 30 * k), bind=False)
+        self.label("SORT CELL — AUTOMATED", "floor_zone.png", (4.8, 4.9, 0.004),
+                   1.1, yaw_deg=0.0, tilt_deg=0.0)
 
     # ------------------------------------------------- real sensor assets
     def sensor_assets(self):
@@ -718,6 +801,7 @@ class Dressing:
         self.sensor_assets()
         self.lighting_env()
         self.ozon_brand()
+        self.industrial_context()
         viz = self.route_viz()
         viz["arb_pills"] = self.arb_pills
         viz["arb_rollers"] = self.arb_rollers

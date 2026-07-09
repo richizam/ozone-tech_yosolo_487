@@ -62,6 +62,10 @@ def parse_args():
                          "drives the recording camera along a smooth path")
     ap.add_argument("--path-secs", type=float, default=80.0,
                     help="seconds over which the cinematic path sweeps 0->1")
+    ap.add_argument("--follow-slug", default=None,
+                    help="item-follow cinematic camera: trail this item's "
+                         "live pose from the vision station through the ARB "
+                         "deck into its bin (final-video shot)")
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--perception", choices=["rtx", "oracle"], default="rtx",
                     help="rtx = classify from the 3-head RTX depth station; "
@@ -218,7 +222,12 @@ def main():
                       resolution=(1280, 720))
     view_cam.initialize()
     cine = None
-    if args.camera_path != "none":
+    follow = None
+    if args.follow_slug:
+        from isaac.cinematic import FollowCamera
+        follow = FollowCamera(stage, info["cams"][args.camera])
+        print(f"[isaac] item-follow camera on '{args.follow_slug}'", flush=True)
+    elif args.camera_path != "none":
         from isaac.cinematic import CinematicCamera
         cine = CinematicCamera(stage, info["cams"][args.camera],
                                args.camera_path)
@@ -1042,6 +1051,16 @@ def main():
         render = args.record and t >= next_frame_t
         if render and cine is not None:
             cine.update(t / max(args.path_secs, 1e-3))
+        if render and follow is not None:
+            fp = None
+            act = False
+            if args.follow_slug in items_rp:
+                fp = np.asarray(items_rp[args.follow_slug].get_world_pose()[0],
+                                dtype=float)
+                # "on the line": past the vision approach, not parked behind
+                # the wall (x>11) and not dropped to the floor (z<0.35)
+                act = 5.0 < fp[0] < 10.3 and fp[2] > 0.35
+            follow.update(fp, act)
         world.step(render=False)
         if render:
             world.render()

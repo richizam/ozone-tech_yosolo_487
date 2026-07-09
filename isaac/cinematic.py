@@ -104,3 +104,40 @@ class CinematicCamera:
         w, x, y, z = _look_quat(eye, target)
         self.t_op.Set(Gf.Vec3d(*[float(v) for v in eye]))
         self.o_op.Set(Gf.Quatd(w, Gf.Vec3d(x, y, z)))
+
+
+class FollowCamera:
+    """Trails ONE item's live pose from the open south-west, smoothly, from
+    the vision station through the ARB deck into its bin. The camera sits at
+    item + offset (SW and above) so the arm and walls stay BEHIND the item;
+    both eye and look-at are low-passed so the motion is gentle with no
+    jitter or fast pans. When the followed item is not on the line (parked
+    pre-spawn / delivered) the camera eases to a default framing of the
+    vision->deck corridor (no whip to an off-screen park position)."""
+
+    DEFAULT_TGT = (7.2, 3.0, 0.75)
+    DEFAULT_EYE = (5.4, 1.0, 2.05)
+    OFFSET = (-1.35, -1.55, 1.05)
+
+    def __init__(self, stage, cam_path, alpha=0.06):
+        prim = stage.GetPrimAtPath(cam_path)
+        xf = UsdGeom.Xformable(prim)
+        xf.ClearXformOpOrder()
+        self.t_op = xf.AddTranslateOp()
+        self.o_op = xf.AddOrientOp(UsdGeom.XformOp.PrecisionDouble)
+        self.alpha = float(alpha)
+        self.eye = np.asarray(self.DEFAULT_EYE, float)
+        self.tgt = np.asarray(self.DEFAULT_TGT, float)
+
+    def update(self, item_pos, active):
+        if active and item_pos is not None:
+            desired_tgt = np.asarray(item_pos, float)
+            desired_eye = desired_tgt + np.asarray(self.OFFSET, float)
+        else:
+            desired_tgt = np.asarray(self.DEFAULT_TGT, float)
+            desired_eye = np.asarray(self.DEFAULT_EYE, float)
+        self.tgt += self.alpha * (desired_tgt - self.tgt)
+        self.eye += self.alpha * (desired_eye - self.eye)
+        w, x, y, z = _look_quat(self.eye, self.tgt)
+        self.t_op.Set(Gf.Vec3d(*[float(v) for v in self.eye]))
+        self.o_op.Set(Gf.Quatd(w, Gf.Vec3d(x, y, z)))

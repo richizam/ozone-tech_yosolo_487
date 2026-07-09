@@ -501,21 +501,6 @@ class SceneBuilder:
         sxf.AddTranslateOp().Set(Gf.Vec3d(0, 0, float(h2 - 0.014)))
         sxf.AddScaleOp().Set(Gf.Vec3f(half[0] + 0.001, half[1] + 0.001, 0.012))
         stripe.CreateDisplayColorAttr([Gf.Vec3f(*col)])
-        # guided lift rods (visual, children of the moving body): silver
-        # rams that slide up past the fixed actuator bodies on the posts
-        for sgn, nm in ((-1, "l"), (1, "r")):
-            rod = UsdGeom.Cylinder.Define(self.stage, f"{body_path}/rod_{nm}")
-            rod.CreateRadiusAttr(0.010)
-            rod.CreateHeightAttr(0.55)
-            rod.CreateAxisAttr("Z")
-            rxf = UsdGeom.Xformable(rod.GetPrim())
-            if gp["axis"] == "x":
-                rxf.AddTranslateOp().Set(Gf.Vec3d(sgn * (span - 0.02), 0,
-                                                  float(h2 + 0.24)))
-            else:
-                rxf.AddTranslateOp().Set(Gf.Vec3d(0, sgn * (span - 0.02),
-                                                  float(h2 + 0.24)))
-            rod.CreateDisplayColorAttr([Gf.Vec3f(0.78, 0.79, 0.82)])
         # prismatic joint to the world, axis Z, normally closed
         joint = UsdPhysics.PrismaticJoint.Define(self.stage, f"{body_path}_joint")
         joint.CreateAxisAttr("Z")
@@ -530,18 +515,42 @@ class SceneBuilder:
         drive.CreateDampingAttr(2.0e3)
         drive.CreateMaxForceAttr(800.0)
         drive.CreateTargetPositionAttr(0.0)
-        for i, (qx, qy) in enumerate(posts):     # frame + actuator hardware
-            top_z = tb["top"] + P.GATES["travel"] + P.GATES["panel_h"] + 0.06
-            self.add_cylinder(f"gate{zone}_post{i}", (qx, qy, top_z / 2), 0.025,
-                              top_z / 2, color=STEEL)
-            # fixed pneumatic actuator body the lift rod slides past
-            self.add_cylinder(f"gate{zone}_act{i}", (qx, qy, 1.05), 0.023,
-                              0.33, color=(0.09, 0.09, 0.11))
-            # photoeye bracket + lens at freight height (detection hardware
-            # the exit-verification events narrate)
-            pe = self.add_box(f"gate{zone}_pe{i}", (qx, qy, tb["top"] + 0.10),
-                              (0.016, 0.016, 0.016), color=(0.05, 0.05, 0.06),
-                              collide=False)
+        # LOW GUARDED GATE MODULE integrated into the conveyor frame — NO
+        # tall poles (the old 1.72 m guide posts read as random vertical
+        # sticks and crowded the arm workspace). Each end gets a short side
+        # cheek that guards the vertical-lift slide (functional height only:
+        # the closed gate tops out ~1.0 m to stop the tallest 0.36 m item),
+        # a COMPACT pneumatic cylinder + valve block low on the cheek, a
+        # low photoeye bracket at freight height, and a route-colour status
+        # strip. Detection/feedback hardware is bracket-mounted, not on
+        # poles. The validated lift-joint physics above is untouched.
+        cheek_top = tb["top"] + 0.42                      # 1.12 m — low guard
+        cheek_h2 = (cheek_top - tb["top"]) / 2
+        FRAME_D = (0.17, 0.18, 0.21)
+        VALVE_D = (0.10, 0.10, 0.12)
+        for i, (qx, qy) in enumerate(posts):
+            # short side cheek (guards the slide)
+            self.add_box(f"gate{zone}_cheek{i}", (qx, qy, tb["top"] + cheek_h2),
+                         (0.03, 0.03, cheek_h2), color=FRAME_D, collide=False)
+            # compact pneumatic actuator: valve block + short horizontal ram
+            # on the OUTER face, mounted low (~0.9 m) — not a tall cylinder
+            outer = 0.055
+            vx = qx + (outer if gp["axis"] == "y" else 0.0) * (1 if qx > mid else -1)
+            vy = qy + (outer if gp["axis"] == "x" else 0.0) * (1 if qy > mid else -1)
+            self.add_box(f"gate{zone}_valve{i}", (vx, vy, tb["top"] + 0.20),
+                         (0.028, 0.028, 0.045), color=VALVE_D, collide=False)
+            ram = UsdGeom.Cylinder.Define(
+                self.stage, f"{ROOT}/statics/gate{zone}_ram{i}")
+            ram.CreateRadiusAttr(0.009)
+            ram.CreateHeightAttr(0.14)
+            ram.CreateAxisAttr("Z")
+            UsdGeom.Xformable(ram.GetPrim()).AddTranslateOp().Set(
+                Gf.Vec3d(vx, vy, tb["top"] + 0.33))
+            ram.CreateDisplayColorAttr([Gf.Vec3f(0.72, 0.73, 0.76)])
+            # low photoeye bracket + amber lens at freight height
+            self.add_box(f"gate{zone}_pe{i}", (qx, qy, tb["top"] + 0.10),
+                         (0.02, 0.02, 0.018), color=(0.05, 0.05, 0.06),
+                         collide=False)
             lens = UsdGeom.Cylinder.Define(
                 self.stage, f"{ROOT}/statics/gate{zone}_pel{i}")
             lens.CreateRadiusAttr(0.007)
@@ -550,13 +559,9 @@ class SceneBuilder:
             UsdGeom.Xformable(lens.GetPrim()).AddTranslateOp().Set(
                 Gf.Vec3d(qx, qy, tb["top"] + 0.10))
             lens.CreateDisplayColorAttr([Gf.Vec3f(0.95, 0.55, 0.10)])
-            # limit switch at the stroke top (open-position feedback the
-            # gate state machine narrates) + cable drop down the post
-            self.add_box(f"gate{zone}_ls{i}", (qx, qy, 1.44),
-                         (0.014, 0.020, 0.012), color=(0.85, 0.75, 0.15),
-                         collide=False)
-            self.add_cylinder(f"gate{zone}_cbl{i}", (qx + 0.028, qy, 0.72),
-                              0.004, 0.72, color=(0.06, 0.06, 0.07))
+            # route-colour status strip on the cheek top
+            self.add_box(f"gate{zone}_led{i}", (qx, qy, cheek_top + 0.004),
+                         (0.028, 0.028, 0.006), color=col, collide=False)
         return joint.GetPrim().GetPath().pathString, zc
 
     # -------------------------------------------------------------------- items
