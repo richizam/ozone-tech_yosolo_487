@@ -29,11 +29,13 @@ CHUTE_COL = (0.50, 0.51, 0.55)         # brushed steel chute
 ITEM_COL = (0.75, 0.72, 0.65)
 
 
-def soft(col, k=0.42, base=0.03):
-    """Route/marking colour -> industrial powder-coat: DARKER and duller,
-    never lighter (a pale wall clips to white under the high-bays — the C
-    bin blow-out). Saturated primaries read as toy plastic under RTX."""
-    return tuple(k * float(v) + base for v in col)
+def soft(col, k=0.34, base=0.045):
+    """Route/marking colour -> industrial powder-coat: darker, duller and
+    desaturated toward a neutral grey-paint base (saturated primaries read
+    as toy plastic under RTX — the green D-cage / yellow guards were the
+    worst offenders). Pulls each channel toward the colour's own mean."""
+    m = sum(float(v) for v in col) / 3.0
+    return tuple(base + k * (0.55 * float(v) + 0.45 * m) for v in col)
 
 ROOT = "/World"
 
@@ -145,12 +147,40 @@ class SceneBuilder:
         self.mats[key] = mat
         return mat
 
-    def _bind_vis(self, prim, color, opacity=1.0):
+    def _ensure_pbr(self):
+        """Lazily build the OmniPBR grunge library (world-triplanar dirt +
+        roughness, no per-prim UVs). Falls back to flat preview surfaces if
+        the MDL/texture path is unavailable."""
+        if getattr(self, "pbr", "unset") != "unset":
+            return self.pbr
+        self.pbr = None
+        try:
+            from isaac.materials import make_grunge_textures, PbrLibrary
+            ta, tr = make_grunge_textures("/tmp/sortmaster_signs")
+            self.pbr = PbrLibrary(self.stage, ROOT, tex_albedo=ta,
+                                  tex_rough=tr)
+        except Exception as exc:
+            print(f"[materials] OmniPBR unavailable ({exc}); "
+                  f"flat preview surfaces", flush=True)
+        return self.pbr
+
+    def _bind_vis(self, prim, color, opacity=1.0, roughness=0.82,
+                  metallic=0.05, textured=True):
         if opacity < 1.0:
             return                       # translucent panels keep displayColor
-        seed = hash(prim.GetPath().pathString) & 0xff
+        seed = hash(prim.GetPath().pathString) & 0x7fffffff
+        pbr = self._ensure_pbr()
+        if pbr is not None:
+            try:
+                UsdShade.MaterialBindingAPI.Apply(prim).Bind(
+                    pbr.get(color, roughness=roughness, metallic=metallic,
+                            textured=textured, seed=seed))
+                return
+            except Exception:
+                pass
         UsdShade.MaterialBindingAPI.Apply(prim).Bind(
-            self.vis_material(color, seed=seed))
+            self.vis_material(color, roughness=roughness, metallic=metallic,
+                              seed=seed))
 
     # ------------------------------------------------------------------- solids
     def add_box(self, name, center, half, euler_rad=(0, 0, 0), color=STEEL,
@@ -817,6 +847,18 @@ class SceneBuilder:
                                          (0.9999, 0.0167, 0), (-0.0112, 0.6688, 0.7432)),
             "lookahead": self.build_camera("lookahead", (6.0, 3.0, 2.2),
                                            (1, 0, 0), (0, 1, 0)),
+            # extra presentation angles (open SW/S side — no wall or arm
+            # between camera and freight; the walls sit N/E as backdrop)
+            "hero_sw": self.build_camera_lookat(
+                "hero_sw", (0.6, -1.9, 2.3), (5.4, 3.0, 0.75), fovy_deg=52.0),
+            "cell_iso": self.build_camera_lookat(
+                "cell_iso", (-1.4, -1.4, 5.6), (5.0, 3.0, 0.55), fovy_deg=48.0),
+            "deck_front": self.build_camera_lookat(
+                "deck_front", (8.15, 0.85, 1.55), (8.32, 3.0, 0.72),
+                fovy_deg=42.0),
+            "deck_top": self.build_camera_lookat(
+                "deck_top", (8.25, 3.0, 2.55), (8.25, 3.0, 0.70),
+                fovy_deg=46.0),
         }
         # DWS side profiler heads (VIRTUAL_SENSOR): the vision station is
         # overhead + two side depth heads — the section below its widest line

@@ -54,7 +54,14 @@ def parse_args():
     ap.add_argument("--out", default="/tmp/sortmaster/run1")
     ap.add_argument("--record", action="store_true", help="capture MP4 frames")
     ap.add_argument("--camera", default="overview",
-                    choices=["overview", "top_view", "routing", "lookahead"])
+                    choices=["overview", "top_view", "routing", "lookahead",
+                             "hero_sw", "deck_front", "deck_top", "cell_iso"])
+    ap.add_argument("--camera-path", default="none",
+                    choices=["none", "orbit", "dolly", "crane", "deck_push"],
+                    help="cinematic moving camera for the defense reel — "
+                         "drives the recording camera along a smooth path")
+    ap.add_argument("--path-secs", type=float, default=80.0,
+                    help="seconds over which the cinematic path sweeps 0->1")
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--perception", choices=["rtx", "oracle"], default="rtx",
                     help="rtx = classify from the 3-head RTX depth station; "
@@ -210,6 +217,13 @@ def main():
     view_cam = Camera(prim_path=info["cams"][args.camera],
                       resolution=(1280, 720))
     view_cam.initialize()
+    cine = None
+    if args.camera_path != "none":
+        from isaac.cinematic import CinematicCamera
+        cine = CinematicCamera(stage, info["cams"][args.camera],
+                               args.camera_path)
+        print(f"[isaac] cinematic camera path={args.camera_path} "
+              f"over {args.path_secs}s", flush=True)
     look_cam = None
     perc = None
     if args.depth_stills > 0 or args.perception == "rtx":
@@ -1026,6 +1040,8 @@ def main():
 
         # ---- physics step (+ render only when a video frame is due)
         render = args.record and t >= next_frame_t
+        if render and cine is not None:
+            cine.update(t / max(args.path_secs, 1e-3))
         world.step(render=False)
         if render:
             world.render()

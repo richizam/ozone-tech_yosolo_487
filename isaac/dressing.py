@@ -49,12 +49,36 @@ class Dressing:
         self._i += 1
         return f"{ROOT}/{tag}_{self._i}"
 
-    def _vis(self, prim, color, roughness=0.72, metallic=0.12):
-        """Matte industrial PBR (bare displayColor renders as toy plastic).
+    def _ensure_pbr(self):
+        if getattr(self, "_pbr", "unset") != "unset":
+            return self._pbr
+        self._pbr = None
+        try:
+            from isaac.materials import make_grunge_textures, PbrLibrary
+            ta, tr = make_grunge_textures(str(SIGN_DIR))
+            self._pbr = PbrLibrary(self.stage, ROOT, tex_albedo=ta,
+                                   tex_rough=tr)
+        except Exception as exc:
+            print(f"[dressing] OmniPBR unavailable ({exc})", flush=True)
+        return self._pbr
+
+    def _vis(self, prim, color, roughness=0.80, metallic=0.05, textured=True):
+        """Matte industrial PBR with world-triplanar grunge (dirt/scratch/
+        edge wear) — bare displayColor renders as toy plastic under RTX.
         Runtime-tinted prims (route lamps/trails/LEDs) must NOT bind —
-        a bound material overrides displayColor updates."""
-        seed = hash(prim.GetPath().pathString) % 3
-        jit = (0.90, 1.0, 1.08)[seed]
+        a bound material overrides displayColor updates. Big flat backdrops
+        pass textured=False (a tiled detail map reads as wallpaper on them)."""
+        seed = hash(prim.GetPath().pathString) & 0x7fffffff
+        pbr = self._ensure_pbr()
+        if pbr is not None:
+            try:
+                UsdShade.MaterialBindingAPI.Apply(prim).Bind(
+                    pbr.get(color, roughness=roughness, metallic=metallic,
+                            textured=textured, seed=seed))
+                return
+            except Exception:
+                pass
+        jit = (0.90, 1.0, 1.08)[seed % 3]
         c = tuple(min(1.0, float(v) * jit) for v in color)
         key = (round(c[0], 3), round(c[1], 3), round(c[2], 3), roughness)
         mat = self._vismats.get(key)
@@ -75,7 +99,7 @@ class Dressing:
         UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat)
 
     def box(self, center, half, color, tag="box", euler_deg=(0, 0, 0),
-            opacity=None, bind=True):
+            opacity=None, bind=True, textured=True):
         cube = UsdGeom.Cube.Define(self.stage, self._path(tag))
         cube.CreateSizeAttr(2.0)
         xf = UsdGeom.Xformable(cube.GetPrim())
@@ -87,7 +111,7 @@ class Dressing:
         if opacity is not None:
             cube.CreateDisplayOpacityAttr([float(opacity)])
         elif bind:
-            self._vis(cube.GetPrim(), color)
+            self._vis(cube.GetPrim(), color, textured=textured)
         return cube.GetPrim()
 
     def cyl(self, center, radius, half_h, color, axis="Z", tag="cyl",
@@ -402,11 +426,32 @@ class Dressing:
         for (lx, ly, w, d) in ((1.6, 3.0, 2.4, 3.0), (4.2, 3.0, 2.6, 3.0),
                                (6.6, 3.0, 2.4, 3.2), (8.7, 2.6, 2.6, 3.4)):
             self._highbay(lx, ly, w, d, 18000.0)
-        # backdrop walls: kill the white void on the camera-facing sides
-        self.box((5.0, 6.35, 2.6), (7.5, 0.06, 2.6), (0.16, 0.18, 0.22),
-                 tag="wall_n")
-        self.box((10.6, 3.0, 2.6), (0.06, 3.6, 2.6), (0.16, 0.18, 0.22),
-                 tag="wall_e")
+        # KEY-ZONE ACCENT lights (soft extra punch where the demo reads):
+        # the vision/measurement station and the ARB routing deck. Lower and
+        # smaller than the high-bays, mounted just under the truss — lift the
+        # zone without a hot spot or a second shadow set.
+        for (lx, ly, w, d, inten) in ((6.0, 3.0, 1.1, 1.3, 7500.0),
+                                      (8.25, 3.0, 1.2, 1.6, 8500.0)):
+            self._i += 1
+            lp = f"/World/lights/accent_{self._i}"
+            r = UsdLux.RectLight.Define(st, lp)
+            r.CreateWidthAttr(float(w))
+            r.CreateHeightAttr(float(d))
+            r.CreateIntensityAttr(float(inten))
+            r.GetPrim().CreateAttribute("inputs:normalize",
+                                        Sdf.ValueTypeNames.Bool).Set(True)
+            r.GetPrim().CreateAttribute("inputs:color",
+                                        Sdf.ValueTypeNames.Color3f).Set(
+                Gf.Vec3f(1.0, 0.97, 0.92))
+            UsdGeom.Xformable(r.GetPrim()).AddTranslateOp().Set(
+                Gf.Vec3d(lx, ly, 4.75))             # unrotated -> emits down
+        # backdrop walls: kill the white void on the camera-facing sides —
+        # plain matte concrete (a tiled detail map reads as wallpaper on a
+        # big flat wall)
+        self.box((5.0, 6.35, 2.6), (7.5, 0.06, 2.6), (0.17, 0.19, 0.23),
+                 tag="wall_n", textured=False)
+        self.box((10.6, 3.0, 2.6), (0.06, 3.6, 2.6), (0.17, 0.19, 0.23),
+                 tag="wall_e", textured=False)
         # yellow walkway markings on the floor (industrial)
         for y in (0.6, 5.6):
             self.box((4.8, y, 0.003), (4.6, 0.045, 0.001), YELLOW,

@@ -244,7 +244,19 @@ RectLight emits from its −Z face, so an earlier RotateX(180) lit the roof
 not the floor; the visible reflector panel was moved above the emitter so
 it stops occluding the beam), and exposure is pinned
 (`/rtx/post/histogram/enabled=False`) so hundreds of mixed-camera renders
-don't auto-brighten into a clipped bin. Before/after evidence:
+don't auto-brighten into a clipped bin; (6) a final material pass
+(`isaac/materials.py`) binds **OmniPBR.mdl with world-space triplanar
+projection** — no per-prim UVs needed on the primitive cubes — carrying a
+low-contrast procedural grunge map (FFT-tileable, generated once) so cages,
+guards, rails and floor read as worn painted steel with dirt/roughness
+variation instead of glossy toy plastic; route colours are pulled toward a
+neutral grey-paint base, big flat walls stay plain matte (a tiled detail
+map reads as wallpaper on them), and key-zone accent area lights lift the
+vision station and the ARB deck. Cinematic export: `isaac/cinematic.py`
+drives the recording camera along smooth **orbit / dolly / crane** paths
+(`--camera-path`) plus new static angles (`hero_sw`, `cell_iso`,
+`deck_front`, `deck_top`) — all on the open south/west side with no wall or
+arm occlusion, for the defense reel. Before/after evidence:
 [docs/report/isaac_evidence/final_arb/before_after_cbin_lighting.png](../docs/report/isaac_evidence/final_arb/before_after_cbin_lighting.png).
 
 **PhysX gotcha worth knowing (found by probing, fixed 2026-07-08):**
