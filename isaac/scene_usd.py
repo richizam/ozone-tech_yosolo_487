@@ -830,6 +830,22 @@ class SceneBuilder:
         for zone, cage in cages_t.items():
             self.build_cage(zone, cage, m_wall, m_mat)
 
+        # reject / manual-review bin on the arm's SE side: an open-top steel
+        # tote the exception arm drops recovered snags into (physical floor +
+        # low walls so the item settles and stays)
+        rj = P.REJECT_STATION
+        rcx, rcy = rj["center"]
+        rix, riy = rj["inner"]
+        rt, rh, rfz = rj["wall_t"], rj["wall_h"], rj["floor_z"]
+        self.add_box("reject_floor", (rcx, rcy, rfz), (rix / 2 + rt, riy / 2 + rt,
+                     0.02), color=(0.28, 0.30, 0.34), mat=m_wall)
+        for dx, dy, sx, sy in ((0, riy / 2 + rt / 2, rix / 2 + rt, rt / 2),
+                               (0, -(riy / 2 + rt / 2), rix / 2 + rt, rt / 2),
+                               (rix / 2 + rt / 2, 0, rt / 2, riy / 2),
+                               (-(rix / 2 + rt / 2), 0, rt / 2, riy / 2)):
+            self.add_box(f"reject_w_{dx}_{dy}", (rcx + dx, rcy + dy, rfz + rh / 2),
+                         (sx, sy, rh / 2), color=(0.62, 0.30, 0.10), mat=m_wall)
+
         # exit gates (normally closed)
         gate_info = {}
         for zone in ("B", "C", "D"):

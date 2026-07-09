@@ -63,7 +63,7 @@ run_one close_spacing --seed 42 --spawn-gap 3.5,4.5 --max-sim-s 400
 # item SPAWNS overlapping the side guide and falls outside — an artifact
 # (freight cannot materialize inside a rail), probed and documented
 run_one off_center    --seed 42 --spawn-offset-y 0.06 --max-sim-s 400
-run_one fault_jam     --seed 42 --inject-jam box_s@8.05 --max-sim-s 420
+run_one fault_jam     --seed 42 --inject-jam box_l@8.62 --max-sim-s 420
 
 echo "=== MATRIX DONE ==="
 touch "$OUT_ROOT/MATRIX_DONE"

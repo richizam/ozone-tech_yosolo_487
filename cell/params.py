@@ -219,10 +219,25 @@ OVERVIEW_CAM_XY = (4.8, -0.8)          # billboards yaw to face this camera
 # ---------------------------------------------------------------- arm (ours): 4-axis palletizer kinematics
 ARM_BASE = {
     "arm": (8.4, 3.25),                 # primary picker position (baseline)
-    "table": (8.55, 2.2),               # exception station: covers the routing
-                                        # zone, all three lane starts, the D
-                                        # chute and the D drop (reach-checked)
+    # exception station in the OPEN south-east corner, OUTSIDE the gate ring
+    # (gates line the deck at N y=3.532 / E x=8.528 / S y=2.468). The arm
+    # reaches jams that snag at the discharge CHUTE MOUTHS — on its own side —
+    # and removes them to the reject/review bin; it never reaches into the
+    # gated sortation deck, so no link ever crosses a gate frame. This mirrors
+    # a real cell: the exception robot works the discharge, not the live deck.
+    # (MuJoCo twin base; the Isaac build overrides to the SE reject corner —
+    # see ARM_BASE_ISAAC / isaac/arm.build_arm)
+    "table": (8.55, 2.2),
 }
+# Isaac-only exception-arm base: pushed to the OPEN south-east corner so the
+# arm reaches jams at the discharge chute mouths and removes them to the
+# reject bin WITHOUT any link crossing a gate frame (reach-verified).
+ARM_BASE_ISAAC = {"table": (8.8, 2.05)}
+# reject / manual-review bin on the arm's south-east side: the exception arm
+# drops a recovered snag here for a human to inspect (it is REMOVED from the
+# sorted flow, not pushed back through the live deck)
+REJECT_STATION = {"center": (9.35, 1.25), "inner": (0.5, 0.5),
+                  "wall_h": 0.34, "wall_t": 0.02, "floor_z": 0.12}
 ARM = {
     "base": (8.4, 3.25),
     "pedestal_h": 0.65,
@@ -247,9 +262,11 @@ PLACE_BY_MODE = {
         "D": {"xy": (8.35, 2.15), "mode": "drop", "z_clear": 0.05},
     },
     "table": {
-        # recovery PLACES the item back on the table at its lane exit (gentle,
-        # «мягкость обращения») — the route stays assigned, so the table drive
-        # re-delivers it through the normal guided path (gate -> chute -> cage)
+        # MuJoCo twin recovery places the item back on the table at its lane
+        # exit — the route stays assigned and the table drive re-delivers it
+        # (its arm links are contype-0, no gate frame to clear). The ISAAC
+        # arm overrides this to a reject bin on its SE side (isaac/arm.py) so
+        # no physical link ever crosses a gate frame.
         "C": {"xy": (8.30, 3.0), "mode": "drop", "z_clear": 0.02, "surface_z": 0.70},
         "D": {"xy": (8.05, 2.60), "mode": "drop", "z_clear": 0.02, "surface_z": 0.70},
     },

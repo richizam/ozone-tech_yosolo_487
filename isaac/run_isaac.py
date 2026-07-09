@@ -297,6 +297,7 @@ def main():
     active, done, watch = {}, {}, {}
     routes = {}
     frozen = set()                                  # injected snags (fault drill)
+    frozen_pose = {}                                # slug -> (pos, quat) pin
     inject = None
     if args.inject_jam:
         s_, x_ = args.inject_jam.split("@")
@@ -643,9 +644,23 @@ def main():
             # ownership line parks it (bottle stalled at exactly route_x)
             deck.command(t)
         deck.step(t, dt_ctrl)
-        # injected snag: the fault itself pins the item
-        for s2 in frozen:
-            if s2 in active:
+        # injected snag: PIN THE POSE (not just velocity) so the item truly
+        # stays put — on a 32 deg chute a velocity-only freeze creeps down
+        # under gravity and self-resolves before the watchdog fires. Keep the
+        # pin UNTIL THE ARM ACTUALLY GRASPS it (carry set): releasing at
+        # dispatch lets the item slide down the chute during the ~1.4 s the
+        # arm takes to descend, and the grasp misses a moved target.
+        carried = (arm.carry[0] if (arm is not None and arm.carry) else None)
+        if carried in frozen:
+            # the arm has grasped it — release the snag pin permanently so the
+            # arm carries it to the reject bin (and the pin can't teleport it
+            # back to the chute after release)
+            frozen.discard(carried)
+            frozen_pose.pop(carried, None)
+        for s2 in list(frozen):
+            if s2 in active and s2 != carried:
+                if s2 in frozen_pose:
+                    items_rp[s2].set_world_pose(*frozen_pose[s2])
                 items_rp[s2].set_linear_velocity(np.zeros(3))
                 items_rp[s2].set_angular_velocity(np.zeros(3))
                 vwrites["fault_injection"] += 1
@@ -844,6 +859,14 @@ def main():
                 if zone_c is not None and p[2] < 0.56:
                     deliver(slug, zone_c, t)
                     continue
+                # reject / review bin (arm removed a recovered snag here):
+                # a SAFE exception outcome, not a floor spill
+                rj = P.REJECT_STATION
+                if (abs(p[0] - rj["center"][0]) < rj["inner"][0] / 2 + 0.10
+                        and abs(p[1] - rj["center"][1]) < rj["inner"][1] / 2 + 0.10
+                        and p[2] < 0.55):
+                    deliver(slug, "REJECT", t)
+                    continue
                 if (p[2] < 0.25 and p[1] > 0 and zone_c is None
                         and not (abs(p[0] - 0.4) < 0.3 and p[1] < 0)):
                     deliver(slug, "FLOOR", t)
@@ -926,8 +949,18 @@ def main():
                                     and not arm.busy
                                     and recovery["active"] is None
                                     and st.get("recoveries", 0) < 2):
-                                pick = loc["pos_xyz"]
-                                top_z = pick[2] + loc["half_extents"][2]
+                                # SENSOR FUSION: the camera CONFIRMS a jam
+                                # (independent presence + rough fix), but the
+                                # precise PICK point comes from the cell's
+                                # item odometry (tracked rigid-body pose) —
+                                # exactly what a real cell does. The raw
+                                # camera centroid on a big flat box sitting in
+                                # an open gate can bias ~150 mm and push the
+                                # pick out of reach / across a gate line; the
+                                # tracked pose is precise and reach-checked.
+                                dims_j = entries[slug]["dims_m"]
+                                pick = [float(p[0]), float(p[1]), float(p[2])]
+                                top_z = float(p[2]) + float(dims_j[2]) / 2
                                 if arm.start_recovery(slug, st.get("zone", "D"),
                                                       pick, top_z, t):
                                     st["recovering"] = True
@@ -945,12 +978,14 @@ def main():
 
             # ---- fault injection: snag on the table (jam drill)
             if inject and not inject["done"] and inject["slug"] in active:
-                px_ = pose(inject["slug"])[0][0]
-                if px_ > inject["at_x"]:
+                pp_, pq_ = pose(inject["slug"])
+                if pp_[0] > inject["at_x"]:
                     inject["done"] = True
                     frozen.add(inject["slug"])
+                    # capture the exact snag pose so the pin holds it here
+                    frozen_pose[inject["slug"]] = (pp_.copy(), pq_.copy())
                     ev(t, "snag_injected", inject["slug"],
-                       at_x=round(float(px_), 3))
+                       at_x=round(float(pp_[0]), 3))
 
             # ---- flow-discipline gates
             was_gate, was_hold2 = gate_open, hold2_open

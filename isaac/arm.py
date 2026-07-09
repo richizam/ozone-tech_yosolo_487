@@ -31,7 +31,9 @@ def build_arm(builder, mode="table"):
     """Exception-arm body: official UR10e asset (joints driven by our
     validated controller) with the capsule rig as offline fallback."""
     from pxr import Gf, UsdGeom
-    bx_, by_ = __import__("cell.params", fromlist=["params"]).ARM_BASE[mode]
+    # Isaac uses the SE-corner base (ARM_BASE_ISAAC) so the arm never reaches
+    # into the gated deck; fall back to the shared ARM_BASE otherwise.
+    bx_, by_ = P.ARM_BASE_ISAAC.get(mode, P.ARM_BASE[mode])
     try:
         from isaac.asset_shells import ur10e_arm
         info = ur10e_arm(builder.stage, (bx_, by_),
@@ -50,7 +52,7 @@ def build_arm(builder, mode="table"):
 def _build_capsule_arm(builder, mode="table"):
     from pxr import Gf, UsdGeom
 
-    bx, by = P.ARM_BASE[mode]
+    bx, by = P.ARM_BASE_ISAAC.get(mode, P.ARM_BASE[mode])
     arm = P.ARM
     stage = builder.stage
     root = "/World/arm"
@@ -153,7 +155,18 @@ class ArmController:
         self.pub = publish
         self.mode = mode
         self.base = rig["base"]
-        self.place = P.PLACE_BY_MODE[mode]
+        # ISAAC recovery removes the snag to the reject/review bin on the
+        # arm's own SE side (never reaches into the gated deck, so no link
+        # crosses a gate frame). The MuJoCo twin keeps PLACE_BY_MODE (places
+        # back on the deck — its arm links are contype-0 and have no gate to
+        # clear), so this reject override is Isaac-only.
+        if mode == "table":
+            rj = P.REJECT_STATION
+            self.place = {z: {"xy": rj["center"], "mode": "drop",
+                              "z_clear": 0.06, "surface_z": rj["floor_z"]}
+                          for z in ("B", "C", "D")}
+        else:
+            self.place = P.PLACE_BY_MODE[mode]
         self.vmax = np.array(P.ARM["joint_vmax"])
         # park pose: FOLDED UP in joint space (upper arm raised, forearm
         # tucked), yawed toward the open south-east floor. An IK'd XY home

@@ -52,7 +52,7 @@ run route_B --seed 42 --items box_s,lunchbox,detergent --camera deck_front --dep
 run route_C --seed 42 --items box_l,pouf,pen           --camera deck_front --depth-stills 0 --max-sim-s 150
 run route_D --seed 42 --items bottle,helmet,plate      --camera deck_front --depth-stills 0 --max-sim-s 150
 run sensor  --seed 42 --items box_s,bottle,helmet --camera lookahead --depth-stills 3 --max-sim-s 200
-run fault_recovery --seed 42 --camera routing --inject-jam box_s@8.05 --depth-stills 0 --max-sim-s 420
+run fault_recovery --seed 42 --camera deck_front --inject-jam box_l@8.62 --depth-stills 0 --max-sim-s 420
 run gate_fault --seed 42 --items box_s,box_l,bottle --camera routing --inject-gate-fault C:stuck_closed --depth-stills 0 --max-sim-s 180
 
 echo "=== SHOWCASE4 DONE ==="
