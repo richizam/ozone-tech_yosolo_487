@@ -29,7 +29,7 @@ from cell import params as P
 RUBBER = (0.085, 0.088, 0.095)
 STEEL = (0.62, 0.64, 0.68)
 FRAME = (0.30, 0.33, 0.38)
-YELLOW = (0.95, 0.78, 0.06)
+YELLOW = (0.58, 0.48, 0.13)   # worn industrial yellow
 BLACK = (0.045, 0.045, 0.05)
 OZON_BLUE = (0.0, 0.357, 1.0)                      # #005BFF
 SIGN_DIR = Path("/tmp/sortmaster_signs")
@@ -41,6 +41,7 @@ class Dressing:
     def __init__(self, stage):
         self.stage = stage
         self._i = 0
+        self._vismats = {}
         UsdGeom.Xform.Define(stage, ROOT)
 
     # ------------------------------------------------------------ primitives
@@ -48,8 +49,33 @@ class Dressing:
         self._i += 1
         return f"{ROOT}/{tag}_{self._i}"
 
+    def _vis(self, prim, color, roughness=0.72, metallic=0.12):
+        """Matte industrial PBR (bare displayColor renders as toy plastic).
+        Runtime-tinted prims (route lamps/trails/LEDs) must NOT bind —
+        a bound material overrides displayColor updates."""
+        seed = hash(prim.GetPath().pathString) % 3
+        jit = (0.90, 1.0, 1.08)[seed]
+        c = tuple(min(1.0, float(v) * jit) for v in color)
+        key = (round(c[0], 3), round(c[1], 3), round(c[2], 3), roughness)
+        mat = self._vismats.get(key)
+        if mat is None:
+            path = f"{ROOT}/VisMats/m_{len(self._vismats)}"
+            mat = UsdShade.Material.Define(self.stage, path)
+            sh = UsdShade.Shader.Define(self.stage, f"{path}/pbr")
+            sh.CreateIdAttr("UsdPreviewSurface")
+            sh.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(
+                Gf.Vec3f(*c))
+            sh.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(
+                float(roughness))
+            sh.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(
+                float(metallic))
+            mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(),
+                                                      "surface")
+            self._vismats[key] = mat
+        UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat)
+
     def box(self, center, half, color, tag="box", euler_deg=(0, 0, 0),
-            opacity=None):
+            opacity=None, bind=True):
         cube = UsdGeom.Cube.Define(self.stage, self._path(tag))
         cube.CreateSizeAttr(2.0)
         xf = UsdGeom.Xformable(cube.GetPrim())
@@ -60,9 +86,12 @@ class Dressing:
         cube.CreateDisplayColorAttr([Gf.Vec3f(*color)])
         if opacity is not None:
             cube.CreateDisplayOpacityAttr([float(opacity)])
+        elif bind:
+            self._vis(cube.GetPrim(), color)
         return cube.GetPrim()
 
-    def cyl(self, center, radius, half_h, color, axis="Z", tag="cyl"):
+    def cyl(self, center, radius, half_h, color, axis="Z", tag="cyl",
+            bind=True):
         c = UsdGeom.Cylinder.Define(self.stage, self._path(tag))
         c.CreateRadiusAttr(float(radius))
         c.CreateHeightAttr(float(2 * half_h))
@@ -70,6 +99,8 @@ class Dressing:
         UsdGeom.Xformable(c.GetPrim()).AddTranslateOp().Set(
             Gf.Vec3d(*[float(v) for v in center]))
         c.CreateDisplayColorAttr([Gf.Vec3f(*color)])
+        if bind:
+            self._vis(c.GetPrim(), color)
         return c.GetPrim()
 
     # ------------------------------------------------------------ label signs
@@ -218,7 +249,7 @@ class Dressing:
             ix, iy = cage["inner"]
             t, h = cage["wall_t"], cage["wall_h"]
             hx, hy = ix / 2 + t, iy / 2 + t
-            col = P.ROUTE_RGBA[zone]
+            col = tuple(0.60 * v + 0.14 for v in P.ROUTE_RGBA[zone])
             # vertical tubes along the walls
             for sgn_x in (-1, 1):
                 for y in np.arange(-hy + 0.10, hy - 0.05, 0.20):
@@ -281,28 +312,42 @@ class Dressing:
         # and blinded the jam locator — box_s recovery failed on camera)
         self.box((8.3, 2.6, 4.35), (0.03, 0.03, 0.42), FRAME, tag="jammast")
         self.camera_box((8.3, 2.6, 3.8), tag="cam_jam")
+        # industrial sensing detail (§6): cable tray along the gantry beam,
+        # cable drops to each head, small status LEDs on the housings
+        self.box((ox, oy, 2.585), (0.05, 1.10, 0.012), (0.42, 0.44, 0.47),
+                 tag="cabletray")
+        for hy, hz in ((oy, oz + 0.12), (oy - off, zc + 0.09),
+                       (oy + off, zc + 0.09)):
+            self.cyl((ox + 0.04, hy, (2.57 + hz) / 2), 0.004,
+                     (2.57 - hz) / 2, (0.06, 0.06, 0.07), tag="camcable")
+            self.box((ox + 0.055, hy, hz), (0.006, 0.006, 0.006),
+                     (0.15, 0.75, 0.25), tag="camled")
 
     def lighting_env(self):
         st = self.stage
         # dim the white dome, warm the sun, lift shadows softly
         dome = UsdLux.DomeLight(st.GetPrimAtPath("/World/lights/dome"))
         if dome:
-            dome.GetIntensityAttr().Set(180.0)
+            dome.GetIntensityAttr().Set(260.0)
             dome.GetPrim().CreateAttribute(
                 "inputs:color", Sdf.ValueTypeNames.Color3f).Set(
                 Gf.Vec3f(0.55, 0.58, 0.64))
         sun = UsdLux.DistantLight(st.GetPrimAtPath("/World/lights/sun"))
         if sun:
-            sun.GetIntensityAttr().Set(900.0)
+            sun.GetIntensityAttr().Set(400.0)
             sun.GetPrim().CreateAttribute(
                 "inputs:angle", Sdf.ValueTypeNames.Float).Set(4.0)
-        # high-bay fixtures: sphere lights with radius -> soft shadows
-        for i, (lx, ly) in enumerate([(2.5, 3.0), (5.5, 3.0), (8.5, 3.2),
-                                      (8.5, 1.2)]):
+        # high-bay fixtures: sphere lights with radius -> soft shadows.
+        # AUDIT FIX (§5): bay_2/bay_3 both sat over the C-bin/arm corner at
+        # 28k and overexposed it (the arm read as the visual focus, hot
+        # specular spots on the belt). Even spacing, lower intensity, higher
+        # dome fill — the deck/gates/freight carry the exposure, not the arm.
+        for i, (lx, ly) in enumerate([(2.5, 3.0), (5.5, 3.0), (7.6, 3.8),
+                                      (9.4, 1.6)]):
             lp = f"/World/lights/bay_{i}"
             lgt = UsdLux.SphereLight.Define(st, lp)
-            lgt.CreateRadiusAttr(0.22)
-            lgt.CreateIntensityAttr(28000.0)
+            lgt.CreateRadiusAttr(0.30)
+            lgt.CreateIntensityAttr(13000.0)
             lgt.GetPrim().CreateAttribute(
                 "inputs:color", Sdf.ValueTypeNames.Color3f).Set(
                 Gf.Vec3f(1.0, 0.97, 0.90))
@@ -371,7 +416,7 @@ class Dressing:
 
     # ------------------------------------------------------- route visuals
     def _chevron(self, center, yaw_deg, color, size=0.075, z_thick=0.0005,
-                 tag="chev"):
+                 tag="chev", bind=True):
         """V-shaped arrowhead from two rotated bars; points along yaw
         (0 deg = +x)."""
         paths = []
@@ -380,7 +425,7 @@ class Dressing:
             c = (center[0] + size * 0.55 * math.cos(wa),
                  center[1] + size * 0.55 * math.sin(wa), center[2])
             p = self.box(c, (size, 0.016, z_thick), color, tag=tag,
-                         euler_deg=(0, 0, yaw_deg + sw))
+                         euler_deg=(0, 0, yaw_deg + sw), bind=bind)
             paths.append(p.GetPath().pathString)
         return paths
 
@@ -403,7 +448,7 @@ class Dressing:
         trails = {"B": [], "C": [], "D": []}
         for y in np.arange(cb["y0"] + 0.12, b["y1"] - 0.3, 0.42):
             trails["B"] += self._chevron((cb["cx"], float(y), b["top"] + 0.004),
-                                         90.0, dim["B"], tag="trB")
+                                         90.0, dim["B"], tag="trB", bind=False)
         ang_c = math.degrees(math.atan2(cc["z0"] - cc["z1"], cc["x1"] - cc["x0"]))
         for x in np.arange(cc["x0"] + 0.12, cc["x1"] - 0.05, 0.28):
             zc = cc["z0"] - (float(x) - cc["x0"]) * math.tan(math.radians(ang_c)) + 0.006
@@ -412,7 +457,7 @@ class Dressing:
                 c = (float(x) + 0.06 * 0.55 * math.cos(wa), cc["cy"]
                      + 0.06 * 0.55 * math.sin(wa), zc)
                 p = self.box(c, (0.07, 0.015, 0.0005), dim["C"], tag="trC",
-                             euler_deg=(0, -ang_c, sw))
+                             euler_deg=(0, -ang_c, sw), bind=False)
                 trails["C"].append(p.GetPath().pathString)
         ang_d = math.degrees(math.atan2(cd["z0"] - cd["z1"], cd["y0"] - cd["y1"]))
         for y in np.arange(cd["y0"] - 0.12, cd["y1"] + 0.05, -0.28):
@@ -422,7 +467,7 @@ class Dressing:
                 c = (cd["cx"] + 0.06 * 0.55 * math.cos(wa),
                      float(y) + 0.06 * 0.55 * math.sin(wa), zc)
                 p = self.box(c, (0.07, 0.015, 0.0005), dim["D"], tag="trD",
-                             euler_deg=(ang_d, 0, -90.0 + sw))
+                             euler_deg=(ang_d, 0, -90.0 + sw), bind=False)
                 trails["D"].append(p.GetPath().pathString)
         viz["trails"] = trails
         # ACTIVE ROUTE indicator panel by the table (mast + 3 lamps)
@@ -432,7 +477,8 @@ class Dressing:
                    0.85, yaw_deg=0.0)
         for i, z in enumerate("BCD"):
             lp = self.box((px - 0.26 + 0.26 * i, py - 0.03, 1.72),
-                          (0.09, 0.02, 0.09), dim[z], tag=f"lamp{z}")
+                          (0.09, 0.02, 0.09), dim[z], tag=f"lamp{z}",
+                          bind=False)
             viz["lamps"][z] = lp.GetPath().pathString
             self.label(z, f"lampcap_{z}.png",
                        (px - 0.26 + 0.26 * i, py - 0.035, 1.52), 0.17,
@@ -532,6 +578,8 @@ class Dressing:
                 path = f"{ROOT}/sensors/{nm}"
                 prim = self.stage.DefinePrim(path, "Xform")
                 prim.GetReferences().AddReference(usd)
+                from isaac.asset_shells import sanitize
+                sanitize(prim)          # kills colliders AND shipped lights
                 xf = UsdGeom.Xformable(prim)
                 xf.AddTranslateOp().Set(Gf.Vec3d(pos[0], pos[1],
                                                  float(pos[2]) + 0.045))

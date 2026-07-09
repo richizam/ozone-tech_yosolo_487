@@ -24,9 +24,16 @@ STEEL = (0.55, 0.57, 0.62)
 DARK = (0.22, 0.24, 0.28)
 BELT_COL = (0.085, 0.088, 0.095)       # dark rubber belt surface
 TABLE_COL = (0.11, 0.115, 0.13)        # dark roller deck
-RAIL_COL = (0.95, 0.78, 0.06)          # safety yellow guards
+RAIL_COL = (0.58, 0.48, 0.13)          # worn industrial safety yellow
 CHUTE_COL = (0.50, 0.51, 0.55)         # brushed steel chute
 ITEM_COL = (0.75, 0.72, 0.65)
+
+
+def soft(col, k=0.42, base=0.03):
+    """Route/marking colour -> industrial powder-coat: DARKER and duller,
+    never lighter (a pale wall clips to white under the high-bays — the C
+    bin blow-out). Saturated primaries read as toy plastic under RTX."""
+    return tuple(k * float(v) + base for v in col)
 
 ROOT = "/World"
 
@@ -112,6 +119,39 @@ class SceneBuilder:
         UsdShade.MaterialBindingAPI.Apply(prim).Bind(
             mat, UsdShade.Tokens.weakerThanDescendants, "physics")
 
+    # ------------------------------------------------------- visual materials
+    def vis_material(self, color, roughness=0.72, metallic=0.12, seed=0):
+        """Matte industrial PBR for statics — prims with bare displayColor
+        render as glossy toy plastic under RTX (user directive). Three value
+        variants per colour break the uniform look (paint batches / wear)."""
+        jit = (0.90, 1.0, 1.08)[seed % 3]
+        c = tuple(min(1.0, float(v) * jit) for v in color)
+        key = ("vis", round(c[0], 3), round(c[1], 3), round(c[2], 3),
+               roughness, metallic)
+        if key in self.mats:
+            return self.mats[key]
+        path = f"{ROOT}/VisMats/m_{len(self.mats)}"
+        mat = UsdShade.Material.Define(self.stage, path)
+        sh = UsdShade.Shader.Define(self.stage, f"{path}/pbr")
+        sh.CreateIdAttr("UsdPreviewSurface")
+        sh.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(
+            Gf.Vec3f(*c))
+        sh.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(
+            float(roughness))
+        sh.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(
+            float(metallic))
+        mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(),
+                                                  "surface")
+        self.mats[key] = mat
+        return mat
+
+    def _bind_vis(self, prim, color, opacity=1.0):
+        if opacity < 1.0:
+            return                       # translucent panels keep displayColor
+        seed = hash(prim.GetPath().pathString) & 0xff
+        UsdShade.MaterialBindingAPI.Apply(prim).Bind(
+            self.vis_material(color, seed=seed))
+
     # ------------------------------------------------------------------- solids
     def add_box(self, name, center, half, euler_rad=(0, 0, 0), color=STEEL,
                 opacity=1.0, collide=True, mat=None, parent="statics"):
@@ -129,6 +169,7 @@ class SceneBuilder:
         cube.CreateDisplayColorAttr([Gf.Vec3f(*color)])
         if opacity < 1.0:
             cube.CreateDisplayOpacityAttr([float(opacity)])
+        self._bind_vis(cube.GetPrim(), color, opacity)
         if collide:
             UsdPhysics.CollisionAPI.Apply(cube.GetPrim())
             # MuJoCo runs margin=0; PhysX's default ~2-4 cm contactOffset makes
@@ -172,6 +213,7 @@ class SceneBuilder:
         sv.CreateSurfaceVelocityAttr(Gf.Vec3f(*[float(v) / float(h)
                                                 for v, h in zip(velocity, half)]))
         self._bind_phys(prim, mat)
+        self._bind_vis(prim, color)      # matte visual (noses stay visible)
         return path
 
     def build_blade(self, name, x, y, width, along="y", filter_paths=()):
@@ -251,6 +293,7 @@ class SceneBuilder:
         xf = UsdGeom.Xformable(cyl.GetPrim())
         xf.AddTranslateOp().Set(Gf.Vec3d(*[float(c) for c in center]))
         cyl.CreateDisplayColorAttr([Gf.Vec3f(*color)])
+        self._bind_vis(cyl.GetPrim(), color)
         return cyl.GetPrim()
 
     # -------------------------------------------------------------------- cages
@@ -259,7 +302,7 @@ class SceneBuilder:
         ix, iy = cage["inner"]
         t, h = cage["wall_t"], cage["wall_h"]
         hx, hy, hh = ix / 2, iy / 2, h / 2
-        col = P.ROUTE_RGBA[zone]
+        col = soft(P.ROUTE_RGBA[zone])
         self.add_box(f"cage{zone}_floor", (cx, cy, t / 2), (hx + t, hy + t, t / 2),
                      color=tuple(c * 0.55 for c in col), mat=mat_wall)
         walls = {"+y": (0, hy + t / 2, hx + t, t / 2), "-y": (0, -(hy + t / 2), hx + t, t / 2),
@@ -277,26 +320,26 @@ class SceneBuilder:
                         fl = (sy - aw2) / 2
                         self.add_box(f"cage{zone}_fl{nm}",
                                      (cx + dx, cy + sgn * (aw2 + fl), t + hh),
-                                     (sx, fl, hh), color=col, opacity=0.45, mat=mat_wall)
+                                     (sx, fl, hh), color=col, mat=mat_wall)
                     if hdr_h > 0.005:
                         self.add_box(f"cage{zone}_hdr", (cx + dx, cy, top + hdr_h),
-                                     (sx, aw2, hdr_h), color=col, opacity=0.45, mat=mat_wall)
+                                     (sx, aw2, hdr_h), color=col, mat=mat_wall)
                     self.add_box(f"cage{zone}_skirt", (cx + dx, cy, skirt_h2),
-                                 (sx, aw2, skirt_h2), color=col, opacity=0.45, mat=mat_wall)
+                                 (sx, aw2, skirt_h2), color=col, mat=mat_wall)
                 else:
                     for sgn, nm in ((1, "a"), (-1, "b")):
                         fl = (sx - aw2) / 2
                         self.add_box(f"cage{zone}_fl{nm}",
                                      (cx + sgn * (aw2 + fl), cy + dy, t + hh),
-                                     (fl, sy, hh), color=col, opacity=0.45, mat=mat_wall)
+                                     (fl, sy, hh), color=col, mat=mat_wall)
                     if hdr_h > 0.005:
                         self.add_box(f"cage{zone}_hdr", (cx, cy + dy, top + hdr_h),
-                                     (aw2, sy, hdr_h), color=col, opacity=0.45, mat=mat_wall)
+                                     (aw2, sy, hdr_h), color=col, mat=mat_wall)
                     self.add_box(f"cage{zone}_skirt", (cx, cy + dy, skirt_h2),
-                                 (aw2, sy, skirt_h2), color=col, opacity=0.45, mat=mat_wall)
+                                 (aw2, sy, skirt_h2), color=col, mat=mat_wall)
             else:
                 self.add_box(f"cage{zone}_w{sname}", (cx + dx, cy + dy, t + hh),
-                             (sx, sy, hh), color=col, opacity=0.45, mat=mat_wall)
+                             (sx, sy, hh), color=col, mat=mat_wall)
         if open_side:
             self.add_box(f"cage{zone}_mat", (cx, cy, t + 0.004), (hx, hy, 0.004),
                          color=(0.15, 0.15, 0.17), mat=mat_mat)
@@ -325,7 +368,7 @@ class SceneBuilder:
         self.add_box(f"chute{zone}", center, half, euler, CHUTE_COL, mat=mat_chute)
         # side rails to the cage wall plane
         rail_t = 0.015
-        col = P.ROUTE_RGBA[zone]
+        col = soft(P.ROUTE_RGBA[zone])
         r1 = wall_at
         rmid = (p0 + r1) / 2
         rlen = float(np.hypot(r1 - p0, (z0 - z1) * abs(r1 - p0) / abs(p1 - p0)))
@@ -388,7 +431,7 @@ class SceneBuilder:
             bc, bh_ = (wall_at, fixed, bz0 + bh2), (0.015, aw2, bh2)
         else:
             bc, bh_ = (fixed, wall_at, bz0 + bh2), (aw2, 0.015, bh2)
-        self.add_box(f"hood{zone}_brow", bc, bh_, color=col, opacity=0.45, mat=mat_hood)
+        self.add_box(f"hood{zone}_brow", bc, bh_, color=col, opacity=0.55, mat=mat_hood)
 
     # -------------------------------------------------------------------- gates
     def build_gate(self, zone, mat_gate):
@@ -477,6 +520,13 @@ class SceneBuilder:
             UsdGeom.Xformable(lens.GetPrim()).AddTranslateOp().Set(
                 Gf.Vec3d(qx, qy, tb["top"] + 0.10))
             lens.CreateDisplayColorAttr([Gf.Vec3f(0.95, 0.55, 0.10)])
+            # limit switch at the stroke top (open-position feedback the
+            # gate state machine narrates) + cable drop down the post
+            self.add_box(f"gate{zone}_ls{i}", (qx, qy, 1.44),
+                         (0.014, 0.020, 0.012), color=(0.85, 0.75, 0.15),
+                         collide=False)
+            self.add_cylinder(f"gate{zone}_cbl{i}", (qx + 0.028, qy, 0.72),
+                              0.004, 0.72, color=(0.06, 0.06, 0.07))
         return joint.GetPrim().GetPath().pathString, zc
 
     # -------------------------------------------------------------------- items
@@ -584,7 +634,7 @@ class SceneBuilder:
 
         # floor: dark industrial concrete (less white wash in the frame)
         self.add_box("floor", (5, 3, -0.01), (12, 8, 0.01),
-                     color=(0.40, 0.42, 0.45), mat=m_belt)
+                     color=(0.28, 0.30, 0.33), mat=m_belt)
 
         # conveyors: surface-velocity kinematic bodies (Conveyor Belt utility
         # mechanism). The transfer table splits into a fixed entry strip and a
@@ -639,7 +689,7 @@ class SceneBuilder:
             "noseC", (ccx, P.CHUTE_C["cy"], ccz),
             (s_len_c / 2, P.CHUTE_C["width"] / 2, 0.012),
             velocity=(tb["speed"], 0, 0),
-            color=(0.48, 0.50, 0.56), mat=m_belt, euler_rad=(0, ang_c, 0))
+            color=(0.075, 0.08, 0.09), mat=m_belt, euler_rad=(0, ang_c, 0))
         ang_d = float(np.arctan2(P.CHUTE_D["z0"] - P.CHUTE_D["z1"],
                                  P.CHUTE_D["y0"] - P.CHUTE_D["y1"]))
         s_len_d = 0.88
@@ -650,7 +700,7 @@ class SceneBuilder:
             "noseD", (P.CHUTE_D["cx"], dcy, dcz),
             (P.CHUTE_D["width"] / 2, s_len_d / 2, 0.012),
             velocity=(0, -tb["speed"], 0),
-            color=(0.48, 0.50, 0.56), mat=m_belt, euler_rad=(ang_d, 0, 0))
+            color=(0.075, 0.08, 0.09), mat=m_belt, euler_rad=(ang_d, 0, 0))
         # pop-up stop blades (physical flow discipline): escapement gate,
         # pre-gate hold, two zone-accumulation stops, table induction stop
         beltA_p = conveyors["beltA"]

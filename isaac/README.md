@@ -219,6 +219,26 @@ validated by the containment gates (violations must be 0, `cage_max_z ≤ 0.56 m
 ≪ aperture top 0.83 m). Full rationale in
 [docs/report/isaac_evidence/README.md](../docs/report/isaac_evidence/README.md).
 
+**Strict-realism audit (2026-07-09, all found by scene forensics, physics
+bit-identical throughout):** (1) the A05 conveyor shells' interior
+`Rollers`/`Rubberbands` sub-meshes sat visibly UNDER the belt band ("item
+rides a flat belt over stray rollers") — hidden, sides closed with steel
+skirting; (2) the single stretched belt-A tile pushed the asset's tail
+drive drums 3.4 m past the belt end into the cage-C volume — every shell
+segment is now bbox-fitted to its exact span; (3) the routing deck is a
+procedural 45° steerable-wheel sorter top (8×14 wheels on shafts with
+bearing brackets, crowns exactly at the ride plane) — no official asset
+ships a lateral ARB mechanism (full A01–A49 sweep documented); (4) the
+"blown-out C bin / spotlight on the arm" was root-caused by pixel
+forensics to **light prims shipped inside the referenced UR10e / gripper /
+RealSense assets** — `sanitize()` now disables lights in every referenced
+shell; the powered discharge belts were also recolored from pale steel to
+dark rubber, the classification tint desaturated, high-bays rebalanced
+(even spacing, 13 k, quieter sun), and all statics carry matte industrial
+PBR materials with per-prim value variation instead of glossy
+displayColor plastic. Before/after evidence:
+[docs/report/isaac_evidence/final_arb/](../docs/report/isaac_evidence/final_arb/).
+
 **PhysX gotcha worth knowing (found by probing, fixed 2026-07-08):**
 `PhysxSurfaceVelocityAPI.surfaceVelocity` is applied in the prim's *local
 frame scaled by its xform scale*. A cube-based belt with half-length 3.45

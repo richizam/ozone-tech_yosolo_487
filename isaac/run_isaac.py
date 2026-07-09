@@ -106,6 +106,17 @@ def main():
     except ImportError:
         from isaacsim.simulation_app import SimulationApp
     sim_app = SimulationApp({"headless": True, "width": 1280, "height": 720})
+    # FIXED exposure: RTX auto-exposure adapts to the dark belts across the
+    # run's hundreds of mixed-camera renders and pushes video frames ~2
+    # stops up — the correctly-dark cage/panels then clip to cream (the
+    # "blown-out C bin"). A probe render of the SAME stage without the
+    # adaptation showed the intended industrial exposure.
+    try:
+        import carb
+        _st = carb.settings.get_settings()
+        _st.set("/rtx/post/histogram/enabled", False)
+    except Exception:
+        pass
 
     from isaacsim.core.api import World
     try:
@@ -342,9 +353,12 @@ def main():
             rp.set_angular_velocity(w)
 
     def tint(slug, zone):
+        # classification tint, SOFTENED: the raw saturated route colour
+        # clipped to near-white under the high-bays (the "blown-out C bin"
+        # was the tinted box_l itself, not the cage walls)
         mesh = stage.GetPrimAtPath(f"{info['items'][slug]['path']}/geom")
         UsdGeom.Gprim(mesh).GetDisplayColorAttr().Set(
-            [Gf.Vec3f(*P.ROUTE_RGBA[zone])])
+            [Gf.Vec3f(*[0.50 * v + 0.05 for v in P.ROUTE_RGBA[zone]])])
 
     def which_cage(pos):
         for zone, cage in cages.items():
