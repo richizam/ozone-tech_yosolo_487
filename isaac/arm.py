@@ -155,16 +155,28 @@ class ArmController:
         self.pub = publish
         self.mode = mode
         self.base = rig["base"]
-        # ISAAC recovery removes the snag to the reject/review bin on the
-        # arm's own SE side (never reaches into the gated deck, so no link
-        # crosses a gate frame). The MuJoCo twin keeps PLACE_BY_MODE (places
-        # back on the deck — its arm links are contype-0 and have no gate to
-        # clear), so this reject override is Isaac-only.
+        # ISAAC recovery policy (route-specific — preserves category
+        # correctness AND keeps every link outside the gate ring):
+        #   C jam -> drop directly into cage C through its open -x aperture
+        #            (cage C is EAST of the gate ring — arm stays east)
+        #   D jam -> drop directly into cage D through its open +y aperture
+        #            (cage D is SOUTH of the gate ring — arm stays south)
+        #   B jam -> reject/review bin: never re-feed an uncertain item to the
+        #            main sorter. All placement points are IK-reach-verified
+        #            from the SE base at the (reachable) recovery lift height.
+        # The MuJoCo twin keeps PLACE_BY_MODE (re-delivers to the deck — its
+        # arm links are contype-0, no gate to clear), so this is Isaac-only.
         if mode == "table":
             rj = P.REJECT_STATION
-            self.place = {z: {"xy": rj["center"], "mode": "drop",
-                              "z_clear": 0.06, "surface_z": rj["floor_z"]}
-                          for z in ("B", "C", "D")}
+            cw = P.CAGE_WALL_TOP
+            self.place = {
+                "B": {"xy": rj["center"], "mode": "drop", "z_clear": 0.06,
+                      "surface_z": rj["floor_z"], "dest": "REJECT"},
+                "C": {"xy": (9.2, 3.0), "mode": "drop", "z_clear": 0.05,
+                      "surface_z": cw},
+                "D": {"xy": (8.05, 1.55), "mode": "drop", "z_clear": 0.05,
+                      "surface_z": cw},
+            }
         else:
             self.place = P.PLACE_BY_MODE[mode]
         self.vmax = np.array(P.ARM["joint_vmax"])
@@ -377,7 +389,12 @@ class ArmController:
             self.pub(t, "attached", slug)
         elif self.state == "ATTACH":
             px, py, _ = j["pick"]
-            j["lift_z"] = min(P.LIFT_Z + 0.05, 1.29)
+            # table recovery transfers OVER the cage walls to a target at
+            # r ~ 1.03 m; the UR reach ceiling there is TCP ~1.21 m, so cap
+            # the lift/transfer height (1.29 put the wrist out of reach and
+            # the transfer failed). 1.10 clears the 0.83 m cage wall + item.
+            cap = 1.10 if self.mode == "table" else 1.29
+            j["lift_z"] = min(P.LIFT_Z + 0.05, cap)
             self.state = "LIFT"
             self._set_target(self._wp((px, py, j["lift_z"])), t)
         elif self.state == "LIFT":

@@ -1137,6 +1137,27 @@ def main():
     n_ok = sum(1 for r in rows if r["ok"])
     unsafe = sum(1 for r in rows if r["delivered"] == "B"
                  and r["zone_true"] in ("C", "D"))
+    # outcome accounting (recovery_success is SEPARATE from routing_accuracy:
+    # a B item safely diverted to REJECT is a successful safe recovery, but
+    # NOT a correct final B delivery)
+    floor_drops = sum(1 for r in rows if r["delivered"] == "FLOOR")
+    reject_deliveries = sum(1 for r in rows if r["delivered"] == "REJECT")
+    manual_calls = sum(1 for r in rows if r["delivered"] == "MANUAL")
+    recovered = set()
+    review_diversions = 0
+    for e in events:
+        if e["event"] == "recovery_done":
+            recovered.add(e["slug"])
+    for r in rows:
+        if r["delivered"] in ("REJECT", "MANUAL"):
+            review_diversions += 1
+    # a recovered item is a SUCCESS if it ended safely: its correct cage
+    # (C/D) or a safe review bin (REJECT/MANUAL) — never a floor spill or a
+    # silent misroute to B
+    recovery_success = sum(
+        1 for r in rows if r["slug"] in recovered
+        and (r["ok"] or r["delivered"] in ("REJECT", "MANUAL")))
+    contain_violations = int(sum(w["violations"] for w in watch.values()))
     tracked = [w for w in watch.values()]
     cycles = [r["cycle_s"] for r in rows if r["cycle_s"]]
     t_del = [r["t_delivered"] for r in rows if r.get("t_delivered")]
@@ -1180,6 +1201,16 @@ def main():
         "n_routed_ok": n_ok,
         "routing_accuracy": round(n_ok / max(1, n_total), 4),
         "unsafe_errors": unsafe,
+        "floor_drops": floor_drops,
+        "reject_deliveries": reject_deliveries,
+        "manual_callouts": manual_calls,
+        "review_diversions": review_diversions,
+        "recovery": {
+            "jams_recovered_by_arm": len(recovered),
+            "recovery_success": recovery_success,
+            "policy": "C->cage C, D->cage D, B->reject/review (safe recovery "
+                      "separate from routing_accuracy)",
+        },
         "containment": {
             "tracked": len(tracked),
             "violations": int(sum(w["violations"] for w in tracked)),
@@ -1223,7 +1254,13 @@ def main():
                      indent=2), flush=True)
 
     sim_app.close()
-    return 0 if (len(done) == n_total and unsafe == 0) else 1
+    # exit nonzero for ANY bad physical outcome — not just undelivered/unsafe.
+    # A floor spill, a containment escape, or a recovered item that failed to
+    # reach a safe destination are all failures the CI gate must catch.
+    bad = (len(done) != n_total or unsafe > 0 or floor_drops > 0
+           or contain_violations > 0
+           or (len(recovered) > 0 and recovery_success < len(recovered)))
+    return 1 if bad else 0
 
 
 if __name__ == "__main__":
