@@ -156,3 +156,39 @@ Notes: cycle/throughput spread is spawn-gap dominated (the serial vision
 window is the designed bottleneck); the jam-drill mean includes the two
 recovery cycles. The deck never approaches saturation, confirming the
 actuation model has authority margin.
+
+## 9. Small-item handling: ARB roller pitch vs. the 10 mm rule
+
+A fair jury question: the official rule sets the minimum allowable product
+at **10 × 10 × 10 mm** — can an Activated-Roller-Belt handle items that
+small? Honest answer and why it is a non-issue here:
+
+- **Open-roller ARB lower limit.** A classic ARB (e.g. Intralox) has a
+  roller/wheel pitch of ~25–50 mm, and reliable diverting wants a product
+  footprint ≥ ~2× the pitch (≈ 50–75 mm). A bare 10 mm cube is below that
+  on an *open-roller* deck — it could bridge or fall between wheels. The
+  concern is legitimate for coarse open-roller hardware.
+
+- **The 10 mm threshold is a CLASSIFICATION limit, not a routing
+  requirement.** Any item with a dimension < 10 mm is *undersize by
+  dimension* → routed to **C** (out-of-gauge) by the official rule order.
+  The sorter therefore never has to *steer* a sub-10 mm item on the deck;
+  it detects it as undersize and diverts it. (Our 9 mm pen is exactly this
+  case: undersize → C.)
+
+- **Our contact surface is CONTINUOUS, not open rollers.** The routing deck
+  is modelled as a continuous surface-velocity field (belted / fine-pitch
+  ARB class) — there is no inter-roller gap for a small item to fall
+  through, which is the same "9 mm pen rides a continuous surface" defense
+  used for the infeed conveyors. The visible angled-wheel field is the
+  mechanical *embodiment*; the simulated contact is a continuous patch.
+
+- **The routed item set is well within ARB capability.** Of the 11 official
+  items the only sub-10 mm one is the pen (undersize → C). Everything the
+  deck actually diverts by shape has a large footprint (plate Ø209 mm,
+  cylinder 435 mm, bottle 305 mm, boxes ≥ 200 mm), far above any ARB size
+  floor.
+
+- **Industry practice for the 10–50 mm fraction** is precisely fine-pitch
+  ARB or narrow-belt / cross-belt / tilt-tray sortation. For *this* mix and
+  *these* rules, a continuous-surface ARB is the correct, defensible choice.
