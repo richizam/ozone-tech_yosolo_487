@@ -257,6 +257,16 @@ class SceneBuilder:
         # is a seam that kicks passing items (speculative contacts on the
         # panel's top edge launched pouf clean off belt A)
         zc = top - h2 - 0.046
+        # slot housing at the belt surface: a dark recessed frame the blade
+        # rises FROM — makes a raised blade read as a real pop-up stop
+        # emerging from a slot in the conveyor bed, not a bare wall standing
+        # on the belt ("paredes del piso"). Static, non-colliding.
+        if along == "y":
+            hh = (0.038, width / 2 + 0.012, 0.014)
+        else:
+            hh = (width / 2 + 0.012, 0.038, 0.014)
+        self.add_box(f"{name}_slot", (x, y, top - 0.006), hh,
+                     color=(0.05, 0.055, 0.065), collide=False)
         body_path = f"{ROOT}/blades/{_sanitize(name)}"
         xform = UsdGeom.Xform.Define(self.stage, body_path)
         UsdGeom.Xformable(xform.GetPrim()).AddTranslateOp().Set(
@@ -515,41 +525,38 @@ class SceneBuilder:
         drive.CreateDampingAttr(2.0e3)
         drive.CreateMaxForceAttr(800.0)
         drive.CreateTargetPositionAttr(0.0)
-        # LOW GUARDED GATE MODULE integrated into the conveyor frame — NO
-        # tall poles (the old 1.72 m guide posts read as random vertical
-        # sticks and crowded the arm workspace). Each end gets a short side
-        # cheek that guards the vertical-lift slide (functional height only:
-        # the closed gate tops out ~1.0 m to stop the tallest 0.36 m item),
-        # a COMPACT pneumatic cylinder + valve block low on the cheek, a
-        # low photoeye bracket at freight height, and a route-colour status
-        # strip. Detection/feedback hardware is bracket-mounted, not on
-        # poles. The validated lift-joint physics above is untouched.
-        cheek_top = tb["top"] + 0.42                      # 1.12 m — low guard
-        cheek_h2 = (cheek_top - tb["top"]) / 2
+        # GUILLOTINE GATE IN A CLEAN PORTAL FRAME. The exit gate is a
+        # vertical-lift panel; without a frame the lifting panel reads as a
+        # "flying" hovering slab. A real vertical-lift/guillotine gate slides
+        # inside a portal frame — two slim U-channels + a top head beam — so
+        # the panel is visibly GUIDED, never floating. The frame head sits at
+        # the panel's fully-open top (short 0.42 m stroke -> ~1.42 m), so the
+        # panel slides up INTO the frame and never rises above it. This is a
+        # gate frame (clearly functional), not the old bare 1.72 m poles, and
+        # it keeps the validated lift-joint physics untouched.
+        head_z = tb["top"] + P.GATES["travel"] + P.GATES["panel_h"] + 0.05
+        chan_h2 = (head_z - tb["top"]) / 2
         FRAME_D = (0.17, 0.18, 0.21)
-        VALVE_D = (0.10, 0.10, 0.12)
         for i, (qx, qy) in enumerate(posts):
-            # short side cheek (guards the slide)
-            self.add_box(f"gate{zone}_cheek{i}", (qx, qy, tb["top"] + cheek_h2),
-                         (0.03, 0.03, cheek_h2), color=FRAME_D, collide=False)
-            # compact pneumatic actuator: valve block + short horizontal ram
-            # on the OUTER face, mounted low (~0.9 m) — not a tall cylinder
-            outer = 0.055
-            vx = qx + (outer if gp["axis"] == "y" else 0.0) * (1 if qx > mid else -1)
-            vy = qy + (outer if gp["axis"] == "x" else 0.0) * (1 if qy > mid else -1)
-            self.add_box(f"gate{zone}_valve{i}", (vx, vy, tb["top"] + 0.20),
-                         (0.028, 0.028, 0.045), color=VALVE_D, collide=False)
-            ram = UsdGeom.Cylinder.Define(
-                self.stage, f"{ROOT}/statics/gate{zone}_ram{i}")
-            ram.CreateRadiusAttr(0.009)
-            ram.CreateHeightAttr(0.14)
-            ram.CreateAxisAttr("Z")
-            UsdGeom.Xformable(ram.GetPrim()).AddTranslateOp().Set(
-                Gf.Vec3d(vx, vy, tb["top"] + 0.33))
-            ram.CreateDisplayColorAttr([Gf.Vec3f(0.72, 0.73, 0.76)])
+            # slim U-channel guide the panel edge rides in
+            if gp["axis"] == "x":
+                ch_half = (0.022, 0.045, chan_h2)
+                gr_half = (0.008, 0.030, chan_h2)        # inner groove (dark)
+            else:
+                ch_half = (0.045, 0.022, chan_h2)
+                gr_half = (0.030, 0.008, chan_h2)
+            self.add_box(f"gate{zone}_chan{i}", (qx, qy, tb["top"] + chan_h2),
+                         ch_half, color=FRAME_D, collide=False)
+            self.add_box(f"gate{zone}_groove{i}",
+                         (qx, qy, tb["top"] + chan_h2),
+                         gr_half, color=(0.05, 0.05, 0.06), collide=False)
+            # compact pneumatic valve block low on the channel (drives lift)
+            self.add_box(f"gate{zone}_valve{i}", (qx, qy, tb["top"] + 0.16),
+                         (0.03, 0.03, 0.05), color=(0.10, 0.11, 0.13),
+                         collide=False)
             # low photoeye bracket + amber lens at freight height
-            self.add_box(f"gate{zone}_pe{i}", (qx, qy, tb["top"] + 0.10),
-                         (0.02, 0.02, 0.018), color=(0.05, 0.05, 0.06),
+            self.add_box(f"gate{zone}_pe{i}", (qx, qy, tb["top"] + 0.09),
+                         (0.02, 0.02, 0.016), color=(0.05, 0.05, 0.06),
                          collide=False)
             lens = UsdGeom.Cylinder.Define(
                 self.stage, f"{ROOT}/statics/gate{zone}_pel{i}")
@@ -557,11 +564,18 @@ class SceneBuilder:
             lens.CreateHeightAttr(0.006)
             lens.CreateAxisAttr("Y" if gp["axis"] == "x" else "X")
             UsdGeom.Xformable(lens.GetPrim()).AddTranslateOp().Set(
-                Gf.Vec3d(qx, qy, tb["top"] + 0.10))
+                Gf.Vec3d(qx, qy, tb["top"] + 0.09))
             lens.CreateDisplayColorAttr([Gf.Vec3f(0.95, 0.55, 0.10)])
-            # route-colour status strip on the cheek top
-            self.add_box(f"gate{zone}_led{i}", (qx, qy, cheek_top + 0.004),
-                         (0.028, 0.028, 0.006), color=col, collide=False)
+        # portal HEAD BEAM connecting the two channels + a route-colour strip
+        if gp["axis"] == "x":
+            beam_half = (span + 0.06, 0.03, 0.022)
+        else:
+            beam_half = (0.03, span + 0.06, 0.022)
+        self.add_box(f"gate{zone}_head", (px, py, head_z), beam_half,
+                     color=FRAME_D, collide=False)
+        self.add_box(f"gate{zone}_headled", (px, py, head_z + 0.024),
+                     (beam_half[0], beam_half[1], 0.006), color=col,
+                     collide=False)
         return joint.GetPrim().GetPath().pathString, zc
 
     # -------------------------------------------------------------------- items
@@ -862,9 +876,12 @@ class SceneBuilder:
                 "hero_sw", (0.6, -1.9, 2.3), (5.4, 3.0, 0.75), fovy_deg=52.0),
             "cell_iso": self.build_camera_lookat(
                 "cell_iso", (-1.4, -1.4, 5.6), (5.0, 3.0, 0.55), fovy_deg=48.0),
+            # elevated 3/4 from the open SOUTH-EAST corner: looks over the
+            # cages onto the ARB deck + gates (the old low south view was
+            # blocked by the green D cage foreground)
             "deck_front": self.build_camera_lookat(
-                "deck_front", (8.15, 0.85, 1.55), (8.32, 3.0, 0.72),
-                fovy_deg=42.0),
+                "deck_front", (9.55, 1.45, 2.15), (8.25, 3.05, 0.74),
+                fovy_deg=44.0),
             "deck_top": self.build_camera_lookat(
                 "deck_top", (8.25, 3.0, 2.55), (8.25, 3.0, 0.70),
                 fovy_deg=46.0),

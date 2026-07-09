@@ -69,9 +69,14 @@ HOOD = {"clearance": 0.50,              # normal gap slope->hood (max item 0.36)
 # actuated vertical-lift exit gates on the transfer table (closed by default:
 # an item can only leave through the gate its route command opened)
 GATES = {
-    "travel": 0.66,                     # lift stroke, m: open panel bottom at 1.364
-                                        # clears the 500 mm max item AND an arm-carried
-                                        # load at max lift (item top <= 1.29)
+    "travel": 0.42,                     # lift stroke, m: open panel bottom at 1.12,
+                                        # clears the tallest routed item (helmet/box_l
+                                        # <= 0.30 m -> top <= 1.00 m); the arm places
+                                        # recovered items on the deck lane, never
+                                        # carries them THROUGH a gate, so the old
+                                        # 0.66 arm-clearance stroke is not needed. A
+                                        # shorter stroke keeps the guillotine panel
+                                        # inside its low frame (no "flying" panel).
     "panel_h": 0.30, "panel_t": 0.024,  # panel height / thickness
     "gap": 0.004,                       # closed-state clearance over the table top
     "B": {"axis": "x", "c0": 8.15, "c1": 8.55, "line": 3.532},   # north exit

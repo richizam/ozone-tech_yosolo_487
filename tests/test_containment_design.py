@@ -13,6 +13,14 @@ from cell import params as P  # noqa: E402
 
 MAX_ITEM_H = 0.30              # tallest official test item lying flat (box_l)
 MAX_ITEM_LEN = 0.50            # official max item edge
+# Singulated freight rides FLAT (the vision station measures one flat item
+# per window). The official worst-case box is 450x320x320 mm -> resting
+# HEIGHT 320 mm; the 500 mm edge is always horizontal, never on end. The
+# exit gate lifts to clear the item's HEIGHT, so the invariant is
+# height + margin (the old 500 mm-edge stroke of 0.54 m over-lifted and the
+# panel "flew" above its guillotine frame). Every routed item passes under
+# the 0.42 m gate (box_l 0.30, helmet 0.28 tall — verified).
+MAX_ITEM_HEIGHT = 0.32        # official max resting height (320 mm middle dim)
 
 
 def _slope_angle(chute, axis):
@@ -42,8 +50,8 @@ def test_hood_clears_riding_items(chute, axis):
 
 
 def test_gate_travel_clears_max_item():
-    """An open gate passes the 500 mm max item with margin."""
-    assert P.GATES["travel"] >= MAX_ITEM_LEN + 0.04
+    """An open gate passes the tallest flat-riding item with margin."""
+    assert P.GATES["travel"] >= MAX_ITEM_HEIGHT + 0.06
 
 
 def test_cage_apertures_fit_chutes():
