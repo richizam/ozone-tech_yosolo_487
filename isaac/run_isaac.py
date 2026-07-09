@@ -75,6 +75,21 @@ def parse_args():
                     help="fault drill: stop driving SLUG once it passes x=X "
                          "on the table (snag) so the watchdog + jam camera "
                          "fire, e.g. box_s@8.0")
+    ap.add_argument("--friction-mult", type=float, default=1.0,
+                    help="material sweep: scale every item's friction pair "
+                         "(0.7 = low-friction robustness run)")
+    ap.add_argument("--mass-mult", type=float, default=1.0,
+                    help="material sweep: scale every item's mass "
+                         "(1.3 = heavy-item robustness run)")
+    ap.add_argument("--spawn-offset-y", type=float, default=0.0,
+                    help="fault drill: spawn items off-center by this lateral "
+                         "offset in meters (belt guides sit at +-0.265)")
+    ap.add_argument("--inject-gate-fault", default=None,
+                    metavar="ZONE:MODE",
+                    help="gate fault drill (GATED_ACTUATOR_TEST_PLAN): "
+                         "C:stuck_closed | B:stuck_open | C:delay:400 — the "
+                         "controller intent is unchanged, the hardware "
+                         "misbehaves, the cell must fail safe")
     ap.add_argument("--probe", default=None,
                     help="slug to trace in detail near the table exit")
     return ap.parse_args()
@@ -119,7 +134,8 @@ def main():
         manifest = [e for e in manifest if e["slug"] in keep]
     entries = {e["slug"]: e for e in manifest}
 
-    builder = SceneBuilder(stage, REPO)
+    builder = SceneBuilder(stage, REPO, friction_mult=args.friction_mult,
+                           mass_mult=args.mass_mult)
     info = builder.build(manifest)
     from isaac.arm import build_arm, ArmController
     arm_rig = build_arm(builder, mode="table")
@@ -149,6 +165,7 @@ def main():
 
     gate_target_attr = {}
     gate_rp = {}
+    gate_z0 = {}
     for zone, g in info["gates"].items():
         prim = stage.GetPrimAtPath(g["joint"])
         gate_target_attr[zone] = prim.GetAttribute("drive:linear:physics:targetPosition")
@@ -156,8 +173,9 @@ def main():
         if hasattr(rp, "initialize"):
             rp.initialize()
         gate_rp[zone] = rp
+        gate_z0[zone] = g["z0"]
 
-    conv_attr, blade_attr = {}, {}
+    conv_attr, blade_attr, deck = {}, {}, None
     if args.drive == "surface":
         from pxr import PhysxSchema
         for name, path in info["conveyors"].items():
@@ -166,6 +184,16 @@ def main():
         for name, jpath in info["blades"].items():
             blade_attr[name] = stage.GetPrimAtPath(jpath).GetAttribute(
                 "drive:linear:physics:targetPosition")
+        # ARB routing deck: matrix of local actuator patches with real
+        # actuation dynamics (latency / ramp / saturation / noise)
+        from isaac.arb_deck import ArbDeck
+        deck = ArbDeck(stage, info["arb_patches"], feed_speed=P.TABLE["speed"],
+                       seed=args.seed,
+                       pill_paths=(info.get("viz") or {}).get("arb_pills"))
+        print(f"[isaac] ARB deck: {len(info['arb_patches'])} patches "
+              f"({P.ARB_DECK['nx']}x{P.ARB_DECK['ny']}), latency "
+              f"{P.ARB_DECK['latency_s']*1000:.0f}ms ramp "
+              f"{P.ARB_DECK['ramp_mps2']}m/s2", flush=True)
 
     view_cam = Camera(prim_path=info["cams"][args.camera],
                       resolution=(1280, 720))
@@ -244,6 +272,7 @@ def main():
     flow = {"escapement_gate_activations": 0, "spacing_gate_activations": 0,
             "multi_object_window_events": 0, "conveyor_a_stop_count": 0}
     cls_stats = {"n": 0, "correct": 0, "sensor_misses": 0, "reads_total": 0}
+    reads_log = {}                      # slug -> raw reads + fused (P5 trail)
     window_multi = False
     events = []
     stills_left = args.depth_stills
@@ -257,6 +286,18 @@ def main():
 
     arm = ArmController(arm_rig, items_rp, entries, ev, mode="table")
     recovery = {"active": None}
+    # gate interlock layer (GATED_ACTUATOR_TEST_PLAN): explicit state machine
+    # + metrics over the existing normally-closed exit gates, with optional
+    # hardware fault injection
+    from isaac.gates import GateInterlocks
+    gate_inject = None
+    if args.inject_gate_fault:
+        parts = args.inject_gate_fault.split(":")
+        gate_inject = {"zone": parts[0], "mode": parts[1]}
+        if parts[1] == "delay":
+            gate_inject["delay_s"] = float(parts[2]) / 1000.0
+    gates_ctl = GateInterlocks(gate_target_attr, gate_rp, gate_z0,
+                               P.GATES["travel"], ev, inject=gate_inject)
     if jam_loc is not None:
         # empty-cell depth background, with the cell in its true idle state:
         # arm folded home, gates closed, blades parked (before any spawn)
@@ -276,7 +317,13 @@ def main():
     def vel(slug):
         return np.asarray(items_rp[slug].get_linear_velocity(), dtype=float)
 
+    # Priority-2 proof: in surface mode NOTHING moves an item during nominal
+    # routing except contact with a powered surface. set_v (the scripted-drive
+    # idiom) is counted so the evidence can show zero nominal direct writes.
+    vwrites = {"nominal_set_v": 0, "fault_injection": 0}
+
     def set_v(slug, vx=None, vy=None, damp_spin=True):
+        vwrites["nominal_set_v"] += 1
         rp = items_rp[slug]
         v = np.asarray(rp.get_linear_velocity(), dtype=float)
         w = np.asarray(rp.get_angular_velocity(), dtype=float)
@@ -312,12 +359,17 @@ def main():
         e = entries[slug]
         ok = zone_actual == e["zone"]
         p, _ = pose(slug)
+        cls = st.get("cls") or {}
         done[slug] = {"zone_true": e["zone"], "zone_routed": st.get("zone"),
                       "delivered": zone_actual, "ok": ok,
                       "t_spawn": st.get("t_spawn"), "t_detected": st.get("t_detected"),
                       "t_route_cmd": st.get("t_route_cmd"),
                       "t_table_entry": st.get("t_table_entry"),
                       "t_delivered": t,
+                      "n_reads": cls.get("n_reads"),
+                      "confidence": cls.get("confidence"),
+                      "dims_mm": cls.get("dims_mm"),
+                      "cls_reason": cls.get("reason"),
                       "final_pos": [round(float(v), 3) for v in p]}
         ev(t, "item_delivered", slug, zone=zone_actual, zone_true=e["zone"], ok=ok,
            pos=[round(float(v), 3) for v in p])
@@ -343,19 +395,26 @@ def main():
                            "settle_t": None, "low_since": None}
 
     def downstream_clear():
+        # CENTER-based: the yaw-agnostic front metric (center + dims[0]/2)
+        # counted an item PRESSED AT ITS OWN GATE as downstream once it
+        # rested rotated (box_s wedged at the blade read front 6.36 > 6.35
+        # and held its own gate closed forever). An item is downstream only
+        # when its center has committed past the gate line.
         for slug in active:
             p, _ = pose(slug)
-            front = p[0] + entries[slug]["dims_m"][0] / 2
-            if front > a["gate_x"] + 0.05 and abs(p[1] - a["y"]) < 0.65:
+            if p[0] > a["gate_x"] + 0.05 and abs(p[1] - a["y"]) < 0.65:
                 return False
         return True
 
     def window_clear():
+        # CENTER-based, same lesson as downstream_clear: the yaw-agnostic
+        # front metric (center + dims[0]/2) counted the LONG cylinder pressed
+        # AT the hold2 blade (center 5.49, metric-front 5.70) as "in the
+        # window" — its own presence kept its own hold blade raised forever
+        # and the whole upstream queue deadlocked behind it (probe42).
         for slug in active:
             p, _ = pose(slug)
-            half = entries[slug]["dims_m"][0] / 2
-            front, rear = p[0] + half, p[0] - half
-            if (front > a["hold2_x"] + 0.05 and rear <= a["gate_x"] + 0.05
+            if (a["hold2_x"] + 0.05 < p[0] <= a["gate_x"] + 0.05
                     and abs(p[1] - a["y"]) < 0.4):
                 return False
         return True
@@ -535,22 +594,25 @@ def main():
                      "C": (tb["x1"] + 0.30, tb["lane_C_cy"]),
                      "D": (tb["lane_D_cx"], ty0 - 0.30)}
             txy = exits.get(route, (tb["x1"] + 0.3, tb["y"]))
-            d = np.array([txy[0] - po[0], txy[1] - po[1]])
-            n = float(np.linalg.norm(d))
-            v = tb["speed"] * d / n if n > 1e-6 else np.zeros(2)
-            conv_attr["zone"].Set(Gf.Vec3f(float(v[0]), float(v[1]), 0.0))
+            hm_o = max(entries[owner]["dims_m"][0],
+                       entries[owner]["dims_m"][1]) / 2
+            # command the LOCAL patches the owner covers (plus the pre-spin
+            # halo); the commanded vector tracks the item toward its exit
+            deck.command(t, (float(po[0]), float(po[1])), hm_o, route, txy)
         else:
-            # idle zone FEEDS FORWARD: every item reaching the zone is
+            # idle deck FEEDS FORWARD: every item reaching the zone is
             # already routed, and a dead strip under an item straddling the
             # ownership line parks it (bottle stalled at exactly route_x)
-            conv_attr["zone"].Set(Gf.Vec3f(float(tb["speed"]), 0.0, 0.0))
+            deck.command(t)
+        deck.step(t, dt_ctrl)
         # injected snag: the fault itself pins the item
         for s2 in frozen:
             if s2 in active:
                 items_rp[s2].set_linear_velocity(np.zeros(3))
                 items_rp[s2].set_angular_velocity(np.zeros(3))
+                vwrites["fault_injection"] += 1
 
-    def drive_gates():
+    def drive_gates(t):
         want = {z: False for z in "BCD"}
         for slug, route in routes.items():
             if slug not in active or route not in want:
@@ -560,8 +622,8 @@ def main():
             v = p[0] if ax == "x" else p[1]
             if sgn * (v - thr) < 0:
                 want[route] = True
-        for z, open_ in want.items():
-            gate_target_attr[z].Set(float(P.GATES["travel"]) if open_ else 0.0)
+        gates_ctl.command(t, want)
+        gates_ctl.step(t)
 
     def capture_still(t, slug):
         nonlocal stills_left
@@ -617,7 +679,8 @@ def main():
                            else float(spawn_rng.uniform(0, 2 * np.pi)))
                     qz = (math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2))
                     items_rp[slug].set_world_pose(
-                        np.array([0.4, a["y"], a["top"] + e["dims_m"][2] / 2 + 0.003]),
+                        np.array([0.4, a["y"] + args.spawn_offset_y,
+                                  a["top"] + e["dims_m"][2] / 2 + 0.003]),
                         np.array(qz))
                     items_rp[slug].set_linear_velocity(np.zeros(3))
                     items_rp[slug].set_angular_velocity(np.zeros(3))
@@ -672,6 +735,10 @@ def main():
                         fused = fuse_reads(st.get("reads", []))
                         st["zone"] = fused["zone"]
                         st["cls"] = fused
+                        # P5 evidence trail: every RAW measurement behind the
+                        # fused verdict is persisted (reads_log.json)
+                        reads_log[slug] = {"raw_measurements": st.get("reads", []),
+                                           "fused": fused}
                         correct = fused["zone"] == e["zone"]
                         cls_stats["n"] += 1
                         cls_stats["correct"] += int(correct)
@@ -680,6 +747,7 @@ def main():
                         ev(t, "item_classified", slug, zone=fused["zone"],
                            zone_true=e["zone"], correct=correct,
                            n_reads=fused["n_reads"],
+                           confidence=fused.get("confidence"),
                            sensor_miss=fused["sensor_miss"],
                            dims_mm=fused.get("dims_mm"),
                            reason=fused["reason"],
@@ -706,6 +774,30 @@ def main():
                     margin = (t - st["t_route_cmd"]) if "t_route_cmd" in st else None
                     ev(t, "table_entry", slug,
                        command_margin_s=round(margin, 3) if margin is not None else "")
+                # gate-interlock verification (GATED_ACTUATOR_TEST_PLAN):
+                # exit crossing is confirmed against the MEASURED gate state,
+                # and an item parked against a not-open gate is reported
+                route_g = routes.get(slug)
+                if route_g in GATE_CLEAR and slug not in frozen:
+                    ax_g, sgn_g, thr_g = GATE_CLEAR[route_g]
+                    coord = p[0] if ax_g == "x" else p[1]
+                    if not st.get("exit_verified") and sgn_g * (coord - thr_g) >= 0:
+                        st["exit_verified"] = True
+                        gstate = gates_ctl.state.get(route_g)
+                        ev(t, "exit_verified", slug, gate=route_g,
+                           gate_state=gstate)
+                        if gstate != "open":
+                            gates_ctl.metrics["gate_item_contact_events"] += 1
+                    line_g = P.GATES[route_g]["line"]
+                    if (not st.get("gate_block_reported")
+                            and gates_ctl.state.get(route_g) != "open"
+                            and sgn_g * (coord - line_g) < 0
+                            and abs(coord - line_g) < 0.12
+                            and float(np.linalg.norm(vel(slug)[:2])) < 0.05):
+                        st["gate_block_reported"] = True
+                        gates_ctl.metrics["gate_item_contact_events"] += 1
+                        ev(t, "wrong_gate_blocked", slug, gate=route_g,
+                           gate_state=gates_ctl.state.get(route_g))
                 # deliveries
                 if p[1] > b["y_delivered"] and abs(p[0] - b["cx"]) < 0.3:
                     deliver(slug, "B", t)
@@ -769,9 +861,29 @@ def main():
                                            err_mm=round(err * 1000, 1))
                                 else:
                                     ev(t, "jam_locate_failed", slug)
-                            # dispatch the exception arm on the CAMERA fix;
-                            # escalate to operator call-out when the arm is
-                            # busy, the fix failed, or recovery already tried
+                            if loc is None:
+                                # State-observer fallback: the camera is the
+                                # preferred independent jam sensor, but a bad
+                                # foreground cluster must not force operator
+                                # handling when the tracked rigid-body state is
+                                # still coherent. Use the tracker estimate as
+                                # a bounded fallback for the exception arm.
+                                dims = entries[slug]["dims_m"]
+                                half_ext = [float(dims[0]) / 2,
+                                            float(dims[1]) / 2,
+                                            float(dims[2]) / 2]
+                                loc = {"pos_xyz": [float(p[0]), float(p[1]),
+                                                   float(p[2])],
+                                       "half_extents": half_ext,
+                                       "n_points": 0,
+                                       "source": "state_observer"}
+                                ev(t, "jam_located_state_observer", slug,
+                                   track_pos=[round(float(v), 3) for v in p],
+                                   half_extents=[round(v, 3) for v in half_ext])
+                            # dispatch the exception arm on the camera/state
+                            # estimate; escalate to operator call-out when the
+                            # arm is busy, the estimate failed, or recovery was
+                            # already tried too many times
                             if (arm is not None and loc is not None
                                     and not arm.busy
                                     and recovery["active"] is None
@@ -815,7 +927,7 @@ def main():
                 drive_surface(t)
             else:
                 drive_belts(t)
-            drive_gates()
+            drive_gates(t)
             # route storytelling (visuals only): lamps/arrows/trails follow
             # the commanded route; each classified item carries its flag
             flag_pos = {}
@@ -846,8 +958,22 @@ def main():
                         ev(t, "recovery_done", slug_r,
                            attempts=st_r["recoveries"])
 
-            # ---- probe trace (diagnostics)
-            if args.probe and step_i % (4 * decim) == 0:
+            # ---- probe trace (diagnostics). --probe all = every active item
+            # everywhere at 1 Hz plus the flow-discipline state
+            if args.probe == "all" and step_i % args.physics_hz == 0:
+                for pslug in list(active.keys()):
+                    ps, qq = pose(pslug)
+                    vv = vel(pslug)
+                    print(f"[probe] {pslug} t={t:7.3f} "
+                          f"pos=({ps[0]:.3f},{ps[1]:.3f},{ps[2]:.3f}) "
+                          f"v=({vv[0]:+.3f},{vv[1]:+.3f},{vv[2]:+.3f}) "
+                          f"q=({qq[0]:+.3f},{qq[1]:+.3f},{qq[2]:+.3f},{qq[3]:+.3f}) "
+                          f"route={routes.get(pslug)}", flush=True)
+                print(f"[probe] flow t={t:7.3f} gate={gate_open} "
+                      f"hold2={hold2_open} blades="
+                      f"{ {k: int(v) for k, v in blade_up_state.items()} }",
+                      flush=True)
+            elif args.probe and step_i % (4 * decim) == 0:
                 for pslug in args.probe.split(","):
                     if pslug not in active:
                         continue
@@ -948,6 +1074,21 @@ def main():
                                      / max(1, cls_stats["n"]), 1)),
         } if perc is not None else None,
         "executive": "table",
+        # Priority-2 proof: nominal movement is simulated, never animated
+        "nominal_motion_model": ("surface_contact_only"
+                                 if args.drive == "surface"
+                                 else "scripted_velocity_writes"),
+        "direct_velocity_writes_nominal": vwrites["nominal_set_v"],
+        "direct_velocity_writes_fault_injection": vwrites["fault_injection"],
+        "arb_deck": deck.summary() if deck is not None else None,
+        "gate_interlocks": gates_ctl.summary(),
+        "materials": {slug: info["items"][slug].get("material")
+                      for slug in entries},
+        "sweep": {"friction_mult": args.friction_mult,
+                  "mass_mult": args.mass_mult,
+                  "spawn_offset_y_m": args.spawn_offset_y,
+                  "spawn_gap_s": args.spawn_gap,
+                  "inject_jam": args.inject_jam},
         "seed": args.seed,
         "physics_hz": args.physics_hz, "control_hz": args.control_hz,
         "n_items": n_total, "n_delivered": len(done),
@@ -977,6 +1118,11 @@ def main():
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2),
                                           encoding="utf-8")
+    if deck is not None:
+        deck.write_log(out_dir / "actuator_log.csv")
+    if reads_log:
+        (out_dir / "reads_log.json").write_text(
+            json.dumps(reads_log, indent=1), encoding="utf-8")
     keys = ["t", "event", "slug"]
     with (out_dir / "events.csv").open("w", newline="", encoding="utf-8") as f:
         wtr = csv.writer(f)

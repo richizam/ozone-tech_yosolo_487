@@ -563,19 +563,24 @@ class Dressing:
             return False
 
     def dress(self):
+        self.arb_pills = None
         try:
             from isaac.asset_shells import conveyor_shells
-            from pxr import UsdGeom as _UG
-            self.shells = bool(conveyor_shells(self.stage, top=P.BELT_A["top"]))
+            res = conveyor_shells(self.stage, top=P.BELT_A["top"])
+            self.shells = bool(res)
+            self.arb_pills = (res or {}).get("arb_pills")
         except Exception as exc:
             print(f"[dressing] conveyor shells unavailable ({exc})", flush=True)
             self.shells = False
         if self.shells:
             print("[dressing] official conveyor shells referenced", flush=True)
             from pxr import UsdGeom as _UG2
-            for nm in ("beltA", "beltB", "entry", "zone", "connectB"):
-                pr = self.stage.GetPrimAtPath(f"/World/conveyors/{nm}")
-                if pr:
+            conv_root = self.stage.GetPrimAtPath("/World/conveyors")
+            for pr in (conv_root.GetChildren() if conv_root else ()):
+                # hide the collider boxes the shells replace (belts + every
+                # ARB deck patch); the nose-over strips stay visible
+                if (pr.GetName() in ("beltA", "beltB", "entry", "connectB")
+                        or pr.GetName().startswith("zone_")):
                     _UG2.Imageable(pr).MakeInvisible()
             # the shells carry their own side rails: hide the primitive
             # belt-A guides VISUALLY (their collision stays authoritative)
@@ -591,7 +596,9 @@ class Dressing:
         self.sensor_assets()
         self.lighting_env()
         self.ozon_brand()
-        return self.route_viz()
+        viz = self.route_viz()
+        viz["arb_pills"] = self.arb_pills
+        return viz
 
 
 def dress_scene(stage):

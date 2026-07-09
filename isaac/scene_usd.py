@@ -75,9 +75,11 @@ def mat_to_quat(R):
 
 
 class SceneBuilder:
-    def __init__(self, stage, repo_root):
+    def __init__(self, stage, repo_root, friction_mult=1.0, mass_mult=1.0):
         self.stage = stage
         self.repo = Path(repo_root)
+        self.friction_mult = float(friction_mult)   # material-sweep knobs
+        self.mass_mult = float(mass_mult)
         self.mats = {}
         UsdGeom.Xform.Define(stage, ROOT)
         UsdGeom.Xform.Define(stage, f"{ROOT}/statics")
@@ -145,7 +147,14 @@ class SceneBuilder:
         friction drives whatever rests on it — the same PhysX mechanism the
         Isaac Conveyor Belt utility applies (RigidBodyAPI + CollisionAPI +
         PhysxSurfaceVelocityAPI). Items are carried by physics, never by
-        scripted per-item velocity writes."""
+        scripted per-item velocity writes.
+
+        `velocity` is the desired surface speed in m/s along the prim's
+        LOCAL axes. PhysX applies surfaceVelocity in the local frame SCALED
+        by the prim's xform scale (measured: a belt with half-length 3.45
+        commanded 1.0 dragged items at exactly 3.450 m/s), so the attribute
+        is written pre-divided by the scale — the belt then really moves
+        freight at the designed speed (official belt spec: 1 m/s)."""
         path = f"{ROOT}/conveyors/{_sanitize(name)}"
         cube = UsdGeom.Cube.Define(self.stage, path)
         cube.CreateSizeAttr(2.0)
@@ -160,7 +169,8 @@ class SceneBuilder:
         rb = UsdPhysics.RigidBodyAPI.Apply(prim)
         rb.CreateKinematicEnabledAttr(True)
         sv = PhysxSchema.PhysxSurfaceVelocityAPI.Apply(prim)
-        sv.CreateSurfaceVelocityAttr(Gf.Vec3f(*[float(v) for v in velocity]))
+        sv.CreateSurfaceVelocityAttr(Gf.Vec3f(*[float(v) / float(h)
+                                                for v, h in zip(velocity, half)]))
         self._bind_phys(prim, mat)
         return path
 
@@ -364,7 +374,15 @@ class SceneBuilder:
         else:
             hcz, hh_ = (fixed, hmid, zc), (aw2, hlen / 2, 0.012)
         self.add_box(f"hood{zone}", hcz, hh_, euler, col, opacity=0.45, mat=mat_hood)
-        bz0, bz1 = hood["brow_z0"], 0.83
+        # brow strip on the wall plane: seals the window between the LIFTED
+        # hood (z ~0.90 at the wall) and open air. It must start ABOVE the
+        # entry sweep: at the true 0.8 m/s discharge a tall box (box_l,
+        # 0.3 m) arrives still pitched nose-down and its top-front corner
+        # passes the wall plane at ~0.83 m — the old 0.80..0.83 band was a
+        # catch face exactly there (box_l wedged, watchdog -> operator
+        # call-out). 0.86..0.98 clears the sweep and keeps the fly-out seal
+        # (measured in-cage apex 0.54 m never approaches it).
+        bz0, bz1 = 0.86, 0.98
         bh2 = (bz1 - bz0) / 2
         if axis == "x":
             bc, bh_ = (wall_at, fixed, bz0 + bh2), (0.015, aw2, bh2)
@@ -423,7 +441,7 @@ class SceneBuilder:
         return joint.GetPrim().GetPath().pathString, zc
 
     # -------------------------------------------------------------------- items
-    def build_item(self, e, index, mat_item):
+    def build_item(self, e, index, mat_item, damping=(0.0, 0.05)):
         slug = e["slug"]
         park = (0.6 + index * 0.85, -1.2, e["dims_m"][2] / 2 + 0.003)
         body_path = f"{ROOT}/items/item_{_sanitize(slug)}"
@@ -431,9 +449,11 @@ class SceneBuilder:
         UsdGeom.Xformable(xform.GetPrim()).AddTranslateOp().Set(Gf.Vec3d(*park))
         UsdPhysics.RigidBodyAPI.Apply(xform.GetPrim())
         mass = UsdPhysics.MassAPI.Apply(xform.GetPrim())
-        mass.CreateMassAttr(float(e["mass_kg"]))
+        mass.CreateMassAttr(float(e["mass_kg"]) * self.mass_mult)
         pxrb = PhysxSchema.PhysxRigidBodyAPI.Apply(xform.GetPrim())
-        pxrb.CreateAngularDampingAttr(0.05)
+        # material-class damping: soft items (sack/pouf) absorb energy
+        pxrb.CreateLinearDampingAttr(float(damping[0]))
+        pxrb.CreateAngularDampingAttr(float(damping[1]))
         pxrb.CreateSolverPositionIterationCountAttr(8)
         # never sleep: the conveyor drive writes velocities every control tick,
         # and PhysX silently ignores velocity writes on sleeping bodies — a
@@ -507,11 +527,15 @@ class SceneBuilder:
         sun.CreateIntensityAttr(2500.0)
         UsdGeom.Xformable(sun.GetPrim()).AddRotateXYZOp().Set(Gf.Vec3f(-35, 20, 0))
 
-        # physics materials (chute dictates via combine=min, like MuJoCo priority)
+        # physics materials (chute dictates via combine=min, like MuJoCo
+        # priority; the brake pad dictates via combine=max so a low-friction
+        # item still brakes before the cage)
         m_belt = self.phys_material("belt", 0.80, 0.72, combine="average")
-        m_item = self.phys_material("item", 0.90, 0.85, combine="average")
+        m_item = self.phys_material("item", *P.MATERIALS["_default"][:2],
+                                    restitution=P.MATERIALS["_default"][2],
+                                    combine="average")
         m_chute = self.phys_material("chute", 0.40, 0.40, combine="min")
-        m_pad = self.phys_material("pad", 0.45, 0.45, combine="min")
+        m_pad = self.phys_material("pad", 0.45, 0.45, combine="max")
         m_mat = self.phys_material("cage_mat", 0.90, 0.90, combine="max")
         m_wall = self.phys_material("wall", 0.30, 0.30, combine="min")
         m_gate = self.phys_material("gate", 0.20, 0.20, combine="min")
@@ -540,40 +564,53 @@ class SceneBuilder:
                 "entry", ((tb["x0"] + tb["route_x"]) / 2, tb["y"], tb["top"] / 2),
                 ((tb["route_x"] - tb["x0"]) / 2, tb["width"] / 2, tb["top"] / 2),
                 velocity=(tb["speed"], 0, 0), color=TABLE_COL, mat=m_belt),
-            "zone": self.make_conveyor(
-                "zone", ((tb["route_x"] + tb["x1"]) / 2, tb["y"], tb["top"] / 2),
-                ((tb["x1"] - tb["route_x"]) / 2, tb["width"] / 2, tb["top"] / 2),
-                velocity=(0, 0, 0), color=(0.15, 0.155, 0.17), mat=m_belt),
             "connectB": self.make_conveyor(
                 "connectB", (cb["cx"], (cb["y0"] + cb["y1"]) / 2, cb["top"] / 2),
                 (cb["width"] / 2, (cb["y1"] - cb["y0"]) / 2, cb["top"] / 2),
                 velocity=(0, cb["speed"], 0), color=TABLE_COL, mat=m_belt),
         }
-        # powered nose-overs at both crest handoffs: a short inclined conveyor
+        # ARB ROUTING DECK (Priority-1 mechanism): the routing zone is a
+        # matrix of LOCAL actuator patches, each its own kinematic body with
+        # its own surface velocity — commanded per patch at runtime by
+        # isaac/arb_deck.ArbDeck with latency/ramp/saturation/noise. Spawned
+        # feeding forward (a dead strip parks straddlers).
+        arb_patches = []
+        for pt in P.arb_patches():
+            path = self.make_conveyor(
+                f"zone_r{pt['r']}c{pt['c']}",
+                (pt["cx"], pt["cy"], tb["top"] / 2),
+                (pt["hx"], pt["hy"], tb["top"] / 2),
+                velocity=(tb["speed"], 0, 0), color=(0.15, 0.155, 0.17),
+                mat=m_belt)
+            arb_patches.append({**pt, "path": path})
+        # powered nose-overs at both crest handoffs: inclined conveyor rollers
         # whose surface velocity PULLS the discharging item's nose down the
-        # slope on contact — guided nose-first discharge. Free tipping off the
-        # crest swings a big flat item's top corner to the hood lip (pouf
-        # bridge-wedged there and bricked the whole C exit).
+        # slope on contact — guided nose-first discharge. These are discharge
+        # roller beds, not just crest lips: they run through the aperture so
+        # the first delivered item clears the cage mouth before the next item
+        # arrives. Without this, pile-up at the roll-cage entrance is a real
+        # physical bottleneck for box_l and flat circular items.
         ang_c = float(np.arctan2(P.CHUTE_C["z0"] - P.CHUTE_C["z1"],
                                  P.CHUTE_C["x1"] - P.CHUTE_C["x0"]))
-        s_len = 0.16
-        ccx = tb["x1"] + s_len * math.cos(ang_c) / 2
-        ccz = tb["top"] - s_len * math.sin(ang_c) / 2 - 0.012
+        s_len_c = 0.88
+        ccx = tb["x1"] + s_len_c * math.cos(ang_c) / 2
+        ccz = tb["top"] - s_len_c * math.sin(ang_c) / 2 - 0.012
+        # local +x is the down-slope axis after the (0, ang_c, 0) rotation
         conveyors["noseC"] = self.make_conveyor(
             "noseC", (ccx, P.CHUTE_C["cy"], ccz),
-            (s_len / 2, P.CHUTE_C["width"] / 2, 0.012),
-            velocity=(tb["speed"] * math.cos(ang_c), 0,
-                      -tb["speed"] * math.sin(ang_c)),
+            (s_len_c / 2, P.CHUTE_C["width"] / 2, 0.012),
+            velocity=(tb["speed"], 0, 0),
             color=(0.48, 0.50, 0.56), mat=m_belt, euler_rad=(0, ang_c, 0))
         ang_d = float(np.arctan2(P.CHUTE_D["z0"] - P.CHUTE_D["z1"],
                                  P.CHUTE_D["y0"] - P.CHUTE_D["y1"]))
-        dcy = (tb["y"] - tb["width"] / 2) - s_len * math.cos(ang_d) / 2
-        dcz = tb["top"] - s_len * math.sin(ang_d) / 2 - 0.012
+        s_len_d = 0.88
+        dcy = (tb["y"] - tb["width"] / 2) - s_len_d * math.cos(ang_d) / 2
+        dcz = tb["top"] - s_len_d * math.sin(ang_d) / 2 - 0.012
+        # local -y is the down-slope axis after the (ang_d, 0, 0) rotation
         conveyors["noseD"] = self.make_conveyor(
             "noseD", (P.CHUTE_D["cx"], dcy, dcz),
-            (P.CHUTE_D["width"] / 2, s_len / 2, 0.012),
-            velocity=(0, -tb["speed"] * math.cos(ang_d),
-                      -tb["speed"] * math.sin(ang_d)),
+            (P.CHUTE_D["width"] / 2, s_len_d / 2, 0.012),
+            velocity=(0, -tb["speed"], 0),
             color=(0.48, 0.50, 0.56), mat=m_belt, euler_rad=(ang_d, 0, 0))
         # pop-up stop blades (physical flow discipline): escapement gate,
         # pre-gate hold, two zone-accumulation stops, table induction stop
@@ -662,11 +699,24 @@ class SceneBuilder:
 
         # vision-station gantry + camera housings live in isaac/dressing.py
 
-        # items
+        # items: one physics material per slug from the material table
+        # (cell/params.MATERIALS), scaled by the sweep multipliers
         item_info = {}
+        fm = self.friction_mult
         for i, e in enumerate(manifest):
-            path, park = self.build_item(e, i, m_item)
-            item_info[e["slug"]] = {"path": path, "park": park}
+            sf, df, rest, ld, ad = P.MATERIALS.get(e["slug"],
+                                                   P.MATERIALS["_default"])
+            mat_i = self.phys_material(f"item_{_sanitize(e['slug'])}",
+                                       max(0.05, sf * fm), max(0.05, df * fm),
+                                       restitution=rest, combine="average")
+            path, park = self.build_item(e, i, mat_i, damping=(ld, ad))
+            item_info[e["slug"]] = {
+                "path": path, "park": park,
+                "material": {"static_friction": round(max(0.05, sf * fm), 3),
+                             "dynamic_friction": round(max(0.05, df * fm), 3),
+                             "restitution": rest, "linear_damping": ld,
+                             "angular_damping": ad,
+                             "mass_kg": round(e["mass_kg"] * self.mass_mult, 3)}}
 
         # cameras (from the MuJoCo presentation cameras)
         cams = {
@@ -698,7 +748,8 @@ class SceneBuilder:
         from isaac.dressing import dress_scene
         viz = dress_scene(st)
         return {"gates": gate_info, "items": item_info, "cams": cams,
-                "conveyors": conveyors, "blades": blades, "viz": viz}
+                "conveyors": conveyors, "blades": blades, "viz": viz,
+                "arb_patches": arb_patches}
 
 
 def load_manifest(repo_root):

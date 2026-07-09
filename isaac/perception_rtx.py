@@ -64,7 +64,8 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
     reads = [r for r in reads if r["dims_mm"][0] <= 520.0]
     if not reads:
         return {"zone": "D", "reason": "sensor_miss -> manual-review lane",
-                "dims_mm": None, "n_reads": 0, "sensor_miss": True}
+                "dims_mm": None, "n_reads": 0, "sensor_miss": True,
+                "confidence": 0.0}
     # drop partial-view reads: a cloud touching the crop boundary (a stale
     # frame from before the item fully entered the window) reads truncated
     # dims and smeared shape
@@ -124,13 +125,18 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
         zone, reason = "D", f"persistent D evidence: {d_votes}/{len(reads)} reads"
     else:
         zone, reason = "B", f"fits, no circle evidence: {feats}"
+    # confidence = per-read zone agreement with the fused verdict (logged
+    # evidence quality, not a routing gate — the guard bands and safe-side
+    # rules above already make the low-evidence decisions)
+    votes = sum(1 for r in reads if r["zone"] == zone)
     return {"zone": zone, "reason": reason,
             "dims_mm": [round(float(v), 1) for v in dims],
             "footprint_circularity": round(circ, 3),
             "section_ratio": round(sect, 3), "dome_score": round(dome, 3),
             "flank_mm": None if flank is None else round(flank, 1),
             "n_reads": len(reads),
-            "d_votes": d_votes, "sensor_miss": False}
+            "d_votes": d_votes, "sensor_miss": False,
+            "confidence": round(votes / len(reads), 3)}
 
 
 class RTXPerception:

@@ -1,0 +1,510 @@
+{
+  "engine": "NVIDIA Isaac Sim 6.0.1 / PhysX 5",
+  "perception_mode": "rtx_depth_3head",
+  "oracle_used_for_classification": false,
+  "sensor_model": "3x RTX depth cameras (overhead 1024x768 + 2 side profiler heads 768x576), multi-read fusion, guard-banded official rule order",
+  "classification": {
+    "n": 11,
+    "n_correct": 11,
+    "accuracy": 1.0,
+    "sensor_misses": 0,
+    "reads_per_item": 5.6
+  },
+  "executive": "table",
+  "nominal_motion_model": "surface_contact_only",
+  "direct_velocity_writes_nominal": 0,
+  "direct_velocity_writes_fault_injection": 0,
+  "arb_deck": {
+    "mechanism": "activated_roller_belt_patch_matrix",
+    "grid": [
+      4,
+      7
+    ],
+    "patch_size_m": [
+      0.15,
+      0.1571
+    ],
+    "actuator_commands_count": 554,
+    "actuator_latency_ms": 40.0,
+    "ramp_mps2": 6.0,
+    "saturation_mps": 1.2,
+    "gain_noise_frac": 0.01,
+    "max_surface_speed_mps": 0.821,
+    "commands_by_state": {
+      "divert:B": 87,
+      "divert:C": 52,
+      "divert:D": 205,
+      "forward": 210
+    }
+  },
+  "gate_interlocks": {
+    "enabled": true,
+    "mechanism": "normally_closed_vertical_lift_gates",
+    "injection": null,
+    "gate_commands_count": 22,
+    "gate_open_latency_ms": 281.8,
+    "gate_travel_time_ms": 251.5,
+    "wrong_gate_open_events": 0,
+    "gate_timeout_faults": 0,
+    "gate_item_contact_events": 0
+  },
+  "materials": {
+    "bottle": {
+      "static_friction": 0.35,
+      "dynamic_friction": 0.28,
+      "restitution": 0.15,
+      "linear_damping": 0.0,
+      "angular_damping": 0.05,
+      "mass_kg": 0.305
+    },
+    "box_s": {
+      "static_friction": 0.55,
+      "dynamic_friction": 0.45,
+      "restitution": 0.05,
+      "linear_damping": 0.0,
+      "angular_damping": 0.05,
+      "mass_kg": 3.0
+    },
+    "box_l": {
+      "static_friction": 0.55,
+      "dynamic_friction": 0.45,
+      "restitution": 0.05,
+      "linear_damping": 0.0,
+      "angular_damping": 0.05,
+      "mass_kg": 6.0
+    },
+    "lunchbox": {
+      "static_friction": 0.5,
+      "dynamic_friction": 0.42,
+      "restitution": 0.08,
+      "linear_damping": 0.0,
+      "angular_damping": 0.05,
+      "mass_kg": 0.412
+    },
+    "sack": {
+      "static_friction": 0.95,
+      "dynamic_friction": 0.9,
+      "restitution": 0.0,
+      "linear_damping": 0.25,
+      "angular_damping": 0.6,
+      "mass_kg": 0.817
+    },
+    "detergent": {
+      "static_friction": 0.45,
+      "dynamic_friction": 0.38,
+      "restitution": 0.1,
+      "linear_damping": 0.0,
+      "angular_damping": 0.05,
+      "mass_kg": 2.002
+    },
+    "pouf": {
+      "static_friction": 0.85,
+      "dynamic_friction": 0.8,
+      "restitution": 0.0,
+      "linear_damping": 0.2,
+      "angular_damping": 0.5,
+      "mass_kg": 6.0
+    },
+    "pen": {
+      "static_friction": 0.4,
+      "dynamic_friction": 0.35,
+      "restitution": 0.1,
+      "linear_damping": 0.0,
+      "angular_damping": 0.05,
+      "mass_kg": 0.05
+    },
+    "plate": {
+      "static_friction": 0.35,
+      "dynamic_friction": 0.3,
+      "restitution": 0.12,
+      "linear_damping": 0.0,
+      "angular_damping": 0.05,
+      "mass_kg": 0.175
+    },
+    "cylinder": {
+      "static_friction": 0.5,
+      "dynamic_friction": 0.42,
+      "restitution": 0.06,
+      "linear_damping": 0.0,
+      "angular_damping": 0.05,
+      "mass_kg": 0.187
+    },
+    "helmet": {
+      "static_friction": 0.4,
+      "dynamic_friction": 0.32,
+      "restitution": 0.2,
+      "linear_damping": 0.0,
+      "angular_damping": 0.08,
+      "mass_kg": 4.323
+    }
+  },
+  "sweep": {
+    "friction_mult": 1.0,
+    "mass_mult": 1.0,
+    "spawn_offset_y_m": 0.0,
+    "spawn_gap_s": "6.0,8.0",
+    "inject_jam": null
+  },
+  "seed": 2,
+  "physics_hz": 240,
+  "control_hz": 60,
+  "n_items": 11,
+  "n_delivered": 11,
+  "n_routed_ok": 11,
+  "routing_accuracy": 1.0,
+  "unsafe_errors": 0,
+  "containment": {
+    "tracked": 8,
+    "violations": 0,
+    "containment_rate": 1.0,
+    "cage_entry_speed_max_mps": 1.919,
+    "cage_max_z": 0.549
+  },
+  "cycle_s": {
+    "mean": 4.188,
+    "p95": 5.642,
+    "max": 5.65
+  },
+  "throughput_items_per_h": 483.3,
+  "flow": {
+    "escapement_gate_activations": 11,
+    "spacing_gate_activations": 11,
+    "multi_object_window_events": 0,
+    "conveyor_a_stop_count": 0
+  },
+  "sim_s": 81.94,
+  "wall_s": 103.2,
+  "realtime_factor": 0.79,
+  "frames": 0,
+  "items": [
+    {
+      "slug": "box_l",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 1.017,
+      "t_detected": 6.567,
+      "t_route_cmd": 7.083,
+      "t_table_entry": 7.617,
+      "t_delivered": 10.133,
+      "n_reads": 6,
+      "confidence": 1.0,
+      "dims_mm": [
+        389.9,
+        388.5,
+        300.9
+      ],
+      "cls_reason": "oversize (guard band 6 mm)",
+      "final_pos": [
+        9.09,
+        3.003,
+        0.538
+      ],
+      "contained": true,
+      "v_entry": 1.818,
+      "cage_max_z": 0.538,
+      "cage_settle_s": null,
+      "cycle_s": 3.567,
+      "command_margin_s": 0.533
+    },
+    {
+      "slug": "bottle",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 7.133,
+      "t_detected": 12.783,
+      "t_route_cmd": 13.3,
+      "t_table_entry": 13.833,
+      "t_delivered": 16.467,
+      "n_reads": 6,
+      "confidence": 1.0,
+      "dims_mm": [
+        287.3,
+        98.6,
+        86.1
+      ],
+      "cls_reason": "circle evidence: circ=0.37 sect=0.91 dome=0.70 flank=15.3mm elong=3.4 h/w=1.14",
+      "final_pos": [
+        8.12,
+        1.955,
+        0.428
+      ],
+      "contained": true,
+      "v_entry": 1.876,
+      "cage_max_z": 0.428,
+      "cage_settle_s": null,
+      "cycle_s": 3.683,
+      "command_margin_s": 0.533
+    },
+    {
+      "slug": "cylinder",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 13.683,
+      "t_detected": 19.233,
+      "t_route_cmd": 19.75,
+      "t_table_entry": 20.283,
+      "t_delivered": 22.933,
+      "n_reads": 6,
+      "confidence": 0.333,
+      "dims_mm": [
+        404.8,
+        43.0,
+        35.9
+      ],
+      "cls_reason": "section unverifiable on elongated item: circ=0.12 sect=0.51 dome=0.10 flank=n/a elong=11.2 h/w=1.18",
+      "final_pos": [
+        8.062,
+        1.973,
+        0.425
+      ],
+      "contained": true,
+      "v_entry": 1.593,
+      "cage_max_z": 0.425,
+      "cage_settle_s": null,
+      "cycle_s": 3.7,
+      "command_margin_s": 0.533
+    },
+    {
+      "slug": "pen",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 21.0,
+      "t_detected": 26.55,
+      "t_route_cmd": 27.067,
+      "t_table_entry": 27.6,
+      "t_delivered": 30.133,
+      "n_reads": 6,
+      "confidence": 1.0,
+      "dims_mm": [
+        142.1,
+        8.7,
+        8.0
+      ],
+      "cls_reason": "undersize: min dim 8.0 mm below certification floor 16 mm",
+      "final_pos": [
+        9.09,
+        3.003,
+        0.364
+      ],
+      "contained": true,
+      "v_entry": 1.889,
+      "cage_max_z": 0.364,
+      "cage_settle_s": null,
+      "cycle_s": 3.583,
+      "command_margin_s": 0.533
+    },
+    {
+      "slug": "helmet",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 28.133,
+      "t_detected": 33.7,
+      "t_route_cmd": 34.2,
+      "t_table_entry": 34.75,
+      "t_delivered": 37.483,
+      "n_reads": 5,
+      "confidence": 0.0,
+      "dims_mm": [
+        329.3,
+        282.5,
+        282.1
+      ],
+      "cls_reason": "circle evidence: circ=0.75 sect=0.00 dome=0.41 flank=103.6mm elong=1.2 h/w=0.99",
+      "final_pos": [
+        8.003,
+        1.938,
+        0.549
+      ],
+      "contained": true,
+      "v_entry": 1.891,
+      "cage_max_z": 0.549,
+      "cage_settle_s": null,
+      "cycle_s": 3.783,
+      "command_margin_s": 0.55
+    },
+    {
+      "slug": "detergent",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 34.45,
+      "t_detected": 40.0,
+      "t_route_cmd": 40.5,
+      "t_table_entry": 41.05,
+      "t_delivered": 45.633,
+      "n_reads": 5,
+      "confidence": 1.0,
+      "dims_mm": [
+        246.1,
+        239.4,
+        176.6
+      ],
+      "cls_reason": "fits, no circle evidence: circ=0.73 sect=0.00 dome=0.66 flank=90.6mm elong=1.0 h/w=0.72",
+      "final_pos": [
+        8.344,
+        5.709,
+        0.767
+      ],
+      "cycle_s": 5.633,
+      "command_margin_s": 0.55
+    },
+    {
+      "slug": "pouf",
+      "zone_true": "C",
+      "zone_routed": "C",
+      "delivered": "C",
+      "ok": true,
+      "t_spawn": 41.317,
+      "t_detected": 46.85,
+      "t_route_cmd": 47.35,
+      "t_table_entry": 47.9,
+      "t_delivered": 50.4,
+      "n_reads": 5,
+      "confidence": 1.0,
+      "dims_mm": [
+        439.6,
+        439.5,
+        264.0
+      ],
+      "cls_reason": "oversize (guard band 6 mm)",
+      "final_pos": [
+        9.071,
+        2.995,
+        0.529
+      ],
+      "contained": true,
+      "v_entry": 1.726,
+      "cage_max_z": 0.529,
+      "cage_settle_s": null,
+      "cycle_s": 3.55,
+      "command_margin_s": 0.55
+    },
+    {
+      "slug": "lunchbox",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 48.667,
+      "t_detected": 54.217,
+      "t_route_cmd": 54.733,
+      "t_table_entry": 55.267,
+      "t_delivered": 59.817,
+      "n_reads": 6,
+      "confidence": 1.0,
+      "dims_mm": [
+        189.2,
+        139.1,
+        61.6
+      ],
+      "cls_reason": "fits, no circle evidence: circ=0.68 sect=0.00 dome=0.15 flank=31.6mm elong=1.4 h/w=0.43",
+      "final_pos": [
+        8.349,
+        5.711,
+        0.731
+      ],
+      "cycle_s": 5.6,
+      "command_margin_s": 0.533
+    },
+    {
+      "slug": "sack",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 55.517,
+      "t_detected": 61.0,
+      "t_route_cmd": 61.517,
+      "t_table_entry": 62.067,
+      "t_delivered": 64.683,
+      "n_reads": 6,
+      "confidence": 1.0,
+      "dims_mm": [
+        182.5,
+        167.3,
+        159.4
+      ],
+      "cls_reason": "circle evidence: circ=0.84 sect=0.00 dome=0.59 flank=58.7mm elong=1.1 h/w=1.04",
+      "final_pos": [
+        8.041,
+        1.972,
+        0.509
+      ],
+      "contained": true,
+      "v_entry": 1.55,
+      "cage_max_z": 0.509,
+      "cage_settle_s": null,
+      "cycle_s": 3.683,
+      "command_margin_s": 0.55
+    },
+    {
+      "slug": "plate",
+      "zone_true": "D",
+      "zone_routed": "D",
+      "delivered": "D",
+      "ok": true,
+      "t_spawn": 62.783,
+      "t_detected": 68.35,
+      "t_route_cmd": 68.85,
+      "t_table_entry": 69.4,
+      "t_delivered": 71.983,
+      "n_reads": 5,
+      "confidence": 1.0,
+      "dims_mm": [
+        200.6,
+        200.0,
+        26.6
+      ],
+      "cls_reason": "circle evidence: circ=0.96 sect=0.00 dome=0.48 flank=25.0mm elong=1.0 h/w=0.13",
+      "final_pos": [
+        8.059,
+        1.963,
+        0.409
+      ],
+      "contained": true,
+      "v_entry": 1.919,
+      "cage_max_z": 0.409,
+      "cage_settle_s": null,
+      "cycle_s": 3.633,
+      "command_margin_s": 0.55
+    },
+    {
+      "slug": "box_s",
+      "zone_true": "B",
+      "zone_routed": "B",
+      "delivered": "B",
+      "ok": true,
+      "t_spawn": 70.733,
+      "t_detected": 76.283,
+      "t_route_cmd": 76.8,
+      "t_table_entry": 77.333,
+      "t_delivered": 81.933,
+      "n_reads": 6,
+      "confidence": 1.0,
+      "dims_mm": [
+        291.3,
+        200.0,
+        195.2
+      ],
+      "cls_reason": "fits, no circle evidence: circ=0.61 sect=0.00 dome=0.00 flank=45.8mm elong=1.5 h/w=1.02",
+      "final_pos": [
+        8.336,
+        5.702,
+        0.8
+      ],
+      "cycle_s": 5.65,
+      "command_margin_s": 0.533
+    }
+  ]
+}

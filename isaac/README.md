@@ -8,9 +8,15 @@ metrics `summary.json` in the same vocabulary as the MuJoCo runs. Results and
 the cross-engine argument:
 [docs/report/isaac_evidence/](../docs/report/isaac_evidence/README.md).
 
-**Reference result (seed 42, full official set):** 11/11 delivered · 11/11
-classified by the RTX depth station · 11/11 routed end-to-end · 0 unsafe ·
-containment 1.0 (0 violations, cage entry ≤ 1.73 m/s) · ~1.2× real time.
+**Reference result (ARB-deck build, 12-run matrix / 132 item trials):**
+nominal classification **66/66 = 100%** from the RTX depth station in
+motion · nominal routing **65/66 = 98.5%** (the exception: a 9 mm pen
+micro-stall answered by a safe operator call-out — never a wrong feed) ·
+low/high-friction, high-mass, close-spacing, off-center and jam-drill
+sweeps all **11/11** · **0 unsafe errors and containment 1.0 in every
+run** · 6,064 logged actuator commands, **0 direct velocity writes** ·
+0.71–0.86× real time with the sensors in the loop. Consolidated:
+[docs/report/isaac_evidence/validation_arb/matrix_summary.json](../docs/report/isaac_evidence/validation_arb/matrix_summary.json).
 
 ## Architecture (what makes this an *Isaac* solution)
 
@@ -26,12 +32,30 @@ containment 1.0 (0 violations, cage entry ≤ 1.73 m/s) · ~1.2× real time.
 - **The executive is driven by contact physics, not scripts.** Belts, the
   table entry strip and the B-connector are kinematic conveyors with
   `PhysxSurfaceVelocityAPI` (the Isaac Conveyor-Belt-utility mechanism):
-  items are carried by friction. The routing zone is a switchable-vector
-  **ARB sorter** aimed at the active item's exit; flow discipline is enforced
-  by physical **pop-up stop blades** (escapement, pre-gate hold, two
-  zone-accumulation stops, table induction) with a raise-safety interlock;
-  **powered nose-overs** guide discharge onto the 32° brake chutes. No
-  per-item velocity writes anywhere in the nominal flow.
+  items are carried by friction, at the **designed speeds** (belt A at the
+  official 1.0 m/s, table at 0.8 m/s — surface-velocity commands are
+  normalized for PhysX's local-frame × scale semantics and probe-verified).
+  The routing zone is an **ARB actuator deck**: a 4×7 matrix of local
+  150×157 mm surface-velocity patches (`isaac/arb_deck.py`,
+  `cell/params.ARB_DECK`), each an independent actuator with a **40 ms
+  command pipeline, a 6 m/s² velocity ramp, 1.2 m/s saturation and
+  per-command gain noise** — only the patches under the routed item (plus a
+  0.10 m pre-spin halo) receive the divert command; the rest keep feeding
+  forward. Every command is logged (`actuator_log.csv`) and summarized
+  (`actuator_commands_count`, `actuator_latency_ms`,
+  `max_surface_speed_mps`). Flow discipline is enforced by physical
+  **pop-up stop blades** (escapement, pre-gate hold, two zone-accumulation
+  stops, table induction) with a raise-safety interlock; **powered
+  nose-overs** guide discharge onto the 32° brake chutes. No per-item
+  velocity writes anywhere in the nominal flow — `summary.json` proves it:
+  `"nominal_motion_model": "surface_contact_only"`,
+  `"direct_velocity_writes_nominal": 0`.
+- **Items have material-class physics.** `cell/params.MATERIALS` assigns
+  each slug friction/restitution/damping by material (cardboard, PET, HDPE,
+  ABS shell, ceramic, soft sack/pouf with damping); the chute pairs friction
+  by `min` (guaranteed slide), the brake pad by `max` (guaranteed braking
+  even for slippery items). Robustness sweeps scale the whole table:
+  `--friction-mult 0.7/1.3`, `--mass-mult 1.3`.
 - **Faults are handled on sensor data.** A routing-zone depth camera holds a
   background model of the empty cell; when the zero-displacement watchdog
   fires, background subtraction localizes the stuck item (best case ~20–30 mm
@@ -46,7 +70,9 @@ containment 1.0 (0 violations, cage entry ≤ 1.73 m/s) · ~1.2× real time.
 | File | Role |
 |---|---|
 | `scene_usd.py` | USD stage from `cell/params.py`: surface-velocity conveyors, pop-up blades (prismatic drives), normally-closed exit gates, 32° chutes + nose-overs, aperture-walled cages, convex-hull items from the official STLs, all cameras. No importers — binary STLs parse straight into `UsdGeom.Mesh`. |
-| `run_isaac.py` | The closed loop: spawning, flow discipline, RTX multi-read classification, ARB zone command, watchdog + camera-fix arm recovery, containment tracking. Writes `summary.json` + `events.csv`, optional MP4 frames + vision stills. |
+| `run_isaac.py` | The closed loop: spawning, flow discipline, RTX multi-read classification, ARB deck command, watchdog + camera-fix arm recovery, containment tracking. Writes `summary.json` + `events.csv` + `actuator_log.csv`, optional MP4 frames + vision stills. |
+| `arb_deck.py` | The ARB actuator deck controller: per-patch command pipeline (latency), velocity ramp, saturation, per-command gain noise, state machine (`forward`/`divert:B|C|D`), per-patch visual activation, actuator command log + metrics. |
+| `run_matrix.sh` | Host-side validation matrix: 6-seed nominal + friction/mass/spacing/off-center/jam sweeps → per-run `summary.json` (consolidate with `tools/consolidate_isaac_matrix.py`). |
 | `perception_rtx.py` | Depth → world cloud → identity-gated segmentation → dims (percentile extents), footprint circularity, mirrored-hull section r_in/R, dome score, side-head flank verticality → official rule order; `fuse_reads()` = guard-banded multi-read fusion. |
 | `jam_locator.py` | Background-subtraction jam localization on the routing-zone depth camera (grid clustering, hardware exclusions, route-corridor association). |
 | `arm.py` | Kinematic 4-axis palletizer (MuJoCo parity: collision-free links, item carried at the TCP) + the recovery state machine. |
@@ -72,12 +98,34 @@ containment 1.0 (0 violations, cage entry ≤ 1.73 m/s) · ~1.2× real time.
 /isaac-sim/python.sh /tmp/sortmaster/isaac/run_isaac.py \
     --inject-jam box_s@8.05 --out /tmp/sortmaster_out/jam_drill
 
+# robustness / fault-case runs (SUPER_REALISTIC plan P3/P6)
+#   --friction-mult 0.7     low-friction material sweep
+#   --mass-mult 1.3         heavy-item sweep
+#   --spawn-offset-y 0.10   off-center entry
+#   --spawn-gap 3.5,4.5     close spacing
+#   --probe all             1 Hz trace of every item + flow state (diagnosis)
+
 # regression baselines
 #   --perception oracle   ground truth + latency (debug)
 #   --drive scripted      legacy per-item velocity drive
 ```
 
 Cameras for `--record`: `overview | top_view | routing | lookahead`.
+
+Branding note: `dressing.py` composites the Ozon wordmark from
+`isaac/assets/ozon_logo.png` — copy it to `/tmp/sortmaster_signs/ozon_logo.png`
+on the sim host (that directory is also the dressing's generated-texture
+working dir; mount it read-write into the container).
+
+### Full validation matrix (host-side)
+
+```bash
+scp -P <port> isaac/run_matrix.sh root@<host>:/root/ && ssh ... \
+    "bash /root/run_matrix.sh /root/sortmaster_out/final_arb"
+# 6-seed nominal + low/high friction + high mass + close spacing +
+# off-center + jam drill; then consolidate:
+python tools/consolidate_isaac_matrix.py <matrix_dir>
+```
 
 ### From the host: assemble + serve the evidence
 
@@ -120,6 +168,21 @@ simulates (vectored surface velocity on a continuous surface) and exactly how
 real mixed-parcel ARB sorters are built. Roller drive hardware remains
 visible where it belongs — end drums, side frames, and the flush ARB caps.
 
+## Collision proxies (visual mesh ≠ collision mesh)
+
+Every item renders its **true official STL** (this is what the RTX depth
+station measures — the sensor sees real geometry, including the cylinder's
+rounded end caps and the helmet dome), while **contact** uses a documented
+proxy: a PhysX convex hull of that surface (≤64 vertices, mirroring the
+MuJoCo twin's `maxhullvert=64`), with manifest-true mass and the material
+table above. The proxy choice is deliberate: hulls are the robust,
+jury-reproducible baseline, and the perception/physics split means proxy
+simplification can never leak into classification. Known limitation and
+upgrade path (documented, not hidden): concave items (helmet interior,
+plate rim) contact as their hulls; per-category compounds (capsule stacks
+for bottles, convex decomposition for the helmet) are the next fidelity
+step and slot into `build_item()` without touching the flow logic.
+
 ## Design parity & documented deltas
 
 The flow logic mirrors `cell/belt.py`, `cell/table.py` and `cell/run_sim.py`;
@@ -132,3 +195,22 @@ dynamics differently from MuJoCo (free tipping is snappier), and each delta is
 validated by the containment gates (violations must be 0, `cage_max_z ≤ 0.56 m`
 ≪ aperture top 0.83 m). Full rationale in
 [docs/report/isaac_evidence/README.md](../docs/report/isaac_evidence/README.md).
+
+**PhysX gotcha worth knowing (found by probing, fixed 2026-07-08):**
+`PhysxSurfaceVelocityAPI.surfaceVelocity` is applied in the prim's *local
+frame scaled by its xform scale*. A cube-based belt with half-length 3.45
+commanded `(1,0,0)` dragged freight at exactly 3.450 m/s. All surface-velocity
+commands are therefore pre-divided by the prim's half-extents
+(`make_conveyor`, `ArbDeck.step`), and the true speeds are probe-verified
+(`--probe all`): belt A 1.000 m/s (official spec), table/deck 0.800 m/s.
+Timing-sensitive results from before the fix are superseded by the current
+validation matrix.
+
+## Engineering calculations cross-check
+
+Every design number (time on deck, lateral displacement, friction budget,
+chute entry speed, cycle time, actuator response vs command margin) is
+derived from first principles and cross-checked against the measured matrix:
+[docs/report/calculations_vs_simulation.md](../docs/report/calculations_vs_simulation.md).
+Example: calculated cage entry ≈ 2.09 m/s at μ 0.40; measured 2.081 m/s
+(bottle, seed 42).

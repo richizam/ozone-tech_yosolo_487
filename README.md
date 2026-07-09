@@ -226,13 +226,23 @@ actuator realism:
   measures each item **in motion**; multi-read fusion with legal-metrology
   guard bands applies the official rule order. Static calibration:
   **33/33 = 100%** over the official set × 3 rest poses
-  (`isaac/validate_rtx.py`); closed loop at seed 42: **11/11 classified,
-  11/11 routed, 0 unsafe, containment 1.0**, ~1.2× real time.
-- **The executive is contact physics.** Conveyors carry items via PhysX
-  surface velocity (the Isaac Conveyor-Belt-utility mechanism), the routing
-  zone is a switchable-vector ARB sorter, flow discipline is physical pop-up
-  stop blades, and discharge is guided by powered nose-overs onto the 32°
-  brake chutes — no scripted per-item velocities in the nominal flow.
+  (`isaac/validate_rtx.py`); final 12-run matrix (132 item trials):
+  **classification 66/66 nominal, routing 65/66 (98.5%), all five
+  robustness/fault sweeps 11/11, 0 unsafe errors and containment 1.0 in
+  every run** — the single exception is a safe operator call-out, never a
+  wrong feed.
+- **The executive is contact physics with real actuators.** Conveyors carry
+  items via PhysX surface velocity (the Isaac Conveyor-Belt-utility
+  mechanism) at the designed speeds (belt A at the official 1.0 m/s —
+  probe-verified). The routing zone is an **ARB actuator deck**: a 4×7
+  matrix of independent 150 mm surface-velocity patches, each with a 40 ms
+  command pipeline, a 6 m/s² ramp, saturation and gain noise — only the
+  patches under the routed item activate, every command is logged, and
+  `summary.json` certifies `direct_velocity_writes_nominal: 0`. Flow
+  discipline is physical pop-up stop blades; discharge is guided by powered
+  nose-overs onto the 32° brake chutes. Items carry material-class physics
+  (cardboard/PET/HDPE/ABS/soft-sack friction, restitution, damping) swept
+  ×0.7/×1.3 in validation.
 - **Faults are handled on camera data.** A routing-zone depth camera
   localizes a stuck item by background subtraction (best fix ~20–30 mm); the
   4-axis exception arm picks at the **camera fix** (same `cell/arm_ik.py`
@@ -258,7 +268,7 @@ details: [isaac/README.md](isaac/README.md).
 
 | Purpose | Tool |
 |---|---|
-| Physics simulation of the cell | **Two engines, one cell** (both on the organizers' allowed list). **MuJoCo 3** — the deterministic validation engine (22/22 scenario matrix, headless, identical on any jury box). **NVIDIA Isaac Sim 6.0.1 (PhysX 5 + RTX)** — the high-fidelity digital twin of the SAME cell, built from the same `cell/params.py` single source of truth and run on the team GPU server (RTX 5070 Ti); cross-engine agreement of the physics envelope is itself validation evidence (see §5.1). PyBullet was the original pick but publishes **no Windows wheels** — verified empirically; decision documented in the report |
+| Physics simulation of the cell | **Two engines, one cell** (both on the organizers' allowed list). **MuJoCo 3** — the deterministic validation engine (22/22 scenario matrix, headless, identical on any jury box). **NVIDIA Isaac Sim 6.0.1 (PhysX 5 + RTX)** — the high-fidelity digital twin of the SAME cell, built from the same `cell/params.py` single source of truth and run on the team GPU server (RTX 5090); cross-engine agreement of the physics envelope is itself validation evidence (see §5.1). PyBullet was the original pick but publishes **no Windows wheels** — verified empirically; decision documented in the report |
 | Discrete-event flow & cycle time | **SimPy** (+ pandas, matplotlib for metrics) |
 | Perception | **OpenCV**, **Open3D**, **Trimesh**, **Shapely**; **Ultralytics YOLO** for belt detection (synthetic training data rendered in **Blender**) |
 | CAD / layout | **FreeCAD** (reads the official STEP models), exports STEP/STL |

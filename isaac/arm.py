@@ -241,8 +241,7 @@ class ArmController:
             self.rig["wrist"].Set(Gf.Vec3f(0, q4, 0))
         if self.carry is not None:
             slug, off = self.carry
-            anchor = (self.flange_pos() if self.rig.get("mode") == "ur"
-                      else np.array(self._fk(self.q_ref)[0]))
+            anchor = self.anchor_pos()
             rp = self.items_rp[slug]
             rp.set_world_pose(anchor - off, np.array([1.0, 0.0, 0.0, 0.0]))
             rp.set_linear_velocity(np.zeros(3))
@@ -250,6 +249,16 @@ class ArmController:
 
     def tcp(self):
         return self._fk(self.q_ref)[0]
+
+    def anchor_pos(self):
+        """Controller TCP used for vacuum contact.
+
+        The UR10e asset is a visual articulation driven from our validated
+        4-axis controller. Its USD link transform is not a reliable contact
+        sensor after direct physics-state writes, so recovery attachment uses
+        the controller TCP, matching the MuJoCo weld semantics.
+        """
+        return np.array(self._fk(self.q_ref)[0], dtype=float)
 
     def _rate_toward(self, q_target, dt):
         dq = np.clip(q_target - self.q_ref, -self.vmax * dt, self.vmax * dt)
@@ -339,16 +348,16 @@ class ArmController:
         elif self.state == "DESCEND":
             slug = j["slug"]
             p, _ = self.items_rp[slug].get_world_pose()
-            tcp = (self.flange_pos() if self.rig.get("mode") == "ur"
-                   else self.tcp())
+            tcp = self.anchor_pos()
             xy_err = float(np.hypot(tcp[0] - p[0], tcp[1] - p[1]))
-            if xy_err > self.GRASP_XY_TOL + 0.10:
+            z_err = float(abs(tcp[2] - j["pick"][2]))
+            if (xy_err > self.GRASP_XY_TOL + 0.10
+                    or z_err > self.GRASP_Z_TOL + 0.06):
                 self.pub(t, "grasp_check_failed", slug,
-                         xy_err=round(xy_err, 3))
+                         xy_err=round(xy_err, 3), z_err=round(z_err, 3))
                 self._abort(t)
                 return
-            anchor = (self.flange_pos() if self.rig.get("mode") == "ur"
-                      else np.array(tcp))
+            anchor = np.array(tcp, dtype=float)
             self.carry = (slug, anchor - np.asarray(p, dtype=float))
             self.timer = P.ARM["settle_attach_s"]
             self.state = "ATTACH"

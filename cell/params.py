@@ -79,6 +79,58 @@ GATES = {
     "D": {"axis": "x", "c0": 7.74, "c1": 8.36, "line": 2.468},   # south exit
 }
 
+# ---------------------------------------------------------------- ARB routing deck (ours)
+# The routing zone is not one intelligent surface: it is a matrix of local
+# actuator patches (Activated-Roller-Belt class), each an independent
+# surface-velocity cell with realistic actuation dynamics. Consumed by
+# isaac/arb_deck.py + isaac/scene_usd.py.
+ARB_DECK = {
+    "nx": 4, "ny": 7,                  # patch grid over the routing zone
+                                       # -> 150 x 157 mm cells (ARB module class)
+    "latency_s": 0.040,                # command -> motion onset (drive/valve lag)
+    "ramp_mps2": 6.0,                  # surface acceleration limit (no step changes)
+    "v_max": 1.2,                      # actuator saturation, m/s
+    "noise_frac": 0.01,                # per-command attained-speed gain noise (1 sigma)
+    "activation_pad_m": 0.10,          # halo around the item footprint that receives
+                                       # the divert command (cells the item is about
+                                       # to cross pre-spin, like a real ARB zone)
+}
+
+
+def arb_patches():
+    """Patch-cell centres/half-sizes of the ARB deck grid (row-major)."""
+    tb = TABLE
+    nx, ny = ARB_DECK["nx"], ARB_DECK["ny"]
+    x0, x1 = tb["route_x"], tb["x1"]
+    y0, y1 = tb["y"] - tb["width"] / 2, tb["y"] + tb["width"] / 2
+    dx, dy = (x1 - x0) / nx, (y1 - y0) / ny
+    return [{"r": r, "c": c,
+             "cx": x0 + (c + 0.5) * dx, "cy": y0 + (r + 0.5) * dy,
+             "hx": dx / 2, "hy": dy / 2}
+            for r in range(ny) for c in range(nx)]
+
+
+# ---------------------------------------------------------------- item materials (ours)
+# Per-item physical plausibility: friction/restitution/damping by material
+# class. slug -> (static_friction, dynamic_friction, restitution,
+#                 linear_damping, angular_damping). Mass stays manifest truth.
+# Belt pairing combines "average"; the chute pairs "min" (guaranteed slide);
+# the brake pad pairs "max" (guaranteed braking even for slippery items).
+MATERIALS = {
+    "box_s": (0.55, 0.45, 0.05, 0.0, 0.05),     # cardboard box
+    "box_l": (0.55, 0.45, 0.05, 0.0, 0.05),     # cardboard box (oversize)
+    "lunchbox": (0.50, 0.42, 0.08, 0.0, 0.05),  # rigid plastic box
+    "detergent": (0.45, 0.38, 0.10, 0.0, 0.05), # HDPE jug, irregular base
+    "bottle": (0.35, 0.28, 0.15, 0.0, 0.05),    # PET, low friction, can roll
+    "plate": (0.35, 0.30, 0.12, 0.0, 0.05),     # glazed ceramic, rolling risk
+    "cylinder": (0.50, 0.42, 0.06, 0.0, 0.05),  # cardboard tube (hex prism)
+    "helmet": (0.40, 0.32, 0.20, 0.0, 0.08),    # ABS shell, curved contact
+    "sack": (0.95, 0.90, 0.00, 0.25, 0.60),     # soft sack: grips + damps
+    "pouf": (0.85, 0.80, 0.00, 0.20, 0.50),     # fabric pouf: grips + damps
+    "pen": (0.40, 0.35, 0.10, 0.0, 0.05),       # small plastic pen
+    "_default": (0.90, 0.85, 0.00, 0.0, 0.05),
+}
+
 # route colour code, used consistently: lane markings, gate lamps, destination
 # beacons, cage frames and signage all share the zone colour
 ROUTE_RGBA = {

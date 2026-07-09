@@ -1,16 +1,70 @@
 # Isaac Sim evidence — sensor-in-the-loop validation of the SortMaster cell
 
-**NVIDIA Isaac Sim 6.0.1 (PhysX 5 + RTX), headless on RTX 5070 Ti.** The same
+**NVIDIA Isaac Sim 6.0.1 (PhysX 5 + RTX), headless on RTX 5090.** The same
 cell as the MuJoCo validation engine, built from the same
 [`cell/params.py`](../../../cell/params.py), with two upgrades the second
 engine makes possible: classification from **real rendered depth cameras** and
 an executive driven by **contact physics** (surface-velocity conveyors,
-pop-up stop blades, ARB routing zone, powered nose-overs) instead of scripted
-item velocities. Package: [`isaac/`](../../../isaac/README.md).
+pop-up stop blades, ARB actuator deck, powered discharge chutes) instead of
+scripted item velocities. Package: [`isaac/`](../../../isaac/README.md).
 Reproduction: `/isaac-sim/python.sh isaac/run_isaac.py --seed <S>
-[--record] [--inject-jam SLUG@X]` (defaults: `--perception rtx --drive surface`).
+[--record] [--inject-jam SLUG@X] [--inject-gate-fault Z:MODE]`
+(defaults: `--perception rtx --drive surface`).
 
-## Headline results (final code)
+## Headline results — ARB actuator-deck build (FINAL)
+
+The routing zone is a **4×7 matrix of independent surface-velocity actuator
+patches** (150×157 mm, 40 ms command pipeline, 6 m/s² ramp, saturation,
+gain noise — every command logged), belts run at their **true designed
+speeds** (belt A at the official 1.0 m/s, probe-verified), items carry
+**material-class physics**, discharge is by **0.88 m powered decline
+belts** through the cage apertures, and the exception arm is the **official
+UR10e + official short-suction gripper**. `summary.json` certifies
+`"nominal_motion_model": "surface_contact_only"`,
+`"direct_velocity_writes_nominal": 0` in every run.
+
+### Validation matrix — 12 runs, 132 item trials, gates PASS
+[`validation_arb/matrix_summary.json`](validation_arb/matrix_summary.json):
+
+| Run | Delivered | Routed ok | Cls | Unsafe | Containment |
+|---|---|---|---|---|---|
+| 6 nominal seeds (42/1/2/3/7/99) | 66/66 | **65/66 = 98.5%** | **66/66 = 100%** | 0 | 1.0 |
+| low_friction ×0.7 | 11/11 | 11/11 | 1.0 | 0 | 1.0 |
+| high_friction ×1.3 | 11/11 | 11/11 | 1.0 | 0 | 1.0 |
+| high_mass ×1.3 | 11/11 | 11/11 | 1.0 | 0 | 1.0 |
+| close_spacing 3.5–4.5 s | 11/11 | 11/11 | 1.0 | 0 | 1.0 |
+| off_center +0.06 m | 11/11 | 11/11 | 1.0 | 0 | 1.0 |
+| fault_jam (injected snag) | 11/11 | **11/11 incl. recovered snag** | 1.0 | 0 | 1.0 |
+
+The single nominal exception: the 9 mm pen micro-stalled on the C discharge
+belt in seed 99 → watchdog → operator call-out — a **safe escalation, never
+a wrong feed**. In the jam drill both recoveries are on camera: the injected
+box_s snag located by the jam camera (33.9 mm error) and a box_l chute stall
+recovered via the state-observer fallback, each `attempts: 1`. A +0.10 m
+off-center probe (beyond the physical loading envelope — the item spawns
+overlapping the guide rail) was also run and kept for the record: 0 unsafe,
+everything contained, unclassifiable items safe-sided to manual review.
+
+### Gate interlocks — GATED_ACTUATOR_TEST_PLAN stages
+[`gated_arb/`](gated_arb/): the normally-closed exit gates carry a measured
+state machine (269 ms open latency, 243 ms travel — real actuator numbers,
+150–400 ms class). Stage 1 (B/C/D) and Stage 2 (all items) pass clean.
+Stage 3 hardware-fault injections all **fail safe**:
+`C:stuck_closed` → `gate_timeout_faults=1`, item held + operator call-out,
+0 unsafe; `B:stuck_open` → `wrong_gate_open_events=1` logged, routing still
+correct; `C:delay:400` → measured latency rises to 422 ms, absorbed by the
+~0.9 s command margin, 3/3 clean.
+
+### Video evidence
+[`final_arb/`](final_arb/): `nominal_overview.mp4` (whole cell, 11 items),
+`deck_closeup.mp4` (ARB deck + gates + blades at work),
+`sensor_station.mp4` (items through the RTX heads),
+`fault_recovery.mp4` (snag → watchdog → jam camera → UR10e + suction
+gripper recovery → re-delivery, plus the observer-fallback recovery).
+Calculations cross-check:
+[calculations_vs_simulation.md](../calculations_vs_simulation.md).
+
+## Headline results (previous build, kept for the record)
 
 ### Perception calibration — static, real depth (11 items × 3 rest yaws)
 [`validation/rtx_validation.json`](validation/rtx_validation.json):

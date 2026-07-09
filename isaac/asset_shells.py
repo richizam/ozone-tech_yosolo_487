@@ -17,6 +17,23 @@ ASSETS = {
     "ur10e": "/Isaac/Robots/UniversalRobots/ur10e/ur10e.usd",
     "ur_mount": "/Isaac/Props/Mounts/ur10_mount.usd",
 }
+# official suction end-effector (the UR10 palletizing demo gripper) — the
+# exception arm is a vacuum picker, so the flange should carry a real EEF,
+# not end at bare metal. Candidate paths vary across asset-pack versions.
+GRIPPER_CANDIDATES = (
+    # verified on the 6.0 asset S3 (bucket listing 2026-07-09)
+    "/Isaac/Robots/UniversalRobots/ur10/grippers/short_gripper.usd",
+    "/Isaac/Robots/UR10/Props/short_gripper.usd",       # classic 4.x path
+)
+
+
+def _stat_ok(url):
+    try:
+        import omni.client
+        res, _ = omni.client.stat(url)
+        return res == omni.client.Result.OK
+    except Exception:
+        return False
 # measured in the gallery probe: bbox top of the conveyor family (rail top)
 CONVEYOR_BBOX_TOP = 1.17
 # the riding BELT surface sits below the rail top; calibrated via preview
@@ -81,8 +98,9 @@ def reference(stage, path, url, translate, rotate_deg=(0, 0, 0),
 
 
 def conveyor_shells(stage, top=0.70):
-    """Official conveyor segments matched to the cell layout. Returns True on
-    success (caller then hides the collider boxes and skips primitive decor).
+    """Official conveyor segments matched to the cell layout. Returns a dict
+    {"arb_pills": {patch_id: [pill paths]}} on success (caller then hides the
+    collider boxes and skips primitive decor), None on failure.
 
     EVERY item-contact surface is CONTINUOUS (A05 belt): the official test
     set includes a 9 mm pen, so open roller beds would contradict the physics
@@ -102,7 +120,7 @@ def conveyor_shells(stage, top=0.70):
     """
     root = assets_root()
     if not root:
-        return False
+        return None
     zs = top / (CONVEYOR_BBOX_TOP * SURFACE_FRACTION)
     parent = "/World/shells"
     UsdGeom.Xform.Define(stage, parent)
@@ -134,11 +152,11 @@ def conveyor_shells(stage, top=0.70):
     # table: continuous belts (see docstring), ARB caps overlaid on the zone
     belt("entry", (6.9 + 7.95) / 2, 3.0, 1.05, 1.12)
     belt("zone", (7.95 + 8.55) / 2, 3.0, 0.60, 1.16)
-    arb_overlay(stage, parent, top)
+    arb_pills = arb_overlay(stage, parent, top)
     # powered connector + belt B (along Y)
     belt("connectB", 8.4, (3.55 + 4.20) / 2, 0.65, 0.56, yaw=90.0)
     belt("beltB", 8.4, (4.20 + 6.00) / 2, 1.80, 0.56, yaw=90.0)
-    return True
+    return {"arb_pills": arb_pills}
 
 
 def arb_overlay(stage, parent, top):
@@ -149,9 +167,13 @@ def arb_overlay(stage, parent, top):
     N/E/S exits of this cell — evaluated and documented). The look: dense
     staggered rows of ANGLED pill rollers embedded flush in a lighter belt
     band (dark metal on light deck reads as machinery, not dots); the
-    ACTIVE-ROUTE deck arrows brighten over it at runtime. Purely visual —
-    the contact surface stays continuous, exactly like a real Intralox ARB."""
+    ACTIVE-ROUTE deck arrows brighten over it at runtime, and each pill
+    roller belongs to its ARB PATCH (cell/params.arb_patches grid) so the
+    runtime can tint exactly the patches whose actuators are commanded.
+    Purely visual — the contact surface stays continuous, exactly like a
+    real Intralox ARB. Returns {patch_id: [pill prim paths]}."""
     import numpy as np
+    from cell import params as _P
     UsdGeom.Xform.Define(stage, f"{parent}/arb")
     # lighter deck band over the rubber (the ARB belt itself)
     deck = UsdGeom.Cube.Define(stage, f"{parent}/arb/deck")
@@ -160,12 +182,23 @@ def arb_overlay(stage, parent, top):
     xf.AddTranslateOp().Set(Gf.Vec3d(8.25, 3.0, top - 0.0055))
     xf.AddScaleOp().Set(Gf.Vec3f(0.29, 0.52, 0.006))
     deck.CreateDisplayColorAttr([Gf.Vec3f(0.34, 0.36, 0.40)])
+    patches = _P.arb_patches()
+    pills = {f"r{p['r']}c{p['c']}": [] for p in patches}
+
+    def patch_of(x, y):
+        for p in patches:
+            if (abs(x - p["cx"]) <= p["hx"] + 1e-9
+                    and abs(y - p["cy"]) <= p["hy"] + 1e-9):
+                return f"r{p['r']}c{p['c']}"
+        return None
+
     # angled pill rollers, flush in the deck (embedded-roller signature)
     i = 0
     for col, x in enumerate(np.arange(7.99, 8.53, 0.055)):
         row_off = 0.0275 * (col % 2)
         for y in np.arange(2.51 + row_off, 3.47, 0.055):
-            cap = UsdGeom.Capsule.Define(stage, f"{parent}/arb/pill_{i}")
+            path = f"{parent}/arb/pill_{i}"
+            cap = UsdGeom.Capsule.Define(stage, path)
             cap.CreateRadiusAttr(0.0085)
             cap.CreateHeightAttr(0.024)
             cap.CreateAxisAttr("X")
@@ -174,7 +207,11 @@ def arb_overlay(stage, parent, top):
                                               top - 0.0075))
             pxf.AddRotateXYZOp().Set(Gf.Vec3f(0, 0, 45.0))
             cap.CreateDisplayColorAttr([Gf.Vec3f(0.14, 0.145, 0.16)])
+            pid = patch_of(float(x), float(y))
+            if pid is not None:
+                pills[pid].append(path)
             i += 1
+    return pills
 
 
 def ur10e_arm(stage, base_xy, pedestal_h=0.65):
@@ -213,5 +250,22 @@ def ur10e_arm(stage, base_xy, pedestal_h=0.65):
                 True)
     if len(joints) < 6:
         return None
+    # official suction gripper on the flange (sanitized visual shell, child
+    # of the flange link so it follows the real arm motion). The controller
+    # TCP hangs TOOL=0.20 m below the flange — the gripper body + bellows
+    # visually occupy that offset so a carried item reads as held by the
+    # vacuum cups, not floating under bare metal.
+    if flange is not None:
+        for cand in GRIPPER_CANDIDATES:
+            if not _stat_ok(root + cand):
+                continue
+            try:
+                gp = reference(stage, f"{flange}/eef_gripper", root + cand,
+                               (0.0, 0.0, 0.0), (0, 0, 0), (1, 1, 1))
+                sanitize(gp)
+                print(f"[arm] suction gripper referenced: {cand}", flush=True)
+                break
+            except Exception as exc:
+                print(f"[arm] gripper reference failed ({exc})", flush=True)
     return {"prim": prim.GetPath().pathString, "joints": joints,
             "flange": flange, "art_root": art_root or prim.GetPath().pathString}
