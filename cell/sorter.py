@@ -130,12 +130,17 @@ class SorterControl:
     def empty_available_cars(self):
         """Every empty, untasked carrier ANYWHERE on the loop — a release can
         target a carrier still on the return leg (it wraps onto the top run
-        before the item arrives; the escapement waits for the match)."""
+        before the item arrives; the escapement waits for the match).
+        PHYSICALLY FLAT required (tray-position feedback, |roll| < 3 deg):
+        a commanded-flat tray can still be tilted — an obstructed re-flatten
+        during the jam drill left one leaning, and freight released onto it
+        slid straight off (fault_jam box_s floor drop)."""
         out = []
         for c in self.cars:
             if not self.occupied(c) \
                     and c["expected"] is None and c["target"] == 0.0 \
-                    and c["cmd"] is None and c["flat_at"] is None:
+                    and c["cmd"] is None and c["flat_at"] is None \
+                    and abs(self.tray_roll(c)) < 3.0:
                 out.append((self.car_s(c), c))
         return out
 
