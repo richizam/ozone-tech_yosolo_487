@@ -13,7 +13,8 @@
     "zone": "B",
     "category": "Подходит для сортировки",
     "max_ratio": 0.707,
-    "faces": 12
+    "faces": 12,
+    "collider": "box"
   },
   {
     "slug": "edge_cube10",
@@ -29,7 +30,8 @@
     "zone": "C",
     "category": "Не подходит для сортировки по габаритам",
     "max_ratio": 0.707,
-    "faces": 12
+    "faces": 12,
+    "collider": "box"
   },
   {
     "slug": "edge_rod9",
@@ -45,7 +47,8 @@
     "zone": "C",
     "category": "Не подходит для сортировки по габаритам",
     "max_ratio": 0.707,
-    "faces": 12
+    "faces": 12,
+    "collider": "box"
   },
   {
     "slug": "edge_card2",
@@ -61,6 +64,7 @@
     "zone": "C",
     "category": "Не подходит для сортировки по габаритам",
     "max_ratio": 0.555,
-    "faces": 12
+    "faces": 12,
+    "collider": "box"
   }
 ]

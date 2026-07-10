@@ -732,14 +732,29 @@ class SceneBuilder:
         mesh.CreateFaceVertexCountsAttr(
             Vt.IntArray.FromNumpy(np.full(n, 3, dtype=np.int32)))
         mesh.CreateDisplayColorAttr([Gf.Vec3f(*ITEM_COL)])
-        UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
-        mcoll = UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim())
-        mcoll.CreateApproximationAttr("convexHull")
         pxrb.CreateEnableCCDAttr(True)           # thin/fast items tunnel-proof
-        pxc = PhysxSchema.PhysxCollisionAPI.Apply(mesh.GetPrim())
-        pxc.CreateContactOffsetAttr(0.003 if min(e["dims_m"]) < 0.02 else 0.005)
+        # PRIMITIVE COLLIDER (manifest "collider"): the synthetic edge items
+        # ARE axis-aligned primitives — a native box collider avoids the
+        # mesh-hull contact path, whose offset cushion anchored a 5 g rod on
+        # the 32-deg slope (PhysX small-mesh stiction; the rod "floated"
+        # 7 mm high on contact offsets, statically held against mu 0.28).
+        if e.get("collider") == "box":
+            coll = UsdGeom.Cube.Define(self.stage, f"{body_path}/coll")
+            coll.CreateSizeAttr(1.0)
+            UsdGeom.Xformable(coll.GetPrim()).AddScaleOp().Set(
+                Gf.Vec3f(*[float(d) for d in e["dims_m"]]))
+            UsdGeom.Imageable(coll.GetPrim()).MakeInvisible()
+            coll_prim = coll.GetPrim()
+        else:
+            coll_prim = mesh.GetPrim()
+            mcoll = UsdPhysics.MeshCollisionAPI.Apply(coll_prim)
+            mcoll.CreateApproximationAttr("convexHull")
+        UsdPhysics.CollisionAPI.Apply(coll_prim)
+        pxc = PhysxSchema.PhysxCollisionAPI.Apply(coll_prim)
+        small = min(e["dims_m"]) < 0.02
+        pxc.CreateContactOffsetAttr(0.0015 if small else 0.005)
         pxc.CreateRestOffsetAttr(0.0)
-        self._bind_phys(mesh.GetPrim(), mat_item)
+        self._bind_phys(coll_prim, mat_item)
         return body_path, park
 
     # ------------------------------------------------------------------ cameras

@@ -97,6 +97,14 @@ SORTER = {
     "tray_mu": (0.32, 0.30),
     "occupied_callout_x": 9.30,        # an occupied carrier reaching the east
                                        # module = dead-tilt fault -> operator
+    # SEAT TIME: no tilt command until this long after the tray is tagged —
+    # a real sorter never tilts during landing settle. Long C-bound freight
+    # otherwise tilts AT the landing instant (its length-extra pushes the C
+    # trigger back to the landing point) and discharges while still bouncing
+    # from the 60 mm induction drop (box_l edge_items_all floor drop).
+    # 0.15 s: enough for a flat box to seat after the drop, small enough
+    # that the C discharge point shifts < 0.08 m east (mouth half 0.35).
+    "seat_time_s": 0.15,
     # debris CATCH PAN under the top run: freight thinner than the
     # escapement's 3 mm skim gap (a 2 mm card) can arrive unmetered and
     # knife into an inter-tray gap — it lands on the pan and the watchdog

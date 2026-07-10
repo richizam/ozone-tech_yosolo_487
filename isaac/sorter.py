@@ -241,6 +241,7 @@ class SorterControl:
                     c["slug"] = slug
                     c["route"] = exp["zone"]
                     c["len_m"] = exp.get("len_m") or 0.0
+                c["t_tagged"] = t
                 self.landing_offsets.append(dx)
                 c["expected"] = None
                 if self.release and self.release["slug"] == slug:
@@ -421,7 +422,13 @@ class SorterControl:
                     # travels further before the CG clears the tray
                     extra = 0.9 * max(0.0, (c.get("len_m") or 0.0) - 0.30)
                     trig = st["x"] - st["trigger_lead_m"] - extra
-                    if x >= trig and not c.get("cmd_issued_at_station") == route:
+                    # SEAT TIME: never tilt during landing settle — long
+                    # C-bound freight otherwise tilts AT the landing instant
+                    # and discharges while still bouncing from the drop
+                    seated = (c.get("t_tagged") is None
+                              or t - c["t_tagged"] >= self.S["seat_time_s"])
+                    if seated and x >= trig \
+                            and not c.get("cmd_issued_at_station") == route:
                         c["cmd_issued_at_station"] = route
                         if c["i"] in self.dead_carriers:
                             # hardware fault drill: a dead actuator swallows
