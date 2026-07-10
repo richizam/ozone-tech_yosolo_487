@@ -180,48 +180,90 @@ for (mp, sp), (c, x, ang) in sorted(worst.items(), key=lambda kv: kv[1][0]):
         report["tray_pairs"].append(row)
 
 # ------------------------------------------------------------------- arm
-# recovery envelope: waypoints + straight TCP segments vs cage/chute/guard
+# recovery envelope: FULL LINK GEOMETRY, not just the TCP path — the
+# forearm dips below the straight TCP line between waypoints and is what
+# a camera sees near the cage top rails. Every TCP sample is IK'd with
+# the arm's own solver and the shoulder-elbow-wrist-tool chain is checked
+# as capsules (segment AABB inflated by the link radius).
+from isaac.arm import _ik_ur, UR                            # noqa: E402
+
 bx, by = P.ARM["base"]
+LIFT = 1.22                                     # matches arm.py transfer cap
 wps = []
 for z in ("C", "D"):
     sx = P.STATIONS[z]["x"]
     grasp = (sx, min(2.62, P.ARM_GRASP_Y_MAX), 0.55)
-    lift = (grasp[0], grasp[1], 1.10)
+    lift = (grasp[0], grasp[1], LIFT)
     pl = P.PLACE_BY_MODE["sorter"][z]
     place = (pl["xy"][0], pl["xy"][1], pl["surface_z"] + 0.15)
-    xfer = (place[0], place[1], 1.10)
-    wps += [((bx, by, 1.10), grasp), (grasp, lift), (lift, xfer),
-            (xfer, place), (place, (bx, by, 1.10))]
+    xfer = (place[0], place[1], LIFT)
+    home = (bx, by, LIFT)
+    wps += [(home, grasp), (grasp, lift), (lift, xfer),
+            (xfer, place), (place, home)]
 
 cage_like = [s for s in statics
              if "/cage" in str(s.GetPath()) or "/chute" in str(s.GetPath())
              or "guard" in str(s.GetPath())]
 
+SHZ = 0.65 + UR["D1"]
+LINK_R = {"upper": 0.075, "fore": 0.060, "tool": 0.050}
 
-def seg_aabb_clear(p0, p1, lo, hi, n=20):
+
+def chain_points(tcp):
+    """shoulder, elbow, wrist, tcp world points via the arm's own IK."""
+    q1, q2, q3, _ = _ik_ur(tcp, (bx, by))
+    ca, sa = np.cos(q1), np.sin(q1)
+    sh = np.array([bx, by, SHZ])
+    r_e = UR["L1"] * np.cos(q2)
+    el = np.array([bx + r_e * ca, by + r_e * sa, SHZ - UR["L1"] * np.sin(q2)])
+    r_w = r_e + UR["L2"] * np.cos(q2 + q3)
+    wr = np.array([bx + r_w * ca, by + r_w * sa,
+                   SHZ - UR["L1"] * np.sin(q2)
+                   - UR["L2"] * np.sin(q2 + q3)])
+    return sh, el, wr, np.array(tcp)
+
+
+def link_clear(a, b, r, lo, hi, n=8):
+    """capsule (a-b, radius r) vs AABB: sampled point distance minus r."""
     best = 1e9
     for i in range(n + 1):
-        q = np.array(p0) + (np.array(p1) - np.array(p0)) * (i / n)
+        q = a + (b - a) * (i / n)
         d = np.maximum(np.maximum(lo - q, q - hi), 0.0)
         out = float(np.linalg.norm(d))
         if out == 0.0:
-            inner = float(np.minimum(q - lo, hi - q).min())
-            out = -inner
-        best = min(best, out)
+            out = -float(np.minimum(q - lo, hi - q).min())
+        best = min(best, out - r)
     return best
 
 
+worst_arm = {}
+static_boxes = [(world_aabb(sp), str(sp.GetPath())) for sp in cage_like]
 for p0, p1 in wps:
-    for sp in cage_like:
-        lo, hi = world_aabb(sp)
-        c = seg_aabb_clear(p0, p1, lo, hi)
-        row = {"segment": [list(map(float, p0)), list(map(float, p1))],
-               "static": str(sp.GetPath()),
-               "min_clearance_mm": round(c * 1000, 1)}
-        if c < TOL:
-            report["arm_violations"].append(row)
-        elif c < 0.08:
-            report["arm_segments"].append(row)
+    for i in range(13):
+        tcp = np.array(p0) + (np.array(p1) - np.array(p0)) * (i / 12.0)
+        try:
+            sh, el, wr, tp = chain_points(tuple(tcp))
+        except ValueError:
+            worst_arm[("UNREACHABLE", str(p0) + str(p1))] = (-0.999, tcp)
+            break
+        links = [(sh, el, LINK_R["upper"], "upper"),
+                 (el, wr, LINK_R["fore"], "fore"),
+                 (wr, tp, LINK_R["tool"], "tool")]
+        for (lo, hi), spath in static_boxes:
+            for a, b, r, nm in links:
+                c = link_clear(a, b, r, lo, hi)
+                key = (nm, spath)
+                if key not in worst_arm or c < worst_arm[key][0]:
+                    worst_arm[key] = (c, tcp)
+
+for (nm, spath), (c, tcp) in sorted(worst_arm.items(), key=lambda kv: kv[1][0]):
+    row = {"link": nm, "static": spath,
+           "min_clearance_mm": round(c * 1000, 1),
+           "at_tcp": [round(float(v), 3) for v in np.atleast_1d(tcp)[:3]]}
+    if c < TOL:
+        report["arm_violations"].append(row)
+    elif c < 0.05:
+        report["arm_segments"].append(row)
 
 (OUT / "clearance_report.json").write_text(json.dumps(report, indent=2))
 nv = len(report["tray_violations"]) + len(report["arm_violations"])
@@ -232,5 +274,8 @@ for v in (report["tray_violations"] + report["arm_violations"])[:25]:
     print("  VIOLATION", json.dumps(v), flush=True)
 print(f"[audit] {'FAIL' if nv else 'PASS'}", flush=True)
 
+# SimulationApp.close() can swallow sys.exit codes (Kit shutdown calls
+# os._exit) — persist the verdict for the pipeline BEFORE closing.
+(OUT / "AUDIT_RC").write_text("1" if nv else "0")
 sim_app.close()
 sys.exit(1 if nv else 0)

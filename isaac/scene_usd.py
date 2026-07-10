@@ -745,8 +745,10 @@ class SceneBuilder:
 
     def build_sorter_train(self, mat_tray):
         """The full linear sorter: carriers spread along the loop, chassis
-        frame with station cutouts, and the two end modules that enclose the
-        wrap (the return leg runs under the deck at true return time)."""
+        frame with station cutouts, slotted return-run guard skirts, a
+        matte shadow floor plate, and two end modules that SHOW the wrap
+        mechanism — a spoked end wheel behind framed transparent guards
+        (the return leg runs under the deck at true return time)."""
         S = P.SORTER
         y = S["y"]
         L_top = S["x_east"] - S["x_west"]          # visible top run
@@ -796,38 +798,31 @@ class SceneBuilder:
                     self.add_box(f"train_leg_{nm}{k}_{lx:.2f}",
                                  (lx, by, 0.26), (0.025, 0.025, 0.26),
                                  color=FRAME_COL, collide=False)
-        # UNDER-DECK RETURN ENCLOSURE (visual only, collide=False): long side
-        # skirt panels close the black void where the return leg runs, so
-        # the under-sorter volume reads as machine enclosure. Panels sit
-        # OUTSIDE y 2.62..3.38 (never inside the tray sweep or a discharge
-        # fall corridor), span z 0.10..0.38, and are SEGMENTED around every
-        # station discharge cutout (C/D south, B/REVIEW north) exactly like
-        # the chassis beams above. Access-panel seams + vent grilles give
-        # the long runs service detail.
-        enc_x0, enc_x1 = S["x_west"] + 0.2, S["x_east"] - 0.2
-        enc_zc, enc_zh = 0.24, 0.14                     # z 0.10..0.38
+        # UNDER-DECK RETURN GUARDS (visual only, collide=False): slotted
+        # machine-guard skirts close the void where the return leg runs.
+        # Panels sit OUTSIDE y 2.62..3.38 (never inside the tray sweep or a
+        # discharge fall corridor), span z 0.10..0.38, and now run from END
+        # MODULE FACE to END MODULE FACE — the ONLY openings left are the
+        # four station discharge cutouts (C/D south, B/REVIEW north,
+        # +-0.36), so trays no longer "appear from nowhere" past a panel
+        # gap. Each panel is composed of FOUR horizontal strips with 12 mm
+        # slots between them: the return run is GLIMPSED through the slots
+        # like a real chain-guard, instead of hidden behind solid tin.
+        # (The old access seams / louvre vents died with the solid panels.)
+        enc_x0, enc_x1 = 6.79, 9.37       # west/east end-module inner faces
+        enc_z0, enc_z1, slot = 0.10, 0.38, 0.012
+        strip_h2 = ((enc_z1 - enc_z0) - 3 * slot) / 8   # 4 strips, 3 slots
+        enc_col = (0.30, 0.32, 0.35)                    # dark powder-gray
         for sgn, nm, cuts in ((-1, "s", cuts_s), (1, "n", cuts_n)):
             ey = y + sgn * 0.415
             for k, (a, b) in enumerate(segments(enc_x0, enc_x1, cuts)):
-                self.add_box(f"train_enc_{nm}{k}", ((a + b) / 2, ey, enc_zc),
-                             ((b - a) / 2, 0.012, enc_zh),
-                             color=(0.14, 0.15, 0.18), collide=False,
-                             roughness=POWDER_R, metallic=POWDER_M)
-                if b - a > 0.35:        # recessed access-panel seams
-                    for fx in (0.25, 0.50, 0.75):
-                        self.add_box(f"train_encseam_{nm}{k}_{int(fx * 100)}",
-                                     (a + fx * (b - a), ey + sgn * 0.0125,
-                                      enc_zc),
-                                     (0.0015, 0.0015, enc_zh - 0.015),
-                                     color=(0.05, 0.055, 0.06), collide=False)
-                if b - a > 0.5:         # small vent grille (3 louvre slots)
-                    gx_ = (a + b) / 2 - 0.10
-                    for gz in (0.185, 0.215, 0.245):
-                        self.add_box(
-                            f"train_encvent_{nm}{k}_{int(gz * 1000)}",
-                            (gx_, ey + sgn * 0.012, gz),
-                            (0.075, 0.002, 0.006),
-                            color=(0.06, 0.065, 0.07), collide=False)
+                for si in range(4):
+                    zc = enc_z0 + strip_h2 + si * (2 * strip_h2 + slot)
+                    self.add_box(f"train_enc_{nm}{k}_s{si}",
+                                 ((a + b) / 2, ey, zc),
+                                 ((b - a) / 2, 0.012, strip_h2),
+                                 color=enc_col, collide=False,
+                                 roughness=POWDER_R, metallic=POWDER_M)
         # debris CATCH PAN under the top run: anything that slips through an
         # inter-tray gap (sub-3 mm freight arrives unmetered under the
         # escapement blade) lands here and the watchdog raises an operator
@@ -836,14 +831,70 @@ class SceneBuilder:
                                    S["pan_z_top"] - 0.005),
                      ((S["pan_x1"] - S["pan_x0"]) / 2, S["pan_y_half"], 0.005),
                      color=(0.13, 0.14, 0.16), mat=mat_tray)
-        # end modules (enclose the end wheels; the wrap teleports happen
-        # inside them). Visual shells only.
-        self.add_box("train_end_e", (9.57, y, 0.46), (0.15, 0.40, 0.28),
-                     color=FRAME_COL, collide=False)
-        self.add_box("train_end_e_cap", (9.57, y, 0.76), (0.15, 0.40, 0.02),
-                     color=DARK, collide=False)
-        self.add_box("train_end_w", ((6.44 + 6.74) / 2, y, 0.40),
-                     (0.15, 0.40, 0.21), color=FRAME_COL, collide=False)
+        # matte near-black FLOOR PLATE under the whole train footprint
+        # (x 6.6..9.6, y 2.62..3.38, top z 0.015): whatever still shows
+        # through the guard slots and skirt lines reads as machine shadow
+        # over a steel base plate, not as a see-through void to the
+        # warehouse floor. Visual only.
+        self.add_box("train_floor_plate", (8.1, y, 0.0075),
+                     (1.5, 0.38, 0.0075), color=(0.06, 0.06, 0.07),
+                     collide=False, roughness=0.95)
+        # END MODULES at x 6.59 / 9.57 — the wrap mechanism is SHOWN, not
+        # boxed away (the wrap teleports still happen inside them, dimmed
+        # behind the guards). Each module is an open steel frame: solid
+        # outer end wall + top cap, and on the SOUTH and NORTH faces a
+        # FRAMED TRANSPARENT GUARD (25 mm powder-steel border + inset
+        # polycarbonate-look panel, displayColor (0.7,0.75,0.8) opacity
+        # 0.25 via the displayOpacity path add_box already uses for
+        # translucent panels). Inside, a large spoked END WHEEL (r 0.17,
+        # axis along y, z 0.43 — tangent to the z~0.56 top run above and
+        # the z 0.26 return run below) with hub and wall-to-wall axle
+        # tells HOW carriers come back. All visual, collide=False; the
+        # deck-side face stays fully open for the carrier path.
+        for enm, mx, z0m, z1m, cz, ch in (("e", 9.57, 0.18, 0.74, 0.76, 0.02),
+                                          ("w", 6.59, 0.19, 0.61, 0.604, 0.006)):
+            hx_m, hy_m = 0.20, 0.40
+            zc_m, hz_m = (z0m + z1m) / 2, (z1m - z0m) / 2
+            out = 1.0 if enm == "e" else -1.0     # outward, away from deck
+            self.add_box(f"train_end_{enm}_cap", (mx, y, cz),
+                         (hx_m, hy_m, ch), color=DARK, collide=False)
+            self.add_box(f"train_end_{enm}_wall",
+                         (mx + out * (hx_m - 0.008), y, zc_m),
+                         (0.008, hy_m, hz_m), color=FRAME_COL, collide=False)
+            for sy, snm in ((-1, "s"), (1, "n")):
+                fy = y + sy * (hy_m - 0.008)
+                for rnm, rz in (("b", z0m + 0.0125), ("t", z1m - 0.0125)):
+                    self.add_box(f"train_end_{enm}_gfrm_{snm}{rnm}",
+                                 (mx, fy, rz), (hx_m, 0.008, 0.0125),
+                                 color=POWDER_COL, collide=False,
+                                 roughness=POWDER_R, metallic=POWDER_M)
+                for sx, xnm in ((-1, "w"), (1, "e")):
+                    self.add_box(f"train_end_{enm}_gfrm_{snm}{xnm}",
+                                 (mx + sx * (hx_m - 0.0125), fy, zc_m),
+                                 (0.0125, 0.008, hz_m - 0.025),
+                                 color=POWDER_COL, collide=False,
+                                 roughness=POWDER_R, metallic=POWDER_M)
+                self.add_box(f"train_end_{enm}_guard_{snm}",
+                             (mx, fy, zc_m),
+                             (hx_m - 0.025, 0.004, hz_m - 0.025),
+                             color=(0.7, 0.75, 0.8), opacity=0.25,
+                             collide=False)
+            # end wheel: axle + drum + 6 spokes (3 crossing bars) + hub
+            self.add_cylinder(f"train_end_{enm}_axle", (mx, y, 0.43),
+                              0.016, hy_m - 0.02, color=STEEL, axis="Y",
+                              roughness=0.35, metallic=0.80)
+            self.add_cylinder(f"train_end_{enm}_wheel", (mx, y, 0.43),
+                              0.17, 0.10, color=(0.18, 0.19, 0.22), axis="Y",
+                              roughness=0.55, metallic=0.40)
+            for si in range(3):
+                self.add_box(f"train_end_{enm}_spoke{si}", (mx, y, 0.43),
+                             (0.146, 0.115, 0.017),
+                             euler_rad=(0.0, math.radians(60.0 * si), 0.0),
+                             color=(0.30, 0.32, 0.36), collide=False,
+                             roughness=0.50, metallic=0.50)
+            self.add_cylinder(f"train_end_{enm}_hub", (mx, y, 0.43),
+                              0.048, 0.13, color=(0.24, 0.25, 0.28), axis="Y",
+                              roughness=0.45, metallic=0.60)
         return carriers
 
     # ------------------------------------------------------- station dressing

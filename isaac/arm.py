@@ -378,8 +378,11 @@ class ArmController:
             px, py, _ = j["pick"]
             # recovery transfers OVER the cage walls to targets at r <= 0.7;
             # cap the lift/transfer height so the wrist never exceeds the UR
-            # reach ceiling. 1.10 clears the 0.83 m cage wall + item.
-            cap = 1.10
+            # reach ceiling. 1.22: high enough that the FOREARM LINK (which
+            # dips below the TCP line between waypoints) clears the cage/pen
+            # top rails (~0.88) with visible margin — the link-geometry
+            # clearance audit checks the whole shoulder-elbow-wrist chain.
+            cap = 1.22
             j["lift_z"] = min(P.LIFT_Z + 0.05, cap)
             self.state = "LIFT"
             self._set_target(self._wp((px, py, j["lift_z"])), t)

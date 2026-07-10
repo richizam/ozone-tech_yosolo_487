@@ -79,7 +79,7 @@ class Dressing:
     def _vis(self, prim, color, roughness=0.80, metallic=0.05, textured=True):
         """Matte industrial PBR with world-triplanar grunge (dirt/scratch/
         edge wear) — bare displayColor renders as toy plastic under RTX.
-        Runtime-tinted prims (route lamps/trails/LEDs) must NOT bind —
+        Runtime-tinted prims (route lamps/LEDs) must NOT bind —
         a bound material overrides displayColor updates. Big flat backdrops
         pass textured=False (a tiled detail map reads as wallpaper on them)."""
         seed = hash(prim.GetPath().pathString) & 0x7fffffff
@@ -332,10 +332,14 @@ class Dressing:
         are but render nearly invisible (scene_usd.build_cage); the
         industrial read comes from this NON-COLLIDING shell on each cage's
         exact footprint: galvanized tubular edge frame (~22 mm), wire-mesh
-        wall panels (translucent panel + wire grid), base frame with four
-        casters, and a framed aperture where the chute crosses the wall.
-        Route colour appears ONLY as the label plate + a thin top-rail
-        accent stripe."""
+        wall panels (translucent panel + wire grid; the REVIEW pen instead
+        gets SOLID light-grey sheet panels, matte — its translucent sheets
+        blew out white on camera), base frame with four casters, and a
+        framed aperture where the chute crosses the wall. Route colour
+        lives ONLY in signage plates and lamp housings — the former thin
+        top-rail accent stripes read as loose coloured strips on camera
+        and were deleted; the pen's single accent is its magenta label
+        plate."""
         cages = dict(P.cages_for())
         cages["REVIEW"] = P.REVIEW_PEN
         for zone, cage in cages.items():
@@ -365,12 +369,18 @@ class Dressing:
                                  roughness=GALV_R, metallic=GALV_M)
                 if side == open_side:
                     continue
-                # wire-mesh panel: translucent grey sheet + vertical wires
+                # wall panel: C/D keep the wire-mesh look (translucent grey
+                # sheet + vertical wires); the REVIEW pen gets SOLID
+                # light-grey sheet-metal panels bound matte (rough 0.70) —
+                # its unbound translucent sheets blew out white on camera
+                pen = zone == "REVIEW"
+                p_col = (0.58, 0.60, 0.62) if pen else (0.60, 0.62, 0.64)
+                p_op = None if pen else 0.22
                 wz0, wz1 = 0.13, z_top - 0.03
                 wzc, wzh = (wz0 + wz1) / 2, (wz1 - wz0) / 2
                 if axis_x:
                     self.box((cx + sgn * px_, cy, wzc), (0.0015, hy - 0.04,
-                             wzh), (0.60, 0.62, 0.64), opacity=0.22,
+                             wzh), p_col, opacity=p_op, roughness=0.70,
                              tag=f"cage{zone}_mesh")
                     for wy in np.arange(-hy + 0.10, hy - 0.05, 0.13):
                         self.box((cx + sgn * px_, cy + float(wy), wzc),
@@ -378,7 +388,7 @@ class Dressing:
                                  tag=f"cage{zone}_wire")
                 else:
                     self.box((cx, cy + sgn * py_, wzc), (hx - 0.04, 0.0015,
-                             wzh), (0.60, 0.62, 0.64), opacity=0.22,
+                             wzh), p_col, opacity=p_op, roughness=0.70,
                              tag=f"cage{zone}_mesh")
                     for wx in np.arange(-hx + 0.10, hx - 0.05, 0.13):
                         self.box((cx + float(wx), cy + sgn * py_, wzc),
@@ -419,13 +429,9 @@ class Dressing:
                              roughness=POWDER_DK_R, metallic=POWDER_DK_M)
                     self.cyl((wx, wy2, 0.030), 0.028, 0.013, BLACK, axis="Y",
                              tag=f"caster{zone}")
-            # route colour: thin top-rail accent stripe on the label wall
-            if zone == "REVIEW":
-                self.box((cx - px_, cy, z_top + 0.018), (0.006, hy * 0.85,
-                         0.008), route, tag=f"cage{zone}_accent")
-            else:
-                self.box((cx, cy - py_, z_top + 0.018), (hx * 0.85, 0.006,
-                         0.008), route, tag=f"cage{zone}_accent")
+            # (top-rail route accent stripes deleted: thin colour strips
+            # floating over the rails read as debris — route colour stays
+            # in signage plates and lamp housings only)
             # printed label on the visible wall + a tall mast sign. Yaw
             # convention (rotateXYZ(90,0,yaw) on a +Z-facing quad): yaw 0 =
             # text front faces SOUTH (-y), yaw -90 = faces WEST (-x) — the
@@ -444,8 +450,11 @@ class Dressing:
                 self.box((cx - px_ - 0.016, cy, lz), (0.005, lw / 2 + 0.02,
                          lw / 8 + 0.02), POWDER_DK, tag=f"cage{zone}_plate",
                          roughness=POWDER_DK_R, metallic=POWDER_DK_M)
+                # the pen's SINGLE accent: magenta label plate (matches the
+                # chute-sign dimming; lamps carry the rest of the colour)
                 self.label(txt, fn, (cx - hx - 0.02 - 0.012, cy, lz), lw,
-                           yaw_deg=-90.0)
+                           yaw_deg=-90.0,
+                           bg=tuple(0.62 * v for v in route))
             else:
                 lw = min(0.85, cage["inner"][0] + 0.15)
                 lz = min(0.45, h - 0.05)
@@ -680,8 +689,10 @@ class Dressing:
     # ------------------------------------------------------ conveyor details
     def conveyor_details(self):
         """Hazard striping, plinth + legs cladding, and white direction
-        chevrons painted on the belts (the visible roller/flow direction)."""
-        a, b, bc = P.BELT_A, P.BELT_B, P.B_CONNECT
+        chevrons painted on the belts (the visible roller/flow direction) —
+        the ONLY painted arrows in the cell live ON the two wide fixed belt
+        surfaces, where they read as conveyor paint."""
+        a, b = P.BELT_A, P.BELT_B
         # black dashes over the yellow side guides -> yellow/black safety
         # edge. ONLY when the official shells are absent: the shells carry
         # their own side rails, and doubled rail hardware crowds the freight
@@ -719,6 +730,19 @@ class Dressing:
                          tag="dirB", euler_deg=(0, 0, sw))
         # (incline chevrons removed: on the narrow slope they read as
         # loose strips on camera — wide fixed belts keep painted chevrons)
+
+    # -------------------------------------------------- B transfer continuity
+    def b_transfer(self):
+        """C. The tray -> incline handoff reads as engineered hardware:
+        a transition nose apron under the incline mouth, a side-mounted
+        drive motor + gearbox at the head drum, and support legs under the
+        span. All NON-COLLIDING, all positioned from P.B_CONNECT, all beside
+        or UNDER the belt surface plane (never above it, where items slide)
+        and clear of the tray-sweep corridor (nothing above z 0.36 south of
+        y 3.42; the sweep bottoms at z 0.62 over y 3.31). The end drums both
+        ends already come from rollers()."""
+        bc = P.B_CONNECT
+        slope = (bc["z_top1"] - bc["z_top0"]) / (bc["y1"] - bc["y0"])
         # transition nose apron: steep deflector plate under the mouth,
         # closing the visual void between the tray lip line and the belt
         self.box((bc["cx"], 3.285, 0.315), (bc["width"] / 2 - 0.01, 0.045,
@@ -760,7 +784,6 @@ class Dressing:
         BELOW the collider surface (items never touch them), a brake-pad end
         trim inside the destination, and per-chute station signage yawed to
         face the east camera line."""
-        tan32 = math.tan(math.radians(32.0))
         signs = {"C": ("C OVERSIZE", 0.34), "D": ("D REPACK", 0.34),
                  "REVIEW": ("REVIEW", 0.30)}
         for zone, cc in (("C", P.CHUTE_C), ("D", P.CHUTE_D),
@@ -800,65 +823,22 @@ class Dressing:
                      (0.010, 0.010, 0.145), FRAME, tag=f"chsignpost{zone}")
 
     # ------------------------------------------------------- route visuals
-    def _chevron(self, center, yaw_deg, color, size=0.075, z_thick=0.0005,
-                 tag="chev", bind=True):
-        """V-shaped arrowhead from two rotated bars; points along yaw
-        (0 deg = +x)."""
-        paths = []
-        for sw in (140.0, -140.0):
-            wa = math.radians(yaw_deg + sw)
-            c = (center[0] + size * 0.55 * math.cos(wa),
-                 center[1] + size * 0.55 * math.sin(wa), center[2])
-            p = self.box(c, (size, 0.016, z_thick), color, tag=tag,
-                         euler_deg=(0, 0, yaw_deg + sw), bind=bind)
-            paths.append(p.GetPath().pathString)
-        return paths
-
     def route_viz(self):
-        """Everything that answers 'where is THIS item going': chevron trails
-        down each chute, and the ACTIVE ROUTE indicator panel. Returns prim
-        paths for runtime brightness."""
-        S, b, bc = P.SORTER, P.BELT_B, P.B_CONNECT
-        viz = {"zone_arrows": {}, "trails": {}, "lamps": {}}
+        """Route storytelling WITHOUT floor/surface decals. The former
+        chevron trails (station -> destination runs on the floor, the
+        chutes, the B incline and belt B) read as scattered plastic litter
+        on the jury footage and were DELETED — the route-colour language
+        now lives ONLY in signage plates and lamp housings; the only
+        painted arrows left are the white conveyor chevrons ON belts A/B
+        (conveyor_details). Returns prim paths for runtime lamp
+        brightness."""
+        S = P.SORTER
+        viz = {"lamps": {}}
         # name the mechanism on the hardware (south skirt of the train)
         self.label("TILT-TRAY SORTER", "sorter_deck.png",
                    (8.05, S["y"] - 0.395, 0.55), 0.72, yaw_deg=0.0)
         dim = {z: tuple(0.35 * v for v in P.ROUTE_RGBA[z])
                for z in P.ROUTE_RGBA}
-        # chevron trails: discharge station -> destination
-        trails = {"B": [], "C": [], "D": [], "REVIEW": []}
-        # B: up the incline connector, then along belt B
-        for yy in np.arange(bc["y0"] + 0.30, bc["y1"] - 0.15, 0.45):
-            frac = (float(yy) - bc["y0"]) / (bc["y1"] - bc["y0"])
-            zz = bc["z_top0"] + frac * (bc["z_top1"] - bc["z_top0"]) + 0.004
-            trails["B"] += self._chevron((bc["cx"], float(yy), zz),
-                                         90.0, dim["B"], tag="trB", bind=False)
-        for yy in np.arange(b["y0"] + 0.25, b["y1"] - 0.3, 0.5):
-            trails["B"] += self._chevron((b["cx"], float(yy), b["top"] + 0.004),
-                                         90.0, dim["B"], tag="trB", bind=False)
-        # C / D / REVIEW: down their chutes (rotX with the 32-deg slope)
-        tan32 = math.tan(math.radians(32.0))
-        for zone, cc in (("C", P.CHUTE_C), ("D", P.CHUTE_D),
-                         ("REVIEW", P.CHUTE_REVIEW)):
-            d = float(cc["dir"])
-            y1, _pad = P.chute_run(cc)
-            yaw0 = -90.0 if d < 0 else 90.0        # chevrons point down-chute
-            n = 3
-            for k in range(n):
-                yy = cc["y0"] + d * (0.10 + k * 0.16)
-                if (d < 0 and yy < y1 + 0.05) or (d > 0 and yy > y1 - 0.05):
-                    continue
-                zc = cc["z0"] - abs(yy - cc["y0"]) * tan32 + 0.006
-                for sw in (140.0, -140.0):
-                    wa = math.radians(yaw0 + sw)
-                    c = (cc["cx"] + 0.06 * 0.55 * math.cos(wa),
-                         float(yy) + 0.06 * 0.55 * math.sin(wa), zc)
-                    p = self.box(c, (0.07, 0.015, 0.0005), dim[zone],
-                                 tag=f"tr{zone}",
-                                 euler_deg=(-d * 32.0, 0, yaw0 + sw),
-                                 bind=False)
-                    trails[zone].append(p.GetPath().pathString)
-        viz["trails"] = trails
         # ACTIVE ROUTE status as a LOW floor-standing HMI console (was a
         # 1.9 m mast that read as a vertical stick beside the deck) — the
         # requested HMI/status panel. Placed north-west of the table, out of
@@ -942,16 +922,8 @@ class Dressing:
         for wx in (P.STATIONS["C"]["x"] - 0.30, P.STATIONS["D"]["x"] + 0.30):
             self.label("! PINCH POINT", "pinch.png", (wx, 2.514, 0.78), 0.13,
                        yaw_deg=0.0, bg=YELLOW, fg=(25, 25, 25))
-        # floating per-item route flags: textures made here, quads at runtime
-        flags = {
-            "B": str(self._label_texture(">> B SORTER", "flag_b.png",
-                                         bg=OZON_BLUE)),
-            "C": str(self._label_texture(">> C OVERSIZE", "flag_c.png",
-                                         bg=(0.80, 0.42, 0.08))),
-            "D": str(self._label_texture(">> D REPACK", "flag_d.png",
-                                         bg=(0.10, 0.55, 0.22))),
-        }
-        viz["flag_textures"] = flags
+        # (floating per-item route flags fully retired — no textures, no
+        # runtime quads: they read as hovering debris over the freight)
         return viz
 
     # ---------------------------------------------------------- Ozon brand
@@ -1063,13 +1035,11 @@ class Dressing:
                           float(zz)), (0.012, 0.012, 0.006), (0.75, 0.10, 0.10),
                          tag="lc_led")
 
-        # --- floor safety zones (flat decals, sensor-safe): hazard hatch
-        # around the arm base + a cage keep-clear band, painted markings
-        abx, aby = P.ARM["base"]
-        for k in range(-3, 4):
-            self.box((abx + 0.42 * math.cos(k), aby + 0.42 * math.sin(k),
-                      0.003), (0.34, 0.03, 0.001), HAZ, tag="arm_zone",
-                     euler_deg=(0, 0, 30 * k), bind=False)
+        # --- floor zone signage (flat printed decal, sensor-safe). The
+        # former hazard-hatch strips around the arm base were DELETED:
+        # seven short angled colour strips on open floor read exactly as
+        # the "scattered plastic litter" the jury flagged. The long yellow
+        # walkway lines (lighting_env) stay: continuous aisle paint.
         self.label("SORT CELL — AUTOMATED", "floor_zone.png", (4.8, 4.9, 0.004),
                    1.1, yaw_deg=0.0, tilt_deg=0.0)
 
@@ -1181,9 +1151,11 @@ def dress_scene(stage):
 
 
 class RouteVizRuntime:
-    """Per-tick route storytelling (visuals only): floating route flags that
-    follow each classified item, the ACTIVE ROUTE lamp panel, the routing-deck
-    arrows and the chevron trails all brighten for the commanded route."""
+    """Per-tick route storytelling (visuals only): the housed ACTIVE ROUTE
+    console lamps brighten for the commanded route. The chevron trails and
+    the floating per-item route flags are gone (floor litter / hovering
+    debris on camera) — `drop_flag`/`update` keep their signatures because
+    the executive still calls them every tick."""
 
     def __init__(self, stage, viz):
         self.stage = stage
@@ -1191,79 +1163,25 @@ class RouteVizRuntime:
         self.bright = {z: Gf.Vec3f(*c) for z, c in P.ROUTE_RGBA.items()}
         self.dim = {z: Gf.Vec3f(*[0.30 * v for v in c])
                     for z, c in P.ROUTE_RGBA.items()}
-        self._color_attrs = {"lamps": {}, "zone_arrows": {}, "trails": {}}
+        self._lamp_attrs = {}
         for z, p in self.viz.get("lamps", {}).items():
-            self._color_attrs["lamps"][z] = [self._attr(p)]
-        for z, ps in self.viz.get("zone_arrows", {}).items():
-            self._color_attrs["zone_arrows"][z] = [self._attr(p) for p in ps]
-        for z, ps in self.viz.get("trails", {}).items():
-            self._color_attrs["trails"][z] = [self._attr(p) for p in ps]
-        self._flags = {}                 # slug -> (translate_op, route)
-        self._flag_i = 0
+            self._lamp_attrs[z] = [self._attr(p)]
         self._last_route = "?"
 
     def _attr(self, path):
         return UsdGeom.Gprim(self.stage.GetPrimAtPath(path)).GetDisplayColorAttr()
 
-    # --------------------------------------------------------------- flags
-    def make_flag(self, slug, route):
-        """Small floating billboard «>> B SORTER» that follows the item."""
-        tex = self.viz.get("flag_textures", {}).get(route)
-        if tex is None or slug in self._flags:
-            return
-        self._flag_i += 1
-        path = f"{ROOT}/flags/flag_{self._flag_i}"
-        mesh = UsdGeom.Mesh.Define(self.stage, path)
-        w2, h2 = 0.34, 0.085
-        mesh.CreatePointsAttr(Vt.Vec3fArray([Gf.Vec3f(-w2, 0, -h2),
-                                             Gf.Vec3f(w2, 0, -h2),
-                                             Gf.Vec3f(w2, 0, h2),
-                                             Gf.Vec3f(-w2, 0, h2)]))
-        mesh.CreateFaceVertexIndicesAttr(Vt.IntArray([0, 1, 2, 3]))
-        mesh.CreateFaceVertexCountsAttr(Vt.IntArray([4]))
-        mesh.CreateDoubleSidedAttr(True)
-        st_pv = UsdGeom.PrimvarsAPI(mesh.GetPrim()).CreatePrimvar(
-            "st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.faceVarying)
-        st_pv.Set(Vt.Vec2fArray([Gf.Vec2f(0, 0), Gf.Vec2f(1, 0),
-                                 Gf.Vec2f(1, 1), Gf.Vec2f(0, 1)]))
-        mpath = f"{path}_mat"
-        mat = UsdShade.Material.Define(self.stage, mpath)
-        sh = UsdShade.Shader.Define(self.stage, f"{mpath}/pbr")
-        sh.CreateIdAttr("UsdPreviewSurface")
-        sh.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.5)
-        tx = UsdShade.Shader.Define(self.stage, f"{mpath}/tex")
-        tx.CreateIdAttr("UsdUVTexture")
-        tx.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(tex)
-        rd = UsdShade.Shader.Define(self.stage, f"{mpath}/st")
-        rd.CreateIdAttr("UsdPrimvarReader_float2")
-        rd.CreateInput("varname", Sdf.ValueTypeNames.Token).Set("st")
-        tx.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(
-            rd.ConnectableAPI(), "result")
-        sh.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
-            tx.ConnectableAPI(), "rgb")
-        mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(), "surface")
-        UsdShade.MaterialBindingAPI.Apply(mesh.GetPrim()).Bind(mat)
-        tr = UsdGeom.Xformable(mesh.GetPrim()).AddTranslateOp()
-        tr.Set(Gf.Vec3d(0, 0, -5))
-        self._flags[slug] = tr
-
     def drop_flag(self, slug):
-        tr = self._flags.get(slug)
-        if tr is not None:
-            tr.Set(Gf.Vec3d(0, 0, -5))
+        """Compatibility no-op: per-item route flags were removed."""
 
     # -------------------------------------------------------------- update
-    def update(self, active_route, item_positions):
-        """active_route: commanded zone route or None; item_positions:
-        {slug: (x, y, top_z)} for items that should carry their flag."""
+    def update(self, active_route, item_positions=None):
+        """active_route: commanded zone route or None. item_positions is
+        accepted (and ignored) for executive API compatibility — the
+        per-item flag quads no longer exist."""
         if active_route != self._last_route:
             self._last_route = active_route
-            for group in ("lamps", "zone_arrows", "trails"):
-                for z, attrs in self._color_attrs[group].items():
-                    col = self.bright[z] if z == active_route else self.dim[z]
-                    for at in attrs:
-                        at.Set([col])
-        for slug, (x, y, top_z) in item_positions.items():
-            tr = self._flags.get(slug)
-            if tr is not None:
-                tr.Set(Gf.Vec3d(float(x), float(y) - 0.02, float(top_z) + 0.17))
+            for z, attrs in self._lamp_attrs.items():
+                col = self.bright[z] if z == active_route else self.dim[z]
+                for at in attrs:
+                    at.Set([col])
