@@ -320,8 +320,15 @@ class SorterControl:
         # (twin stress s99 pen).
         side = P.STATIONS.get(c.get("station") or "", {}).get("side", 0)
         dy = float(item_pos[1]) - self.S["y"]
+        # length-aware z line: small freight can lie ON the tilted tray at
+        # z 0.48 (scoop case) -> 0.42; big freight's on-tray centre never
+        # dips below ~0.53, and its centre crosses the side line LATE while
+        # already committed down the chute -> keep the 0.50 line or a late
+        # C discharge reads "stuck" at full tilt and the flatten scoops the
+        # half-off box (edge_items_all box_l).
+        z_line = 0.42 if (c.get("len_m") or 0.0) < 0.25 else 0.50
         gone = ((side != 0 and side * dy > 0.33) or abs(dy) > 0.42
-                or float(item_pos[2]) < 0.42)
+                or float(item_pos[2]) < z_line)
         if gone and c["t_cmd"] is not None:
             self.discharge_latencies.append(t - c["t_cmd"])
         return gone
