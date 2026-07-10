@@ -641,6 +641,27 @@ def main():
                         and not (abs(p[0] - 0.4) < 0.3 and p[1] < 0)):
                     deliver(slug, "FLOOR", t)
                     continue
+                # debris-pan watchdog: sub-blade freight (a 2 mm card slips
+                # under the 3 mm escapement skim, unmetered) lands on the
+                # catch pan — no release, no route, so no other watchdog
+                # sees it. Resting on the pan -> operator call-out ->
+                # MANUAL removal (the pan's designed safe terminal).
+                S_ = P.SORTER
+                on_pan = (S_["pan_x0"] - 0.05 < p[0] < S_["pan_x1"] + 0.05
+                          and abs(p[1] - S_["y"]) < S_["pan_y_half"] + 0.06
+                          and S_["pan_z_top"] - 0.03 < p[2]
+                          < S_["pan_z_top"] + 0.10)
+                if on_pan and st.get("pan_since") is None:
+                    st["pan_since"] = t
+                elif not on_pan:
+                    st.pop("pan_since", None)
+                if (st.get("pan_since") is not None
+                        and t - st["pan_since"] > 3.0
+                        and not st.get("pan_handled")):
+                    st["pan_handled"] = True
+                    ev(t, "pan_callout", slug)
+                    deliver(slug, "MANUAL", t)
+                    continue
                 # jam watchdog (operator call-out / arm recovery)
                 if "routed_t" in st and not st.get("jam_reported"):
                     if t - st["watch_t"] >= P.JAM_TIMEOUT_S:

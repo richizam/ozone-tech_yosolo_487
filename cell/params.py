@@ -90,7 +90,11 @@ SORTER = {
     "settle_s": 0.40,                  # hold at full tilt before re-flatten
     "drive_stiffness": 800.0,
     "drive_damping": 80.0,
-    "drive_max_torque": 90.0,
+    # actuator sizing from the mass sweep: the heaviest item (sack) at
+    # 1.3x lands ~0.11 m off-centre — the transient impact torque exceeded
+    # a 90 N*m drive, the tray yielded and shed the freight sideways with
+    # no tilt ever commanded. 150 N*m holds the worst-case landing.
+    "drive_max_torque": 150.0,
     # tray surface: smooth low-friction (combine=min) so gravity discharge is
     # guaranteed for EVERY item incl. the mu=0.95 soft sack:
     # tan(38 deg)=0.781 >> 0.32

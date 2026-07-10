@@ -508,9 +508,10 @@ class SorterControl:
                     c["slug"], c["route"] = None, None
                     c["gone_since"] = None
                     c["flat_at"] = t + S["discharge_dwell_s"]
-                elif ((c["t_full"] is not None and t - c["t_full"] > 1.2)
+                elif ((c["t_full"] is not None and t - c["t_full"] >
+                       (2.0 if (c.get("len_m") or 0.0) >= 0.35 else 1.2))
                       or (c["t_onset"] is not None and c["t_full"] is None
-                          and t - c["t_onset"] > 2.0)):
+                          and t - c["t_onset"] > 2.8)):
                     # STUCK-TILT TIMEOUT: re-flatten so the carrier becomes
                     # eligible for the REVIEW fallback — a tilted tray must
                     # never ride to the end line silently

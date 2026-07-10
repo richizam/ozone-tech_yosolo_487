@@ -239,6 +239,25 @@ class ItemManager:
                     and not (abs(pos[0] - 0.4) < 0.3 and pos[1] < 0)):
                 self._deliver(slug, "FLOOR", t)
                 continue
+            # ---- debris-pan watchdog (sub-blade freight lands unmetered on
+            # the catch pan: no release, no route -> operator call-out ->
+            # MANUAL removal, the pan's designed safe terminal)
+            S_ = P.SORTER
+            on_pan = (S_["pan_x0"] - 0.05 < pos[0] < S_["pan_x1"] + 0.05
+                      and abs(pos[1] - S_["y"]) < S_["pan_y_half"] + 0.06
+                      and S_["pan_z_top"] - 0.03 < pos[2]
+                      < S_["pan_z_top"] + 0.10)
+            if on_pan and st.get("pan_since") is None:
+                st["pan_since"] = t
+            elif not on_pan:
+                st.pop("pan_since", None)
+            if (st.get("pan_since") is not None
+                    and t - st["pan_since"] > 3.0
+                    and not st.get("pan_handled")):
+                st["pan_handled"] = True
+                self.bus.publish("pan_callout", t=t, slug=slug)
+                self._deliver(slug, "MANUAL", t)
+                continue
             # ---- jam watchdog (operator call-out / arm recovery, via run_sim)
             if "routed_t" in st and not st.get("jam_reported"):
                 if t - st["watch_t"] >= P.JAM_TIMEOUT_S:

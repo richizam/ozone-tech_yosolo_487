@@ -13,6 +13,7 @@ mkdir -p "$OUT_ROOT" /tmp/sortmaster_signs
 run_one() {
   name="$1"; shift
   echo "=== $name : $* ==="
+  docker rm -f "isaacrun-$name" >/dev/null 2>&1 || true
   rm -rf "$OUT_ROOT/$name"
   docker run --rm --name "isaacrun-$name" --gpus all --network=host \
     --entrypoint /isaac-sim/python.sh \
@@ -54,6 +55,8 @@ EOF
 }
 
 run_one edge_items_all --seed 42 --manifest-extra --max-sim-s 700
+run_one high_mass      --seed 42 --mass-mult 1.3 --max-sim-s 400
+run_one off_center     --seed 42 --spawn-offset-y 0.06 --max-sim-s 400
 run_one edge_small     --seed 42 --manifest-extra \
   --items edge_cube11,edge_cube10,edge_rod9,edge_card2,pen,bl_rod_b \
   --max-sim-s 320
