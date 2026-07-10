@@ -104,6 +104,38 @@ def test_arm_grasp_clamp_stays_clear_of_the_tray_sweep():
     assert P.ARM_GRASP_Y_MAX < tray_south_lip_y - 0.10
 
 
+@pytest.mark.parametrize("zone,chute,cage", DESTS)
+def test_mouth_chamfer_clears_the_tilting_tray(zone, chute, cage):
+    """The 59-deg mouth chamfer must stay clear of BOTH swept arcs of the
+    tilting tray on its side: the bare plate edge (radius tray_w/2) and the
+    lip tip (edge + lip_h perpendicular). Checked at tilt*(1+2*noise)."""
+    S = P.SORTER
+    r_e = S["tray_w"] / 2
+    lip = S["lip_h"]
+    th_max = math.radians(S["tilt_deg"] * (1 + 2 * S["noise_frac"]))
+    ch_top_dy = abs(chute["y0"] - S["y"]) - chute["chamfer_top_inset"]
+    ch_top_z = chute["z0"] + chute["chamfer_rise"]
+    # plate edge arc: (dy, z) = (r_e cos t, pivot - r_e sin t)
+    # clearance at the chamfer-top ordinate, and at max tilt
+    worst = 1e9
+    for i in range(200):
+        th = th_max * i / 199.0
+        dy_e = r_e * math.cos(th)
+        z_e = S["pivot_z"] - r_e * math.sin(th)
+        dy_t = r_e * math.cos(th) + lip * math.sin(th)
+        z_t = S["pivot_z"] - r_e * math.sin(th) + lip * math.cos(th)
+        for dy, z in ((dy_e, z_e), (dy_t, z_t)):
+            worst = min(worst, math.hypot(max(0.0, ch_top_dy - dy),
+                                          max(0.0, z - ch_top_z)))
+    assert worst > 0.007, f"{zone}: chamfer within {worst*1000:.1f} mm of sweep"
+    # the chamfer face is too steep to rest on (steeper than repose for any mu)
+    face = math.degrees(math.atan2(chute["chamfer_rise"] + 0.003,
+                                   chute["chamfer_run"]))
+    assert face > 50.0
+    # bridging cure retained: >= 25 mm free fall from the tilted lip
+    assert P.TRAY_LIP_Z - ch_top_z >= 0.025
+
+
 def test_catch_pan_clears_the_tilt_sweep_and_fall_corridor():
     """The debris pan lives in the dead zone under the top run. It must stay
     (a) below the FULL-TILT tray plane z = pivot_z - tan(tilt)*|dy| with

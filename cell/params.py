@@ -152,7 +152,18 @@ STATIONS = {
 # stays AIRBORNE until its CG is nearly off the tray, so a long box can
 # never bridge tray->chute and get yaw-dragged into a wedge (smoke10).
 CHUTE = {"width": 0.70, "z0": 0.395, "z1": 0.16, "len_pad": 0.25,
-         "friction": "0.40 0.005 0.0001", "pad_friction": "0.45 0.01 0.0001"}
+         # polished slide sheet: mu/tan32 = 0.45 — small light freight (9 mm
+         # rod, 10 mm cube) slides decisively even with convex-hull faceting
+         # and solver stiction; at 0.40 it stalled 4 cm past the mouth
+         "friction": "0.28 0.005 0.0001", "pad_friction": "0.45 0.01 0.0001",
+         # MOUTH CHAMFER: a 59-deg infill strip at the mouth raises the catch
+         # surface to z0+rise, shrinking the lip->chute free fall from 50 mm
+         # to ~30 mm: thin flat freight (the plate) lands FLAT instead of
+         # tipping onto its rim (a rim-rolling disc cleared the 40 mm stub
+         # rails), and the ballistic under-fly window narrows. The top edge
+         # stays clear of the tilted-lip tip trace (test-locked).
+         "chamfer_rise": 0.020, "chamfer_run": 0.014,
+         "chamfer_top_inset": 0.002}
 CHUTE_C = {"cx": STATIONS["C"]["x"], "y0": 2.75, "dir": -1, **CHUTE}
 CHUTE_D = {"cx": STATIONS["D"]["x"], "y0": 2.75, "dir": -1, **CHUTE}
 CHUTE_REVIEW = {"cx": STATIONS["REVIEW"]["x"], "y0": 3.25, "dir": +1,

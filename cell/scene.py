@@ -156,6 +156,17 @@ def _chute_xml(zone, cc, wall_at):
     g.append(f'<geom name="chute{zone}" type="box" size="{cc["width"] / 2} {length / 2} 0.015" '
              f'pos="{cx} {mid} {zmid}" euler="{ang:.6f} 0 0" '
              f'friction="{cc["friction"]}" priority="1" rgba="0.55 0.55 0.6 1"/>')
+    # MOUTH CHAMFER: steep infill strip at the mouth edge (see params.CHUTE)
+    ch_rise, ch_run = cc["chamfer_rise"], cc["chamfer_run"]
+    ch_top_y = y0 - d * cc["chamfer_top_inset"]
+    ch_base_y = ch_top_y + d * ch_run
+    ch_ang = -d * math.atan2(ch_rise + 0.003, ch_run)
+    ch_len = math.hypot(ch_run, ch_rise + 0.003)
+    g.append(f'<geom name="chute{zone}_chamfer" type="box" '
+             f'size="{cc["width"] / 2} {ch_len / 2:.4f} 0.002" '
+             f'pos="{cx} {(ch_top_y + ch_base_y) / 2:.4f} '
+             f'{z0 + (ch_rise - 0.003) / 2:.4f}" euler="{ch_ang:.6f} 0 0" '
+             f'friction="{cc["friction"]}" priority="1" rgba="0.50 0.50 0.55 1"/>')
     # side guides from just below the tray-lip sweep down to the wall plane
     rail_t = 0.015
     r0 = y0 + d * RAIL_SETBACK
@@ -290,7 +301,12 @@ def _carrier_xml(i):
     z_in = S["tray_top"] - S["pivot_z"]           # surface at the centre line
     czz = z_in - hz + (S["tray_w"] / 4) * math.tan(dish)
     mu = S["tray_mu"][1]
-    fr = f'friction="{mu} 0.005 0.0001" priority="1" solref="0.01 1"'
+    # rolling coeff 0.0025: the dimpled tray liner's rolling resistance —
+    # caps a lying rod's roll-up on the tilting tray so it dribbles over the
+    # lip into the chute mouth instead of launching ballistically off the
+    # dish-valley joint (PhysX exhibits this damping natively; MuJoCo needs
+    # it explicit). Rounds are barely affected (decel ~ coeff/r).
+    fr = f'friction="{mu} 0.005 0.0025" priority="1" solref="0.01 1"'
     plates = []
     for sgn, nm in ((1, "n"), (-1, "s")):
         plates.append(

@@ -398,6 +398,20 @@ class SceneBuilder:
         self.add_box(f"chute{zone}", (cx, mid, zmid),
                      (cc["width"] / 2, length / 2, 0.015), euler, CHUTE_COL,
                      mat=mat_chute)
+        # MOUTH CHAMFER: steep infill strip at the mouth edge (see
+        # params.CHUTE) — thin flat freight lands FLAT instead of tipping
+        # onto its rim over the 50 mm deep-drop, and the ballistic under-fly
+        # window narrows. Top edge clears the tilted-lip tip trace.
+        ch_rise, ch_run = cc["chamfer_rise"], cc["chamfer_run"]
+        ch_top_y = y0 - d * cc["chamfer_top_inset"]
+        ch_base_y = ch_top_y + d * ch_run
+        ch_ang = -d * math.atan2(ch_rise + 0.003, ch_run)
+        ch_len = math.hypot(ch_run, ch_rise + 0.003)
+        self.add_box(f"chute{zone}_chamfer",
+                     (cx, (ch_top_y + ch_base_y) / 2,
+                      z0 + (ch_rise - 0.003) / 2),
+                     (cc["width"] / 2, ch_len / 2, 0.002),
+                     (ch_ang, 0, 0), CHUTE_COL, mat=mat_chute)
         # side rails to the destination wall plane. SWEEP-CORRIDOR RULE: the
         # tilting tray edge sweeps y 2.69..3.31 down to z 0.44 — the rails
         # start 0.12 m down-slope so their upper tips stay >= 8 cm below the
@@ -761,7 +775,9 @@ class SceneBuilder:
                                     restitution=P.MATERIALS["_default"][2],
                                     combine="average")
         m_tray = self.phys_material("tray", *P.SORTER["tray_mu"], combine="min")
-        m_chute = self.phys_material("chute", 0.40, 0.40, combine="min")
+        mu_chute = float(P.CHUTE["friction"].split()[0])
+        m_chute = self.phys_material("chute", mu_chute, mu_chute,
+                                     combine="min")
         m_pad = self.phys_material("pad", 0.45, 0.45, combine="max")
         m_mat = self.phys_material("cage_mat", 0.90, 0.90, combine="max")
         m_wall = self.phys_material("wall", 0.30, 0.30, combine="min")
