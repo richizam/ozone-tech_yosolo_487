@@ -1,194 +1,183 @@
 # Engineering Calculations vs. Simulation (Isaac Sim / PhysX)
 
-Plan Priority 8: the simulation is backed by first-principles calculations,
-and every calculated value is cross-checked against measured Isaac results.
-All design inputs come from `cell/params.py` (single source of truth).
+The simulation is backed by first-principles calculations, and every
+calculated value is cross-checked against measured Isaac results. All design
+inputs come from `cell/params.py` (single source of truth). The executive is
+a **linear tilt-tray sorter** (поворотные лотки — one of the mechanism
+classes named in the official task brief): every item rides its own shallow-V
+tray and is discharged by gravity at its station, which makes the divert
+**size-independent** — an 11 mm cube is carried and discharged exactly like a
+489 mm pouf. That is the engineering reason this executive replaced the
+ARB/roller deck (roller diverters have a practical ~50–75 mm minimum product
+footprint; see `docs/report/executive_mechanism_tradeoff.md`).
 
 ## 1. Inputs
 
 | Quantity | Value | Source |
 |---|---|---|
 | Belt A speed | 1.0 m/s | official scheme (FIXED), `BELT_A.speed` |
-| Table / deck surface speed | 0.8 m/s | `TABLE.speed` |
-| ARB deck length (routing zone) | 0.60 m | `TABLE.route_x=7.95 → x1=8.55` |
-| ARB deck width | 1.10 m | `TABLE.width` |
-| ARB patch grid | 4 × 7 (28 patches, 150 × 157 mm) | `ARB_DECK.nx/ny` |
-| Actuator latency | 40 ms | `ARB_DECK.latency_s` |
-| Actuator ramp | 6.0 m/s² | `ARB_DECK.ramp_mps2` |
-| Actuator saturation | 1.2 m/s | `ARB_DECK.v_max` |
+| Carrier train speed | 0.5 m/s | `SORTER.v_mps` |
+| Carrier pitch | 0.6 m (> 0.5 m max footprint) | `SORTER.pitch` |
+| Carriers on the loop | 9 (top run 2.70 m + true-time return) | `SORTER.n_carriers` |
+| Tray | 0.59 × 0.62 m, 2° V-dish, 30 mm end lips | `SORTER.tray_*` |
+| Tray surface friction (pairs `min`) | μ ≤ 0.32 | `SORTER.tray_mu` |
+| Discharge tilt | 38° | `SORTER.tilt_deg` |
+| Tilt drive ramp | 160 °/s, latency 40 ms, gain noise 1 % | `SORTER.tilt_rate_dps/latency_s/noise_frac` |
+| Induction drop | 60 mm (knife nose 0.70 → tray 0.64) | `BELT_A.nose_x`, `SORTER.tray_top` |
+| Chute angle / friction | 32°, μ ≤ 0.40 (`min`), brake pad μ 0.45 (`max`) | `CHUTE` |
+| B connector incline | 16.6° powered belt, 0.9 m/s | `B_CONNECT` |
 | Item mass range | 0.05 – 6.0 kg | manifest (pen … box_l/pouf) |
-| Chute angle | 32° | `CHUTE_C/D` (z 0.70 → 0.16 over the run) |
-| Chute friction (pairs `min`) | μ ≤ 0.40 | `CHUTE_*.friction` |
 | Jam watchdog timeout | 10 s | `JAM_TIMEOUT_S` |
 
-## 2. Time on deck and lateral displacement
+## 2. Gravity discharge: tilt angle vs friction (the core guarantee)
+
+A tilted tray discharges by gravity if `tan(θ) > μ`. The tray surface is a
+smooth low-friction plate whose PhysX material pairs with `combine="min"`,
+so **every** item pair resolves to μ ≤ 0.32 — including the soft sack whose
+own μ is 0.95 (a real tilt tray is smooth ABS/steel for exactly this
+reason):
 
 ```
-time_on_deck        = deck_length / forward_velocity = 0.60 / 0.8   = 0.75 s
-actuation_overhead  = latency + v_lateral/ramp       = 0.04 + 0.8/6 = 0.17 s
+slide onset:   θ_min = atan(0.32) = 17.7°   →  38° gives a 2.1× margin
+slide accel:   a = g·(sin 38° − 0.32·cos 38°) = 9.81·(0.616 − 0.252) ≈ 3.57 m/s²
+time to clear: t = √(2·0.31 / 3.57) ≈ 0.42 s   (half-width 0.31 m)
+exit speed:    v_y ≈ 3.57 · 0.42 ≈ 1.5 m/s  (into the chute, guided by rails)
 ```
 
-Worst-case exit is **B** (north): from the deck centreline y = 3.0 the item
-must cross to the table edge y = 3.55 → 0.55 m of lateral travel. The
-commanded vector tracks the exit, so the lateral component is ≥ 0.8·sin(60°)
-≈ 0.69 m/s once ramped:
+The 2° V-dish subtracts at most 2° from the effective angle on the uphill
+half (36° still ≫ 17.7°) and prevents round items (bottle, plate) from
+rolling off during carriage — the dish is why a PET bottle can ride a
+low-friction tray at all.
+
+Cross-check (measured): `tilt_time_ms` and `discharge_latency_ms` in
+`sorter` summary; every C/D/B discharge lands inside its chute/connector
+(containment 1.0, no floor drops) — see the validation matrix.
+
+## 3. Induction: synchronized release onto a moving tray
+
+The item is released by the escapement so that it rides off the knife-edge
+nose and lands centred on its assigned tray:
 
 ```
-t_B ≈ 0.17 s (ramp) + 0.55 / 0.69 ≈ 0.97 s
+gate → nose:   0.55 m at 1.0 m/s with re-acceleration ≈ 5 m/s²  → ≈ 0.65 s
+free fall:     √(2·0.06/9.81) ≈ 0.11 s  → lands ≈ 0.11 m past the nose
+landing slip:  Δv = 1.0 − 0.5 = 0.5 m/s, decel μ·g ≈ 3.1 m/s²
+               slip distance = Δv²/(2a) ≈ 40 mm  ≪ tray half-length 295 mm
+release rule:  drop the blade when an empty tray's centre will reach
+               x_land = 7.01 m at the item's own predicted arrival time
+               (tolerance ±50 ms → ±25 mm of tray offset)
 ```
 
-That exceeds 0.75 s of pure feed-through — which is exactly why the deck
-vector TURNS toward the exit (forward component shrinks as the item aligns
-with the lane), stretching the effective time on deck; the induction blade
-holds the next item until the deck clears, so the deck never needs to finish
-within the feed-through time. C (east) needs no net lateral travel; D
-(south) mirrors B. Lateral velocity 0.69–0.8 m/s is ordinary for
-ARB/steerable-wheel sorters (divert speeds 0.5–1.5 m/s) — not absurd.
+The tray's 30 mm end lips bound the residual slip of rolling items: a bottle
+arriving with 0.35–0.5 m/s of slip carries `v²·(3/4)/g ≈ 10–19 mm` of
+climbing energy against a lip that needs ≈ 40 mm — it stays on the tray.
 
-Cross-check (measured): routing accuracy and zero deck timeouts in the
-6-seed matrix confirm every item diverts in time; see
-`docs/report/isaac_evidence/validation/matrix_summary.json`.
+Cross-check (measured): `landing_offset_mean_mm` / `landing_offset_max_mm`
+per run (target: max well under ±150 mm, i.e. half the lip-to-lip span).
 
-## 3. Does the item follow the deck? (friction budget)
+## 4. Position-triggered discharge and command margin
 
-Item–belt pairs combine friction by **average** with belt μ_s 0.80 / μ_d 0.72:
+The tilt command fires `trigger_lead_m = 0.28 m` upstream of the station so
+the item (which keeps the carrier's 0.5 m/s while sliding) lands centred on
+its chute:
 
 ```
-a_max = μ_eff · g
-cardboard (0.45):   a = ((0.72+0.45)/2)·9.81 ≈ 5.7 m/s²
-PET bottle (0.28):  a = ((0.72+0.28)/2)·9.81 ≈ 4.9 m/s²
+cmd → slide onset:  latency 0.04 s + ramp to slide angle 17.7°/160°/s ≈ 0.11 s
+onset → clear:      ≈ 0.42 s (from §2)
+x drift during:     0.5 · (0.15 + 0.21) ≈ 0.18 m   (half the slide counted)
+chute half-width:   0.31 m  → the landing is centred with margin
+command margin:     the verdict is ready at the vision window exit + 80 ms;
+                    the earliest tilt command fires ≥ (7.17 − 6.35)/0.5 +
+                    handoff ≈ 2.3 s later  →  margin is structurally ≥ 2 s
 ```
 
-The commanded surface-velocity step after ramp limiting is ≤ 6 m/s² — the
-deck itself is ramp-limited close to what the WORST contact pair can
-transmit, so commanded and attained motion stay consistent (a real ARB is
-tuned the same way: spinning rollers faster than grip helps nothing).
-Low-friction sweep (×0.7 → μ_d 0.196 for the bottle, a ≈ 4.5 m/s²) still
-tracks a 0.8 m/s command in < 0.2 s.
+Cross-check (measured): `command_margin_s.min` in every run must be > 0
+(gated by the matrix consolidator; the run exits non-zero otherwise).
 
-## 4. Chute descent and cage entry speed
+## 5. Chute descent and cage entry
 
-The discharge is a **powered 0.88 m decline belt** (surface velocity
-0.8 m/s down-slope) running from the crest through the cage aperture — a
-free 32° slide would accelerate items far beyond the belt speed:
+The chutes start just under the tilted tray lip (z₀ 0.43 < lip 0.444) and
+keep the validated 32° brake-chute design: μ_chute 0.40 < tan 32° = 0.625,
+so nothing can rest statically on the slope; the high-friction brake pad
+(`combine="max"`) then kills the residual speed inside the cage:
 
 ```
-free slide (rejected): a = g·(sin 32° − 0.40·cos 32°) ≈ 1.87 m/s²
-                       v_entry = √(0.8² + 2·1.87·1.0) ≈ 2.09 m/s
-                       (measured 2.081 m/s in the pre-power-chute build)
-powered discharge:     the belt pair (μ_eff ≥ 0.5·g grip vs ≤ 1.9 m/s²
-                       gravity residual) holds the item AT belt speed
-                       → v_entry ≈ 0.8–1.2 m/s, item-independent
+slope accel:  a = g·(sin 32° − 0.40·cos 32°) ≈ 1.87 m/s²
+slope run:    0.51 m  → Δv² = 2·1.87·0.51 ≈ 1.9 m²/s²
+entry speed:  √(1.5² + 1.9) ≈ 2.0 m/s at the pad, braked before the far wall
 ```
 
-The powered bed also serves throughput: it clears the delivered item
-through the aperture before the next arrival, removing the pile-up
-bottleneck at the cage mouth for flat/large items. Containment is belt-
-speed-capped AND passively sealed: the brake pad at the runout pairs
-friction by **max** (≥ 0.45 regardless of item), the aperture is closed by
-the hood/brow, and the measured `cage_max_z` stays far below the 0.83 m
-aperture top.
+The cage aperture is crossed at z ≈ 0.24 (sill 0.20, header 0.83): lower and
+slower than the previous 0.70-high discharge — containment is easier, and
+the aperture flanks/header still close every fly-out window.
 
-Cross-check (measured): `cage_entry_speed_max_mps` and `cage_max_z` per run
-in the matrix summary; containment_rate must be 1.0 in every run.
+Cross-check (measured): `containment.cage_entry_speed_max_mps`,
+`cage_max_z`, `containment_rate = 1.0` in every matrix run.
 
-## 5. Cycle time and throughput
+## 6. B connector incline: friction hold
 
-```
-cycle (detection → containment) ≈ window transit (0.43 m @ 1 m/s)
-      + processing latency 0.08 s + belt A remainder (≈ 0.6 m)
-      + table entry→deck (1.05 m @ 0.8) + deck (≈ 1 s) + chute (≈ 1 s)
-      ≈ 4.5–5.5 s per item (route-dependent; B adds the connector+belt B leg)
-throughput = one item per escapement release; the serial vision window is
-      the bottleneck: spawn gaps 6–8 s → ≈ 500–600 items/h
-```
-
-Cross-check (measured): `cycle_s.mean/p95/max` and `throughput_items_per_h`
-in each summary.json.
-
-## 6. Actuator response vs. command margin
-
-The route command commits at vision-window exit + 0.08 s processing. The
-reported `command_margin_s` measures decision-ready → **table entry**
-(x = 6.9): 0.62 m at 1.0 m/s → ≈ 0.6 s calculated, 0.53–0.67 s measured.
-The physically relevant margin to the **ARB deck** (x = 7.95) adds
-1.05 m at 0.8 m/s → ≈ 1.9 s total. Both dwarf the 40 ms actuator latency:
+Every B item is **non-round by rule** (round → D), so the 16.6° powered
+incline (tan 16.6° = 0.30) holds each B item by friction with margin:
 
 ```
-margin to table entry ≈ 0.6 s   (measured 0.53–0.67 s)
-margin to first actuator patch ≈ 1.9 s  >>  latency 0.04 s + ramp 0.13 s
+worst B pair:  detergent μ_d 0.38 with belt 0.72, combine average → 0.55
+               0.55 > 0.30  →  holds with 1.8× margin (boxes: > 2×)
 ```
 
-The pre-spin halo (`activation_pad_m` = 0.10 m ahead of the footprint) gives
-each patch 0.10/0.8 = 125 ms of warning — 3× the 40 ms latency, so a patch
-is always at speed before the freight covers it.
+Cross-check (measured): route_B clips show detergent/lunchbox/box_s carried
+up without slip; B deliveries at `y > 5.7` on the fixed belt B.
 
-## 7. Jam / safe-stop budget
+## 7. Throughput and cycle time
 
-Watchdog window 10 s with 0.06 m minimum progress: at deck speed 0.8 m/s a
-healthy item crosses the whole cell in < 10 s, so one full window with < 6 cm
-of motion is unambiguous. Recovery budget: jam camera fix (≈ 0.5 s render +
-locate) + arm cycle (≈ 6–10 s) ≪ the induction blade hold, which stops the
-feed indefinitely without stopping belt A (accumulation zone absorbs
-followers at 15 cm gaps).
+```
+carrier-limited:  v/pitch = 0.5/0.6  → 0.83 carriers/s → 3000 items/h ceiling
+vision-limited:   ~2.5 s per item (multi-read fusion in motion) → ~1400 items/h
+demo pacing:      6–8 s spawn gaps → ~500 items/h (clean singulated evidence)
+cycle time:       detect → deliver = vision (0.4 s) + belt run (0.6–0.9 s)
+                  + tray ride (0.9–4.3 s by station) + chute/connector
+                  (0.5–1.9 s) ≈ 3–8 s per item, fully pipelined
+```
 
-## 8. Measured cross-check table
+Cross-check (measured): `cycle_s.mean/p95/max` and
+`throughput_items_per_h` per run.
 
-Filled from the final validation matrix — 12 runs / 132 item trials
-(`docs/report/isaac_evidence/validation_arb/matrix_summary.json`),
-aggregate gates **PASS**: nominal classification 66/66, nominal routing
-65/66 (the exception a safe operator call-out), 0 unsafe errors and
-containment 1.0 in every run.
+## 8. Small-item certification (the 11 mm cube)
 
-| Metric | Calculated | Measured (matrix) |
-|---|---|---|
-| cage entry speed | belt-capped, ≤ ≈2.1 m/s | 1.85–2.25 m/s across all 12 runs |
-| max deck surface speed | ≤ 1.2 m/s (saturation) | 0.825 m/s (never saturates) |
-| actuator latency / ramp | 40 ms / 6 m/s² | 40 ms logged per command; 6,064 commands total |
-| gate open latency / travel | 150–400 ms class | 269 ms / 243 ms measured |
-| command margin (to table) | ≈ 0.6 s | 0.47 min / 0.93 mean s |
-| cycle mean | 4.5–5.5 s | 4.2 s (close spacing) – 12.1 s (jam-drill run) |
-| throughput | 500–600 items/h | 580 items/h close-spaced; 330–460 at nominal 6–8 s gaps |
-| direct velocity writes (nominal) | 0 by design | 0 in all 12 runs (`surface_contact_only`) |
-| real-time factor | — | 0.71–0.86× (RTX sensor in the loop) |
+Dual-range DWS metrology: the overhead head (guard band 6 mm — undersize
+certification floor 16 mm) hands small freight to the close-range macro head
+(GSD 0.40 mm at the belt):
 
-Notes: cycle/throughput spread is spawn-gap dominated (the serial vision
-window is the designed bottleneck); the jam-drill mean includes the two
-recovery cycles. The deck never approaches saturation, confirming the
-actuation model has authority margin.
+```
+macro floor = 10 mm + 2·GSD = 10.8 mm
+11 mm cube  → measured ≈ 11.0 ± 0.4 mm  ≥ 10.8  → certified sortable → B
+10 mm cube  → 10.0 < 10.8               → undersize → C (guard band, safe side)
+9 mm pen    → 9.0  < 10.8               → undersize → C
+```
 
-## 9. Small-item handling: ARB roller pitch vs. the 10 mm rule
+The guard band scales with the measuring head exactly as legal metrology
+requires: a dimension within the sensor's uncertainty of the 10 mm limit can
+never take the permissive branch.
 
-A fair jury question: the official rule sets the minimum allowable product
-at **10 × 10 × 10 mm** — can an Activated-Roller-Belt handle items that
-small? Honest answer and why it is a non-issue here:
+Cross-check (measured): `reads_log.json` per read (`head: "macro"`,
+`guards_mm`), the `edge_small` matrix run, and the `cube11_proof` field of
+`matrix_summary.json`.
 
-- **Open-roller ARB lower limit.** A classic ARB (e.g. Intralox) has a
-  roller/wheel pitch of ~25–50 mm, and reliable diverting wants a product
-  footprint ≥ ~2× the pitch (≈ 50–75 mm). A bare 10 mm cube is below that
-  on an *open-roller* deck — it could bridge or fall between wheels. The
-  concern is legitimate for coarse open-roller hardware.
+## 9. What is physical and what is modelled (honesty)
 
-- **The 10 mm threshold is a CLASSIFICATION limit, not a routing
-  requirement.** Any item with a dimension < 10 mm is *undersize by
-  dimension* → routed to **C** (out-of-gauge) by the official rule order.
-  The sorter therefore never has to *steer* a sub-10 mm item on the deck;
-  it detects it as undersize and diverts it. (Our 9 mm pen is exactly this
-  case: undersize → C.)
-
-- **Our contact surface is CONTINUOUS, not open rollers.** The routing deck
-  is modelled as a continuous surface-velocity field (belted / fine-pitch
-  ARB class) — there is no inter-roller gap for a small item to fall
-  through, which is the same "9 mm pen rides a continuous surface" defense
-  used for the infeed conveyors. The visible angled-wheel field is the
-  mechanical *embodiment*; the simulated contact is a continuous patch.
-
-- **The routed item set is well within ARB capability.** Of the 11 official
-  items the only sub-10 mm one is the pen (undersize → C). Everything the
-  deck actually diverts by shape has a large footprint (plate Ø209 mm,
-  cylinder 435 mm, bottle 305 mm, boxes ≥ 200 mm), far above any ARB size
-  floor.
-
-- **Industry practice for the 10–50 mm fraction** is precisely fine-pitch
-  ARB or narrow-belt / cross-belt / tilt-tray sortation. For *this* mix and
-  *these* rules, a continuous-surface ARB is the correct, defensible choice.
+* **Physical (PhysX contact/actuation):** belt transport (surface-velocity
+  kinematic belts), knife-edge handoff, tray carriage and gravity discharge
+  (dynamic tray on a revolute joint + angular drive with latency/ramp/noise),
+  chute descent, brake pads, cage containment, escapement/hold stop blades
+  (prismatic joints + drives), the B incline connector.
+* **Modelled simplifications (stated):** the traction chain is
+  position-controlled (kinematic shuttles on the chain schedule — the tray,
+  its joint and its drive are the force path to the freight); the enclosed
+  end-module wraps teleport EMPTY carriers between the top and return legs
+  (the return leg runs at true return time, so carrier availability is never
+  optimistic); the exception arm's links are non-colliding kinematic visuals
+  driven by the validated IK controller and the carried item is welded to
+  the TCP (MuJoCo parity); the soft sack/pouf are rigid approximations with
+  grip/damping materials.
+* **Zero scripted freight motion:** `direct_velocity_writes_nominal = 0` is
+  asserted by the matrix gate; the only direct writes touch machine parts
+  (drive targets, blade targets, chain poses) or fault-injection pins.

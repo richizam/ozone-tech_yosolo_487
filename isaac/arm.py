@@ -27,12 +27,12 @@ from cell.arm_ik import fk, ik, unwrap_yaw
 UR = {"L1": 0.6127, "L2": 0.5716, "D1": 0.1807, "TOOL": 0.20, "DLAT": 0.29}
 
 
-def build_arm(builder, mode="table"):
+def build_arm(builder, mode="sorter"):
     """Exception-arm body: official UR10e asset (joints driven by our
     validated controller) with the capsule rig as offline fallback."""
     from pxr import Gf, UsdGeom
-    # Isaac uses the SE-corner base (ARM_BASE_ISAAC) so the arm never reaches
-    # into the gated deck; fall back to the shared ARM_BASE otherwise.
+    # The arm lives between the two cages, SOUTH of the discharge chutes: it
+    # reaches both chute mouths and both cages, and never crosses the train.
     bx_, by_ = P.ARM_BASE_ISAAC.get(mode, P.ARM_BASE[mode])
     try:
         from isaac.asset_shells import ur10e_arm
@@ -49,7 +49,7 @@ def build_arm(builder, mode="table"):
     return _build_capsule_arm(builder, mode)
 
 
-def _build_capsule_arm(builder, mode="table"):
+def _build_capsule_arm(builder, mode="sorter"):
     from pxr import Gf, UsdGeom
 
     bx, by = P.ARM_BASE_ISAAC.get(mode, P.ARM_BASE[mode])
@@ -148,37 +148,24 @@ class ArmController:
     GRASP_XY_TOL = 0.10
     GRASP_Z_TOL = 0.08
 
-    def __init__(self, rig, items_rp, entries, publish, mode="table"):
+    def __init__(self, rig, items_rp, entries, publish, mode="sorter"):
         self.rig = rig
         self.items_rp = items_rp
         self.entries = entries
         self.pub = publish
         self.mode = mode
         self.base = rig["base"]
-        # ISAAC recovery policy (route-specific — preserves category
-        # correctness AND keeps every link outside the gate ring):
-        #   C jam -> drop directly into cage C through its open -x aperture
-        #            (cage C is EAST of the gate ring — arm stays east)
-        #   D jam -> drop directly into cage D through its open +y aperture
-        #            (cage D is SOUTH of the gate ring — arm stays south)
-        #   B jam -> reject/review bin: never re-feed an uncertain item to the
-        #            main sorter. All placement points are IK-reach-verified
-        #            from the SE base at the (reachable) recovery lift height.
-        # The MuJoCo twin keeps PLACE_BY_MODE (re-delivers to the deck — its
-        # arm links are contype-0, no gate to clear), so this is Isaac-only.
-        if mode == "table":
-            rj = P.REJECT_STATION
-            cw = P.CAGE_WALL_TOP
-            self.place = {
-                "B": {"xy": rj["center"], "mode": "drop", "z_clear": 0.06,
-                      "surface_z": rj["floor_z"], "dest": "REJECT"},
-                "C": {"xy": (9.2, 3.0), "mode": "drop", "z_clear": 0.05,
-                      "surface_z": cw},
-                "D": {"xy": (8.05, 1.55), "mode": "drop", "z_clear": 0.05,
-                      "surface_z": cw},
-            }
-        else:
-            self.place = P.PLACE_BY_MODE[mode]
+        # Recovery policy (route-specific — preserves category correctness
+        # AND keeps every link clear of structure):
+        #   C jam on its chute -> drop directly into cage C (open +y aperture)
+        #   D jam on its chute -> drop directly into cage D (open +y aperture)
+        #   anything else (train top, B connector, induction) is an operator
+        #   call-out — the arm never reaches over the running train, and a
+        #   stuck TRAY needs no arm at all (its freight rides to the review /
+        #   end-line call-out by design).
+        # All placement points are IK-reach-verified from the between-cages
+        # base at the recovery lift height.
+        self.place = P.PLACE_BY_MODE.get(mode, P.PLACE_BY_MODE["sorter"])
         self.vmax = np.array(P.ARM["joint_vmax"])
         # park pose: FOLDED UP in joint space (upper arm raised, forearm
         # tucked), yawed toward the open south-east floor. An IK'd XY home
@@ -389,24 +376,18 @@ class ArmController:
             self.pub(t, "attached", slug)
         elif self.state == "ATTACH":
             px, py, _ = j["pick"]
-            # table recovery transfers OVER the cage walls to a target at
-            # r ~ 1.03 m; the UR reach ceiling there is TCP ~1.21 m, so cap
-            # the lift/transfer height (1.29 put the wrist out of reach and
-            # the transfer failed). 1.10 clears the 0.83 m cage wall + item.
-            cap = 1.10 if self.mode == "table" else 1.29
+            # recovery transfers OVER the cage walls to targets at r <= 0.7;
+            # cap the lift/transfer height so the wrist never exceeds the UR
+            # reach ceiling. 1.10 clears the 0.83 m cage wall + item.
+            cap = 1.10
             j["lift_z"] = min(P.LIFT_Z + 0.05, cap)
             self.state = "LIFT"
             self._set_target(self._wp((px, py, j["lift_z"])), t)
         elif self.state == "LIFT":
-            place = self.place[j["zone"]] if j["zone"] in self.place else None
-            if place is None:                      # B has no drop: lane exit
-                tx, ty = P.TABLE["lane_B_cx"], P.TABLE["y"]
-                surface = P.TABLE["top"]
-                clear = 0.02
-            else:
-                tx, ty = place["xy"]
-                surface = place.get("surface_z", P.CAGE_WALL_TOP)
-                clear = place["z_clear"]
+            place = self.place.get(j["zone"]) or self.place["D"]
+            tx, ty = place["xy"]
+            surface = place.get("surface_z", P.CAGE_WALL_TOP)
+            clear = place["z_clear"]
             slug = j["slug"]
             half_z = self.entries[slug]["dims_m"][2] / 2
             dz = float(self.carry[1][2]) if self.carry else half_z

@@ -108,7 +108,10 @@ def classify_mesh(mesh):
     dims_desc = np.sort(extents)[::-1]
     lo, hi = mesh.bounds
 
-    undersize = bool(np.any(dims_desc < MIN_DIM_MM))
+    # official wording: sortable requires dims strictly GREATER than the
+    # 10x10x10 minimum ("больше минимально допустимых") — an exactly-10.0 mm
+    # dimension does NOT pass the gate (boundary case -> C)
+    undersize = bool(np.any(dims_desc <= MIN_DIM_MM + 1e-9))
     oversize = bool(np.any(dims_desc > MAX_DIMS_MM))
 
     best_ratio, best_axis = 0.0, None

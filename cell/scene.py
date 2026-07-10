@@ -1,27 +1,33 @@
 # -*- coding: utf-8 -*-
 """MJCF scene generation from cell.params — the layout has one source of truth.
 
-Two executive architectures share one generator (build_xml(mode)):
-  "table" (primary): conveyor A -> escapement gate -> widened tri-directional
-          transfer table with ACTUATED EXIT GATES; lanes exit north to the B
-          connector, east and south over guided two-stage brake chutes into
-          aperture-walled roll cages. The arm stands at an exception station.
-  "arm"   (preserved baseline): conveyor A -> accumulator with stop wall; the
-          arm picks every item (tag arm-primary-baseline).
+EXECUTIVE (v3, mirrors isaac/scene_usd.py): a linear TILT-TRAY SORTER.
+  * belt A ends in a knife-edge nose (thin driven slab the trays run under);
+  * two pop-up stop blades: the pre-gate hold (single item in the vision
+    window) and the normally-closed escapement (releases exactly one item,
+    synchronized to an inbound empty carrier);
+  * a carrier train along the belt axis: kinematically-slid carrier bodies
+    (position-controlled chain, analytic s(t)) each carrying a dished TRAY on
+    a real hinge joint + position actuator — freight rides by CONTACT only;
+  * discharge stations: C/D tilt south onto 32-deg brake chutes into
+    aperture-walled roll cages, B tilts north onto a powered incline
+    connector feeding the FIXED belt B, REVIEW tilts north into the
+    manual-review pen;
+  * exception arm between the cages (chute-snag recovery only).
 
-Containment-by-design (scored under «Качество манипуляции», «отсутствие
-избыточного брака»): items are guided and bounded at every hop — funnel rails
-on belt A, edge rails + normally-closed lift gates on the table, side-railed
-chutes with a high-friction brake runout that releases the item just above
-the cage floor, and cage walls that are closed except for an entry aperture
-sized to the chute. Nothing is thrown; nothing free-falls more than ~130 mm.
+Containment-by-design: side guides on belt A, tray end lips, side-railed
+chutes with a high-friction brake runout, aperture-walled cages, closed
+walls everywhere else.
 
-Presentation layer (video/jury): bilingual signage at every station, floor
-decals, zone-coloured lane markings + chevrons, destination beacons, gate
-lamps and an andon tower — all contype/conaffinity 0 (zero physics cost),
-animated at runtime by cell/visuals.py.
+Presentation layer (video/jury): bilingual signage, floor decals, station
+portals, destination beacons, andon tower — all contype/conaffinity 0.
+
+Contact classes: item geoms carry conaffinity 3 so the stop blades
+(contype 2, conaffinity 0) collide with items but never with the belt body
+they retract into.
 """
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -32,6 +38,12 @@ ASSETS = Path(__file__).parent / "assets"
 
 STEEL = "0.55 0.57 0.62 1"
 DARK = "0.22 0.24 0.28 1"
+TAN32 = math.tan(math.radians(32.0))
+# chute side rails start this far downhill of the chute's top edge: the
+# tilting tray lip sweeps a lens (y within 70 mm of the chute top) that the
+# rail nose must stay clear of — same reason the Isaac twin's tray clears
+# the slope by TRAY_LIP_Z - z0
+RAIL_SETBACK = 0.07
 
 
 def load_manifest():
@@ -49,10 +61,9 @@ def _rgba(zone, scale=1.0, alpha=1.0):
 
 # --------------------------------------------------------------------- cages
 def _cage_xml(name, cage):
-    """Roll-cage 1200x800x800: frame posts + semi-transparent walls (the jury
-    can see the item stay inside). A closed cage has four full walls; a cage
-    fed by a chute has an entry APERTURE (flanks + header strip) instead of a
-    missing wall, so items cannot bounce back out."""
+    """Roll-cage / review pen: frame posts + semi-transparent walls. A cage
+    fed by a chute has an entry APERTURE (flanks + header + low sill skirt)
+    instead of a missing wall, so items cannot bounce back out."""
     cx, cy = cage["center"]
     ix, iy = cage["inner"]
     t = cage["wall_t"]
@@ -67,15 +78,14 @@ def _cage_xml(name, cage):
     open_side = cage.get("open_side")
     for side, (dx, dy, sx, sy) in walls.items():
         if side == open_side:
-            # entry aperture instead of an open wall: flank strips + header +
-            # under-runout skirt — the port is exactly chute-sized, nothing
-            # can roll back out below or beside the runout
+            # entry aperture: flank strips + header + under-chute sill skirt —
+            # the port is exactly chute-sized, nothing rolls back out below
+            # or beside the runout
             aw2 = cage["aperture_w"] / 2
             top = cage["aperture_top"]
-            skirt_h2 = 0.165             # skirt 0..0.33: overlaps the slope
-                                         # UNDERSIDE (~0.328 at the wall) but
-                                         # stays 3 cm below the riding surface
-                                         # so box corners can never clip it
+            sill = cage.get("sill_top", 0.20)
+            skirt_h2 = (sill - t) / 2
+            skirt_zc = (sill + t) / 2
             hdr_h = (t + h - top) / 2
             if side in ("+x", "-x"):
                 for sgn, nm in ((1, "a"), (-1, "b")):
@@ -86,7 +96,7 @@ def _cage_xml(name, cage):
                     g.append(f'<geom name="cage{name}_hdr" type="box" size="{sx} {aw2} {hdr_h}" '
                              f'pos="{cx + dx} {cy} {top + hdr_h}" rgba="{wall}"/>')
                 g.append(f'<geom name="cage{name}_skirt" type="box" size="{sx} {aw2} {skirt_h2}" '
-                         f'pos="{cx + dx} {cy} {skirt_h2}" rgba="{wall}"/>')
+                         f'pos="{cx + dx} {cy} {skirt_zc}" rgba="{wall}"/>')
             else:
                 for sgn, nm in ((1, "a"), (-1, "b")):
                     fl = (sx - aw2) / 2
@@ -96,17 +106,17 @@ def _cage_xml(name, cage):
                     g.append(f'<geom name="cage{name}_hdr" type="box" size="{aw2} {sy} {hdr_h}" '
                              f'pos="{cx} {cy + dy} {top + hdr_h}" rgba="{wall}"/>')
                 g.append(f'<geom name="cage{name}_skirt" type="box" size="{aw2} {sy} {skirt_h2}" '
-                         f'pos="{cx} {cy + dy} {skirt_h2}" rgba="{wall}"/>')
+                         f'pos="{cx} {cy + dy} {skirt_zc}" rgba="{wall}"/>')
         else:
             g.append(f'<geom name="cage{name}_w{side}" type="box" size="{sx} {sy} {hh}" '
                      f'pos="{cx + dx} {cy + dy} {t + hh}" rgba="{wall}"/>')
-    # high-friction landing mat over the whole cage floor: kills the residual
-    # slide so items settle in place instead of ramming the far wall
+    # high-friction landing mat: kills residual slide so items settle in
+    # place instead of ramming the far wall
     if open_side:
         g.append(f'<geom name="cage{name}_mat" type="box" size="{hx} {hy} 0.004" '
                  f'pos="{cx} {cy} {t + 0.004}" friction="{P.CAGE_MAT_FRICTION}" '
                  f'priority="2" solref="0.012 1" rgba="0.15 0.15 0.17 1"/>')
-    # roll-cage frame: corner posts + top rails (visual only)
+    # frame posts + top rails (visual only)
     for sx in (-1, 1):
         for sy in (-1, 1):
             g.append(f'<geom name="cage{name}_p{sx}{sy}" type="cylinder" size="0.022 {(t + h) / 2}" '
@@ -126,205 +136,218 @@ def _cage_xml(name, cage):
 
 
 # --------------------------------------------------------------------- chutes
-def _incline_xml(name, center, half, euler, rgba="0.55 0.55 0.6 1",
-                 friction="0.12 0.005 0.0001"):
-    # priority=1: the polished chute surface DICTATES the contact friction
-    # (otherwise MuJoCo takes the max of both geoms and sticky items freeze
-    # on the slope when placed without momentum)
-    return (f'<geom name="{name}" type="box" size="{half[0]} {half[1]} {half[2]}" '
-            f'pos="{center[0]} {center[1]} {center[2]}" euler="{euler[0]} {euler[1]} {euler[2]}" '
-            f'friction="{friction}" priority="1" rgba="{rgba}"/>')
-
-
-def _chute_xml(zone, cc, axis, wall_at):
-    """One continuous guided slope (32 deg, mu < tan(32 deg): items can never
-    rest on it) through the cage aperture onto a flat high-friction BRAKE PAD
-    just above the cage floor. Side guides run from the table edge to the
-    cage wall plane (`wall_at`); inside the cage the flanks take over."""
-    g = []
-    rail_t = 0.015
+def _chute_xml(zone, cc, wall_at):
+    """32-deg gravity brake chute along the y axis (cc["dir"] = -1 south into
+    the C/D cages, +1 north into the review pen). One continuous guided slope
+    (mu < tan 32 deg: nothing rests on it) from just under the tilted tray
+    lip, through the destination wall aperture, onto a flat high-friction
+    BRAKE PAD just above the floor. priority=1: the polished chute dictates
+    the contact friction."""
+    d = float(cc["dir"])
+    y0, z0, z1, cx = cc["y0"], cc["z0"], cc["z1"], cc["cx"]
+    y1, pad_end = P.chute_run(cc)
     frame = _rgba(zone, 1.0, 1.0)
-    if axis == "x":
-        p0, p1, z0, z1 = cc["x0"], cc["x1"], cc["z0"], cc["z1"]
-        pad_end = cc["pad_x1"]
-        fixed = cc["cy"]
-    else:
-        p0, p1, z0, z1 = cc["y0"], cc["y1"], cc["z0"], cc["z1"]
-        pad_end = cc["pad_y1"]
-        fixed = cc["cx"]
-    length = float(np.hypot(p1 - p0, z0 - z1))
-    ang = float(np.arctan2(z0 - z1, abs(p1 - p0)))
-    # tilt sign: Ry(+ang) drops the +x side (C descends eastward);
-    # Rx(+ang) raises the +y side (D descends southward) — both downhill
-    euler_seg = (0, ang, 0) if axis == "x" else (ang, 0, 0)
-    mid, zmid = (p0 + p1) / 2, (z0 + z1) / 2 - 0.015
-    if axis == "x":
-        center, half = (mid, fixed, zmid), (length / 2, cc["width"] / 2, 0.015)
-    else:
-        center, half = (fixed, mid, zmid), (cc["width"] / 2, length / 2, 0.015)
-    g.append(_incline_xml(f"chute{zone}", center, half, euler_seg,
-                          "0.55 0.55 0.6 1", cc["friction"]))
-    # side guides out to the cage wall plane only
-    r1 = wall_at
-    rmid = (p0 + r1) / 2
-    rlen = float(np.hypot(r1 - p0, (z0 - z1) * abs(r1 - p0) / abs(p1 - p0)))
+    g = []
+    length = float(np.hypot(y1 - y0, z0 - z1))
+    # rotX(+32) raises the +y side: a south-running chute descends with +32,
+    # a north-running one with -32 (mirrors isaac.build_chute)
+    ang = -d * math.radians(32.0)
+    mid, zmid = (y0 + y1) / 2, (z0 + z1) / 2 - 0.015
+    g.append(f'<geom name="chute{zone}" type="box" size="{cc["width"] / 2} {length / 2} 0.015" '
+             f'pos="{cx} {mid} {zmid}" euler="{ang:.6f} 0 0" '
+             f'friction="{cc["friction"]}" priority="1" rgba="0.55 0.55 0.6 1"/>')
+    # side guides from just below the tray-lip sweep down to the wall plane
+    rail_t = 0.015
+    r0 = y0 + d * RAIL_SETBACK
+    rmid = (r0 + wall_at) / 2
+    rlen = float(np.hypot(wall_at - r0, abs(wall_at - r0) * TAN32))
     for sgn, nm in ((1, "l"), (-1, "r")):
         off = sgn * (cc["width"] / 2 + rail_t)
-        rz = z0 - (z0 - z1) * abs(rmid - p0) / abs(p1 - p0) + P.GUIDE_H / 2
-        if axis == "x":
-            rc, rh = (rmid, fixed + off, rz), (rlen / 2, rail_t, P.GUIDE_H / 2)
-        else:
-            rc, rh = (fixed + off, rmid, rz), (rail_t, rlen / 2, P.GUIDE_H / 2)
-        g.append(_incline_xml(f"chute{zone}_rail_{nm}", rc, rh, euler_seg,
-                              frame, cc["friction"]))
-    # brake pad: flat, 5 mm below the slope tail (a downhill step, never a lip)
-    pz = z1 - 0.005
-    pmid = (p1 + pad_end) / 2
-    plen = abs(pad_end - p1)
-    if axis == "x":
-        pc, ph = (pmid, fixed, pz - 0.015), (plen / 2, cc["width"] / 2, 0.015)
-    else:
-        pc, ph = (fixed, pmid, pz - 0.015), (cc["width"] / 2, plen / 2, 0.015)
-    # soft (rubber-faced) brake pad: absorbs the landing instead of returning
-    # it — a stiff contact can eject a thin light item (pen pogo, found by
-    # close_spacing): 9 mm rod at 1.5 m/s penetrates deep in one substep and
-    # a hard solver reference fires it back out
-    g.append(f'<geom name="chute{zone}_pad" type="box" size="{ph[0]} {ph[1]} {ph[2]}" '
-             f'pos="{pc[0]} {pc[1]} {pc[2]}" friction="{cc["pad_friction"]}" '
+        rz = z0 - abs(rmid - y0) * TAN32 + P.GUIDE_H / 2
+        g.append(f'<geom name="chute{zone}_rail_{nm}" type="box" size="{rail_t} {rlen / 2} {P.GUIDE_H / 2}" '
+                 f'pos="{cx + off} {rmid} {rz}" euler="{ang:.6f} 0 0" '
+                 f'friction="{cc["friction"]}" priority="1" rgba="{frame}"/>')
+    # brake pad: flat, 5 mm below the slope tail (a downhill step, never a
+    # lip). Soft (rubber-faced): absorbs the landing instead of returning it
+    # — a stiff contact can eject a thin light item (pen pogo)
+    pmid = (y1 + pad_end) / 2
+    plen = abs(pad_end - y1)
+    g.append(f'<geom name="chute{zone}_pad" type="box" size="{cc["width"] / 2} {plen / 2} 0.015" '
+             f'pos="{cx} {pmid} {z1 - 0.020}" friction="{cc["pad_friction"]}" '
              f'priority="1" solref="0.012 1" rgba="0.30 0.31 0.35 1"/>')
-
-    # HOOD over the aperture: a cover PARALLEL to the slope (never a catch
-    # face) with a flared funnel mouth and a brow strip on the wall plane —
-    # together they close the fly-out window above the flow
-    hood = P.HOOD
-    tanang = float(np.tan(ang))
-    dirn = 1.0 if (axis == "x") else -1.0        # downhill direction sign
-    aw2 = 0.40                                    # matches cage aperture_w/2
-
-    def surf(c):
-        return z0 - abs(c - p0) * tanang
-
-    n_up = float(np.cos(ang))                     # vertical rise per normal unit
-    s0 = wall_at - dirn * hood["up"]
-    s1 = wall_at + dirn * hood["into"]
-    hmid = (s0 + s1) / 2
-    hlen = float(np.hypot(s1 - s0, abs(s1 - s0) * tanang))
-    zc = surf(hmid) + hood["clearance"] * n_up
-    lowfric = "0.2 0.005 0.0001"
-    hood_col = _rgba(zone, 0.9, 0.45)
-    if axis == "x":
-        hcz, hh_ = (hmid, fixed, zc), (hlen / 2, aw2, 0.012)
-    else:
-        hcz, hh_ = (fixed, hmid, zc), (aw2, hlen / 2, 0.012)
-    g.append(_incline_xml(f"hood{zone}", hcz, hh_, euler_seg, hood_col, lowfric))
-    # brow: closes the strip between hood top and wall top on the wall plane
-    bz0, bz1 = hood["brow_z0"], 0.83
-    bh2 = (bz1 - bz0) / 2
-    if axis == "x":
-        bc, bh_ = (wall_at, fixed, bz0 + bh2), (0.015, aw2, bh2)
-    else:
-        bc, bh_ = (fixed, wall_at, bz0 + bh2), (aw2, 0.015, bh2)
-    g.append(f'<geom name="hood{zone}_brow" type="box" size="{bh_[0]} {bh_[1]} {bh_[2]}" '
-             f'pos="{bc[0]} {bc[1]} {bc[2]}" rgba="{hood_col}"/>')
+    # NO HOOD: the deep-drop chute crosses the aperture at z ~0.22 — no
+    # fly-out window remains, and the open chute keeps every jam point
+    # vertically extractable by the exception arm.
     # zone-coloured flow arrows painted on the slope (visual)
     n_dash = max(3, int(length / 0.20))
     for i in range(n_dash):
         f_ = (i + 0.5) / n_dash
-        da = p0 + (p1 - p0) * f_
+        da = y0 + (y1 - y0) * f_
         dz = z0 + (z1 - z0) * f_ + 0.004
-        if axis == "x":
-            dc, dh = (da, fixed, dz), (0.055, 0.035, 0.001)
-        else:
-            dc, dh = (fixed, da, dz), (0.035, 0.055, 0.001)
-        g.append(f'<geom name="flow{zone}_{i}" type="box" size="{dh[0]} {dh[1]} {dh[2]}" '
-                 f'pos="{dc[0]} {dc[1]} {dc[2]}" euler="{euler_seg[0]} {euler_seg[1]} {euler_seg[2]}" '
+        g.append(f'<geom name="flow{zone}_{i}" type="box" size="0.035 0.055 0.001" '
+                 f'pos="{cx} {da} {dz}" euler="{ang:.6f} 0 0" '
                  f'rgba="{_rgba(zone, 1.0, 0.85)}" contype="0" conaffinity="0" group="2"/>')
     return g
 
 
-# ---------------------------------------------------------------- table gates
-def _gate_xml(zone):
-    """Normally-closed vertical-lift exit gate: the route command is the only
-    thing that opens a path off the table. Panel is a real collider driven by
-    a position actuator; frame posts + status lamp are visual."""
-    gp = P.GATES[zone]
-    tb = P.TABLE
-    span = (gp["c1"] - gp["c0"]) / 2
-    mid = (gp["c0"] + gp["c1"]) / 2
-    t2, h2 = P.GATES["panel_t"] / 2, P.GATES["panel_h"] / 2
-    zc = tb["top"] + P.GATES["gap"] + h2
-    if gp["axis"] == "x":                # panel long side along x, at y = line
-        px, py = mid, gp["line"]
-        size = f"{span} {t2} {h2}"
-        posts = [(gp["c0"] - 0.035, gp["line"]), (gp["c1"] + 0.035, gp["line"])]
-    else:                                # panel long side along y, at x = line
-        px, py = gp["line"], mid
-        size = f"{t2} {span} {h2}"
-        posts = [(gp["line"], gp["c0"] - 0.035), (gp["line"], gp["c1"] + 0.035)]
+# ---------------------------------------------------------- B incline connector
+def _b_connector_xml():
+    """Powered incline belt from the B-station tray lip up to the FIXED belt
+    B infeed (16.6 deg; every B item is non-round by rule and holds by
+    friction). The drive is cell/belt.py's kinematic conveyor model."""
+    bc = P.B_CONNECT
+    ang = math.atan2(bc["z_top1"] - bc["z_top0"], bc["y1"] - bc["y0"])
+    length = float(np.hypot(bc["y1"] - bc["y0"], bc["z_top1"] - bc["z_top0"]))
+    cy = (bc["y0"] + bc["y1"]) / 2
+    cz = (bc["z_top0"] + bc["z_top1"]) / 2 - 0.015
+    g = [f'<geom name="bconnect" type="box" size="{bc["width"] / 2} {length / 2} 0.015" '
+         f'pos="{bc["cx"]} {cy} {cz}" euler="{ang:.6f} 0 0" '
+         f'friction="0.06 0.004 0.0001" priority="1" rgba="0.35 0.42 0.55 1"/>']
+    # side rails absorb the +x drift the item keeps from the moving tray.
+    # Their south nose starts clear of the tilting tray-lip sweep.
+    rail_t = 0.015
+    r0 = bc["y0"] + RAIL_SETBACK
+    rcy = (r0 + bc["y1"]) / 2
+    rlen2 = (bc["y1"] - r0) / (2 * math.cos(ang))
+    rcz = cz + (rcy - cy) * math.tan(ang) + 0.10
+    for sgn, nm in ((1, "l"), (-1, "r")):
+        g.append(f'<geom name="bconnect_rail_{nm}" type="box" size="{rail_t} {rlen2:.5f} 0.07" '
+                 f'pos="{bc["cx"] + sgn * (bc["width"] / 2 + rail_t)} {rcy} {rcz:.5f}" '
+                 f'euler="{ang:.6f} 0 0" rgba="0.9 0.75 0.4 1"/>')
+    # connector lane dashes (blue) — the B path reads as one continuous lane
+    for i, y in enumerate(np.arange(bc["y0"] + 0.10, bc["y1"], 0.16)):
+        z = bc["z_top0"] + (y - bc["y0"]) * math.tan(ang) + 0.004
+        g.append(f'<geom name="claneB_{i}" type="box" size="0.026 0.048 0.001" '
+                 f'pos="{bc["cx"]} {y:.3f} {z:.4f}" euler="{ang:.6f} 0 0" '
+                 f'rgba="{_rgba("B", 0.5, 0.9)}" contype="0" conaffinity="0" group="2"/>')
+    return g
+
+
+# ------------------------------------------------------------------ stop blades
+def _blade_xml(name, x):
+    """Pop-up stop blade (escapement / pre-gate hold): a thin panel on a
+    vertical slide, normally LOWERED flush below the belt surface, raised so
+    its bottom skims ~3 mm above the belt — a 9 mm pen cannot slip under.
+    contype 2 / conaffinity 0: collides with items (conaffinity 3) only,
+    never with the belt body it retracts into."""
+    a = P.BELT_A
+    w2 = (a["width"] - 0.02) / 2
+    h2 = 0.06
+    zc = a["top"] - h2 - 0.046
     body = (
-        f'<body name="gate{zone}" pos="{px} {py} {zc}">\n'
-        f'      <joint name="gj{zone}" type="slide" axis="0 0 1" range="-0.002 {P.GATES["travel"]}" damping="18"/>\n'
-        f'      <geom name="gate{zone}_panel" type="box" size="{size}" '
-        f'friction="0.2 0.005 0.0001" priority="1" rgba="{_rgba(zone, 0.85, 0.9)}"/>\n'
+        f'<body name="{name}" pos="{x} {a["y"]} {zc}">\n'
+        f'      <joint name="{name}_j" type="slide" axis="0 0 1" range="-0.002 0.20" damping="8"/>\n'
+        f'      <geom name="{name}_panel" type="box" size="0.012 {w2} {h2}" mass="2.0" '
+        f'contype="2" conaffinity="0" friction="0.1 0.005 0.0001" priority="1" '
+        f'solref="0.008 1" rgba="0.16 0.17 0.20 1"/>\n'
+        f'      <geom name="{name}_strip" type="box" size="0.013 {w2 + 0.001} 0.006" pos="0 0 {h2}" '
+        f'rgba="0.95 0.78 0.06 1" contype="0" conaffinity="0" group="2"/>\n'
         f'    </body>')
     extras = []
-    top_z = tb["top"] + P.GATES["travel"] + P.GATES["panel_h"] + 0.06
-    for i, (qx, qy) in enumerate(posts):
-        extras.append(f'<geom name="gate{zone}_post{i}" type="cylinder" size="0.025 {top_z / 2}" '
-                      f'pos="{qx} {qy} {top_z / 2}" rgba="{STEEL}" contype="0" conaffinity="0" group="2"/>')
-    extras.append(f'<geom name="glamp{zone}" type="box" size="0.055 0.055 0.03" '
-                  f'pos="{px} {py} {top_z + 0.04}" rgba="{_rgba(zone, 0.35)}" '
-                  f'contype="0" conaffinity="0" group="2"/>')
-    act = (f'<position name="ga{zone}" joint="gj{zone}" kp="1400" kv="320" '
-           f'forcerange="-600 600" ctrlrange="0 {P.GATES["travel"]}"/>')
+    for sgn in (-1, 1):
+        extras.append(f'<geom name="{name}_post{["l", "r"][sgn > 0]}" type="cylinder" size="0.02 0.35" '
+                      f'pos="{x} {a["y"] + sgn * (a["width"] / 2 + 0.06)} 0.35" rgba="{STEEL}" '
+                      f'contype="0" conaffinity="0" group="2"/>')
+    act = (f'<position name="{name}_a" joint="{name}_j" kp="2200" kv="140" '
+           f'forcerange="-900 900" ctrlrange="0 {P.BELT_A["blade_up"]}"/>')
     return body, extras, act
 
 
+# ------------------------------------------------------------ tilt-tray train
+def carrier_home(i):
+    """Initial (x, z, leg) of carrier i on the loop (same math as the chain
+    controller in cell/sorter.py, s(t=0))."""
+    S = P.SORTER
+    L_top = S["x_east"] - S["x_west"]
+    s0 = (i * S["pitch"]) % (2 * L_top)
+    if s0 < L_top:
+        return S["x_west"] + s0, S["shuttle_top"] - 0.025, "top"
+    return S["x_east"] - (s0 - L_top), S["return_z"] - 0.05, "return"
+
+
+def _carrier_xml(i):
+    """One sorter carrier: a body on two slide joints (x along the chain,
+    z for the top/return leg) — position-controlled by cell/sorter.py every
+    physics step, so contacts see real solver velocity — carrying a dished
+    TRAY on a hinge joint with a position actuator (the tilt drive).
+
+    Hinge axis is -x so a POSITIVE joint angle tilts the tray NORTH (+y edge
+    down): the drive goal is side * tilt_deg exactly as in isaac/sorter.py.
+    Tray surface friction pairs LOW via priority (combine=min analogue):
+    gravity discharge is guaranteed for every item incl. the mu=0.95 sack."""
+    S = P.SORTER
+    x0, z0, _leg = carrier_home(i)
+    pivot_dz = S["pivot_z"] - (S["shuttle_top"] - 0.025)
+    dish = math.radians(S["dish_deg"])
+    hy = S["tray_w"] / 4 / math.cos(dish)
+    hz = S["tray_t"] / 2
+    z_in = S["tray_top"] - S["pivot_z"]           # surface at the centre line
+    czz = z_in - hz + (S["tray_w"] / 4) * math.tan(dish)
+    mu = S["tray_mu"][1]
+    fr = f'friction="{mu} 0.005 0.0001" priority="1" solref="0.01 1"'
+    plates = []
+    for sgn, nm in ((1, "n"), (-1, "s")):
+        plates.append(
+            f'<geom name="tray{i}_p{nm}" type="box" size="{S["tray_l"] / 2} {hy:.6f} {hz}" '
+            f'pos="0 {sgn * S["tray_w"] / 4} {czz:.6f}" euler="{sgn * dish:.6f} 0 0" '
+            f'mass="3.0" {fr} rgba="0.16 0.17 0.19 1"/>')
+    lips = []
+    for sgn, nm in ((1, "e"), (-1, "w")):
+        lips.append(
+            f'<geom name="tray{i}_l{nm}" type="box" size="{S["lip_t"] / 2} {S.get("lip_w", S["tray_w"]) / 2} {S["lip_h"] / 2}" '
+            f'pos="{sgn * (S["tray_l"] / 2 - S["lip_t"] / 2)} 0 {z_in + S["lip_h"] / 2}" '
+            f'mass="0.3" {fr} rgba="0.42 0.30 0.10 1"/>')
+    lim = math.radians(S["tilt_deg"] + 8.0)
+    body = (
+        f'<body name="car{i}" pos="{x0:.6f} {S["y"]} {z0:.6f}">\n'
+        f'      <joint name="cjx{i}" type="slide" axis="1 0 0"/>\n'
+        f'      <joint name="cjz{i}" type="slide" axis="0 0 1"/>\n'
+        f'      <geom name="shuttle{i}" type="box" size="0.27 0.27 0.025" mass="40" '
+        f'contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>\n'
+        f'      <body name="tray{i}" pos="0 0 {pivot_dz:.6f}">\n'
+        f'        <joint name="tj{i}" type="hinge" axis="-1 0 0" range="{-lim:.5f} {lim:.5f}" '
+        f'damping="3" armature="0.05"/>\n'
+        f'        {chr(10).join("        " + p for p in plates + lips)}\n'
+        f'      </body>\n'
+        f'    </body>')
+    act = (f'<position name="ta{i}" joint="tj{i}" kp="600" kv="40" '
+           f'forcerange="-{S["drive_max_torque"]} {S["drive_max_torque"]}" '
+           f'ctrlrange="{-lim:.5f} {lim:.5f}"/>')
+    return body, act
+
+
 # ------------------------------------------------------- presentation statics
-def _lane_visuals():
-    """Zone-coloured lane dashes + chevrons on the table, roller/puck hints —
-    the routing zone visibly IS a powered multi-directional roller field."""
-    tb = P.TABLE
+def _stations_xml():
+    """Discharge-station portals + route-colour lamps (visual only; the
+    mechanism is the tray)."""
     g = []
-    # entry-strip transport rollers (visual)
-    for i, x in enumerate(np.arange(7.0, 7.95, 0.15)):
-        g.append(f'<geom name="roller_{i}" type="cylinder" size="0.03 {tb["width"] / 2 - 0.02}" '
-                 f'pos="{x:.3f} {tb["y"]} {tb["top"] - 0.015}" euler="1.5708 0 0" '
-                 f'rgba="{DARK}" contype="0" conaffinity="0" group="2"/>')
-    # omni-roller pucks in the routing zone (visual)
-    k = 0
-    for x in np.arange(8.06, 8.52, 0.15):
-        for y in np.arange(2.62, 3.42, 0.19):
-            g.append(f'<geom name="puck_{k}" type="cylinder" size="0.030 0.0025" '
-                     f'pos="{x:.3f} {y:.3f} {tb["top"] + 0.002}" rgba="0.30 0.32 0.36 1" '
-                     f'contype="0" conaffinity="0" group="2"/>')
-            k += 1
-    lanes = {
-        "B": [((8.40, y), 0.0) for y in (3.08, 3.22, 3.36)],
-        "C": [((x, 3.00), 90.0) for x in (8.10, 8.24, 8.38)],
-        "D": [((8.05, y), 0.0) for y in (2.92, 2.78, 2.64)],
-    }
-    z = {"B": 0.7040, "C": 0.7046, "D": 0.7052}
-    for zone, dashes in lanes.items():
-        for i, ((x, y), yaw) in enumerate(dashes):
-            g.append(f'<geom name="lane{zone}_{i}" type="box" size="0.048 0.026 0.001" '
-                     f'pos="{x} {y} {z[zone]}" euler="0 0 {np.radians(yaw + 90):.4f}" '
-                     f'rgba="{_rgba(zone, 0.5, 0.9)}" contype="0" conaffinity="0" group="2"/>')
-    # chevron arrowheads at the three exits: two wings swept back from the tip
-    chev = {"B": ((8.40, 3.48), 90.0), "C": ((8.50, 3.00), 0.0), "D": ((8.05, 2.52), -90.0)}
-    for zone, ((x, y), deg) in chev.items():
-        for j, sweep in enumerate((135.0, -135.0)):
-            wa = float(np.radians(deg + sweep))
-            g.append(f'<geom name="lane{zone}_ch{j}" type="box" size="0.062 0.018 0.001" '
-                     f'pos="{x + 0.055 * np.cos(wa):.3f} {y + 0.055 * np.sin(wa):.3f} {z[zone]}" '
-                     f'euler="0 0 {wa:.4f}" '
-                     f'rgba="{_rgba(zone, 0.5, 0.9)}" contype="0" conaffinity="0" group="2"/>')
+    for zone, st in P.STATIONS.items():
+        x, side = st["x"], st["side"]
+        by = P.SORTER["y"] + side * 0.46
+        col = _rgba(zone, 1.0, 1.0)
+        for sgn in (-1, 1):
+            g.append(f'<geom name="st{zone}_post{["a", "b"][sgn > 0]}" type="box" size="0.02 0.02 0.50" '
+                     f'pos="{x + sgn * 0.30} {by} 0.50" rgba="{STEEL}" contype="0" conaffinity="0" group="2"/>')
+        g.append(f'<geom name="st{zone}_beam" type="box" size="0.32 0.02 0.02" '
+                 f'pos="{x} {by} 1.02" rgba="{STEEL}" contype="0" conaffinity="0" group="2"/>')
+        g.append(f'<geom name="st{zone}_lamp" type="box" size="0.10 0.025 0.025" '
+                 f'pos="{x} {by} 1.08" rgba="{col}" contype="0" conaffinity="0" group="2"/>')
+    # enclosed end modules (the carrier wrap teleports happen inside them)
+    y = P.SORTER["y"]
+    g.append(f'<geom name="train_end_e" type="box" size="0.15 0.40 0.28" pos="9.57 {y} 0.46" '
+             f'rgba="{DARK}" contype="0" conaffinity="0" group="2"/>')
+    g.append(f'<geom name="train_end_w" type="box" size="0.15 0.40 0.21" pos="6.59 {y} 0.40" '
+             f'rgba="{DARK}" contype="0" conaffinity="0" group="2"/>')
+    # operator manual-handling station
+    mx, my = P.MANUAL_STATION
+    g.append(f'<geom name="manual_station" type="box" size="0.35 0.55 0.01" pos="{mx} {my} 0.01" '
+             f'rgba="0.62 0.30 0.10 0.8" contype="0" conaffinity="0" group="2"/>')
     return g
 
 
 def _beacons():
     g = []
-    spots = {"B": (8.72, 4.35), "C": (9.95, 3.66), "D": (8.05, 1.05)}
+    spots = {"B": (8.85, 4.95), "C": (6.70, 1.35), "D": (9.55, 1.35)}
     for zone, (x, y) in spots.items():
         g.append(f'<geom name="beacon{zone}_pole" type="cylinder" size="0.02 0.66" '
                  f'pos="{x} {y} 0.66" rgba="{STEEL}" contype="0" conaffinity="0" group="2"/>')
@@ -352,38 +375,18 @@ def _vision_markers():
     a = P.BELT_A
     g = []
     w0, w1 = P.VIRTUAL_SENSOR["window_x"]
+    cam_x = P.VIRTUAL_SENSOR["overhead_pos"][0]
     g.append(f'<geom name="vis_window" type="box" size="{(w1 - w0) / 2} {a["width"] / 2} 0.001" '
              f'pos="{(w0 + w1) / 2} {a["y"]} {a["top"] + 0.002}" rgba="0.45 0.25 0.55 0.25" '
              f'contype="0" conaffinity="0" group="2"/>')
     g.append(f'<geom name="vis_sheet" type="box" size="0.002 {a["width"] / 2} 0.26" '
-             f'pos="6.0 {a["y"]} {a["top"] + 0.26}" rgba="0.75 0.35 0.95 0.16" '
+             f'pos="{cam_x} {a["y"]} {a["top"] + 0.26}" rgba="0.75 0.35 0.95 0.16" '
              f'contype="0" conaffinity="0" group="2"/>')
     for name, x, col in (("line_hold", a["hold2_x"], "0.85 0.75 0.2 0.8"),
                          ("line_gate", a["gate_x"], "0.9 0.55 0.1 0.9")):
         g.append(f'<geom name="{name}" type="box" size="0.008 {a["width"] / 2} 0.0012" '
                  f'pos="{x} {a["y"]} {a["top"] + 0.002}" rgba="{col}" contype="0" conaffinity="0" group="2"/>')
     return g
-
-
-def _escapement_gate():
-    """Visible escapement gate at the accumulator entry: a lightweight flag
-    panel (non-colliding — the belt drive enforces the hold) that LIFTS when
-    the gate logic releases the next item. Driven by run_sim from gate state."""
-    a = P.BELT_A
-    x = a["gate_x"] + 0.02
-    body = (
-        f'<body name="egate" pos="{x} {a["y"]} {a["top"] + 0.10}">\n'
-        f'      <joint name="ej" type="slide" axis="0 0 1" range="-0.002 0.55" damping="8"/>\n'
-        f'      <geom name="egate_panel" type="box" size="0.012 {a["width"] / 2} 0.09" '
-        f'rgba="0.9 0.45 0.1 0.85" contype="0" conaffinity="0" group="2" mass="0.4"/>\n'
-        f'    </body>')
-    extras = []
-    for sgn in (-1, 1):
-        extras.append(f'<geom name="egate_post{["l", "r"][sgn > 0]}" type="cylinder" size="0.02 0.7" '
-                      f'pos="{x} {a["y"] + sgn * (a["width"] / 2 + 0.06)} 0.7" rgba="{STEEL}" '
-                      f'contype="0" conaffinity="0" group="2"/>')
-    act = '<position name="ea" joint="ej" kp="120" kv="22" forcerange="-80 80" ctrlrange="0 0.55"/>'
-    return body, extras, act
 
 
 def _signage(sign_files):
@@ -412,127 +415,75 @@ def _signage(sign_files):
 
 
 # ----------------------------------------------------------------- executive
-def _executive_geoms(mode):
-    """Belt-A termination + routing hardware for the chosen architecture.
-    Returns (worldbody_xml_list, actuator_xml_list)."""
+def _executive_geoms():
+    """Belt-A knife nose + stop blades + tilt-tray train + stations + chutes
+    + cages + review pen + B connector. Returns (worldbody, actuators)."""
     a = P.BELT_A
     g, acts = [], []
-    if mode == "arm":
-        g.append(f'<geom name="beltA" type="box" size="{(a["x_stop"] - a["x0"]) / 2} {a["width"] / 2} {a["top"] / 2}" '
-                 f'pos="{(a["x0"] + a["x_stop"]) / 2} {a["y"]} {a["top"] / 2}" rgba="0.35 0.42 0.55 1"/>')
-        g.append(f'<geom name="acc_stop" type="box" size="0.015 {a["width"] / 2} 0.05" '
-                 f'pos="{a["x_stop"] + 0.015} {a["y"]} {a["top"] + 0.05}" rgba="0.9 0.75 0.4 1"/>')
-        g.append(f'<geom name="acc_rail_l" type="box" size="0.66 0.015 0.08" '
-                 f'pos="{a["x_stop"] - 0.645} {a["y"] + a["width"] / 2 + 0.015} {a["top"] + 0.08}" rgba="0.9 0.75 0.4 1"/>')
-        g.append(f'<geom name="acc_rail_r" type="box" size="0.66 0.015 0.08" '
-                 f'pos="{a["x_stop"] - 0.645} {a["y"] - a["width"] / 2 - 0.015} {a["top"] + 0.08}" rgba="0.9 0.75 0.4 1"/>')
-        for cname, cage in P.cages_for("arm").items():
-            g += _cage_xml(cname, cage)
-        return g, acts
 
-    # ------------------------------------------------------------- table mode
-    tb, cb = P.TABLE, P.CONNECT_B
-    cc, cd = P.CHUTE_C, P.CHUTE_D
-    ty0, ty1 = tb["y"] - tb["width"] / 2, tb["y"] + tb["width"] / 2
+    # belt A: main body up to the knife section
+    g.append(f'<geom name="beltA" type="box" size="{(a["knife_x0"] - a["x0"]) / 2} {a["width"] / 2} {a["top"] / 2}" '
+             f'pos="{(a["x0"] + a["knife_x0"]) / 2} {a["y"]} {a["top"] / 2}" '
+             f'friction="0.06 0.004 0.0001" priority="1" rgba="0.35 0.42 0.55 1"/>')
+    # knife-edge nose: thin driven slab the trays run under (zero-gap handoff)
+    g.append(f'<geom name="knife" type="box" size="{(a["nose_x"] - a["knife_x0"]) / 2} {a["width"] / 2} {a["knife_t"] / 2}" '
+             f'pos="{(a["knife_x0"] + a["nose_x"]) / 2} {a["y"]} {a["top"] - a["knife_t"] / 2}" '
+             f'friction="0.06 0.004 0.0001" priority="1" '
+             f'rgba="0.38 0.45 0.58 1"/>')
+    # low side guides along belt A; above the knife the guide bottom stays
+    # clear of the tray-lip sweep
+    for sgn, nm in ((1, "l"), (-1, "r")):
+        g.append(f'<geom name="beltA_guide_{nm}" type="box" size="{a["knife_x0"] / 2} 0.015 0.05" '
+                 f'pos="{a["knife_x0"] / 2} {a["y"] + sgn * (a["width"] / 2 + 0.015)} {a["top"] + 0.04}" '
+                 f'rgba="{STEEL}"/>')
+        g.append(f'<geom name="knife_guide_{nm}" type="box" size="{(a["nose_x"] - a["knife_x0"]) / 2} 0.015 0.045" '
+                 f'pos="{(a["knife_x0"] + a["nose_x"]) / 2} {a["y"] + sgn * (a["width"] / 2 + 0.015)} '
+                 f'{a["top"] + 0.045}" rgba="{STEEL}"/>')
 
-    # belt A ends where the table begins (smooth same-height handover)
-    g.append(f'<geom name="beltA" type="box" size="{(tb["x0"] - a["x0"]) / 2} {a["width"] / 2} {a["top"] / 2}" '
-             f'pos="{(a["x0"] + tb["x0"]) / 2} {a["y"]} {a["top"] / 2}" rgba="0.35 0.42 0.55 1"/>')
-    # entry funnel rails on the last stretch of belt A — placed DOWNSTREAM of
-    # the vision station so the measurement volume stays clear (x > 6.66)
-    g.append(f'<geom name="feed_rail_l" type="box" size="0.12 0.015 0.08" '
-             f'pos="{tb["x0"] - 0.12} {a["y"] + a["width"] / 2 + 0.015} {a["top"] + 0.08}" rgba="0.9 0.75 0.4 1"/>')
-    g.append(f'<geom name="feed_rail_r" type="box" size="0.12 0.015 0.08" '
-             f'pos="{tb["x0"] - 0.12} {a["y"] - a["width"] / 2 - 0.015} {a["top"] + 0.08}" rgba="0.9 0.75 0.4 1"/>')
-
-    # the transfer table surface
-    g.append(f'<geom name="table" type="box" size="{(tb["x1"] - tb["x0"]) / 2} {tb["width"] / 2} {tb["top"] / 2}" '
-             f'pos="{(tb["x0"] + tb["x1"]) / 2} {tb["y"]} {tb["top"] / 2}" rgba="0.42 0.5 0.62 1"/>')
-
-    rail_h, rail_t, rail_z = 0.08, 0.015, a["top"] + 0.08
-    # north edge: open only at the B-lane exit (gate guards the opening)
-    bx0, bx1 = cb["cx"] - cb["width"] / 2, cb["cx"] + cb["width"] / 2
-    g.append(f'<geom name="trail_n1" type="box" size="{(bx0 - tb["x0"]) / 2} {rail_t} {rail_h}" '
-             f'pos="{(tb["x0"] + bx0) / 2} {ty1 + rail_t} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-    if tb["x1"] > bx1:
-        g.append(f'<geom name="trail_n2" type="box" size="{(tb["x1"] - bx1) / 2} {rail_t} {rail_h}" '
-                 f'pos="{(bx1 + tb["x1"]) / 2} {ty1 + rail_t} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-    # south edge: open only at the D-lane exit
-    dx0, dx1 = cd["cx"] - cd["width"] / 2, cd["cx"] + cd["width"] / 2
-    g.append(f'<geom name="trail_s1" type="box" size="{(dx0 - tb["x0"]) / 2} {rail_t} {rail_h}" '
-             f'pos="{(tb["x0"] + dx0) / 2} {ty0 - rail_t} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-    if tb["x1"] > dx1:
-        g.append(f'<geom name="trail_s2" type="box" size="{(tb["x1"] - dx1) / 2} {rail_t} {rail_h}" '
-                 f'pos="{(dx1 + tb["x1"]) / 2} {ty0 - rail_t} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-    # east edge: open only at the C-lane exit
-    cy0, cy1 = cc["cy"] - cc["width"] / 2, cc["cy"] + cc["width"] / 2
-    g.append(f'<geom name="trail_e1" type="box" size="{rail_t} {(cy0 - ty0) / 2} {rail_h}" '
-             f'pos="{tb["x1"] + rail_t} {(ty0 + cy0) / 2} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-    g.append(f'<geom name="trail_e2" type="box" size="{rail_t} {(ty1 - cy1) / 2} {rail_h}" '
-             f'pos="{tb["x1"] + rail_t} {(cy1 + ty1) / 2} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-    # west edge corners (belt A feeds through the middle)
-    g.append(f'<geom name="trail_w1" type="box" size="{rail_t} {(a["y"] - a["width"] / 2 - ty0) / 2} {rail_h}" '
-             f'pos="{tb["x0"] - rail_t} {(ty0 + a["y"] - a["width"] / 2) / 2} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-    g.append(f'<geom name="trail_w2" type="box" size="{rail_t} {(ty1 - a["y"] - a["width"] / 2) / 2} {rail_h}" '
-             f'pos="{tb["x0"] - rail_t} {(a["y"] + a["width"] / 2 + ty1) / 2} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-
-    # powered connector to the fixed belt B
-    g.append(f'<geom name="connectB" type="box" size="{cb["width"] / 2} {(cb["y1"] - cb["y0"]) / 2} {cb["top"] / 2}" '
-             f'pos="{cb["cx"]} {(cb["y0"] + cb["y1"]) / 2} {cb["top"] / 2}" rgba="0.42 0.5 0.62 1"/>')
-    g.append(f'<geom name="crail_l" type="box" size="{rail_t} {(cb["y1"] - cb["y0"]) / 2} {rail_h}" '
-             f'pos="{bx0 - rail_t} {(cb["y0"] + cb["y1"]) / 2} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-    g.append(f'<geom name="crail_r" type="box" size="{rail_t} {(cb["y1"] - cb["y0"]) / 2} {rail_h}" '
-             f'pos="{bx1 + rail_t} {(cb["y0"] + cb["y1"]) / 2} {rail_z}" rgba="0.9 0.75 0.4 1"/>')
-    # connector lane dashes (blue) — the B path reads as one continuous lane
-    for i, y in enumerate(np.arange(cb["y0"] + 0.10, cb["y1"], 0.16)):
-        g.append(f'<geom name="claneB_{i}" type="box" size="0.026 0.048 0.001" '
-                 f'pos="{cb["cx"]} {y:.3f} {cb["top"] + 0.004}" rgba="{_rgba("B", 0.5, 0.9)}" '
-                 f'contype="0" conaffinity="0" group="2"/>')
-
-    # guided single-slope brake chutes into the cage apertures
-    cages_t = P.cages_for("table")
-    wall_c = cages_t["C"]["center"][0] - cages_t["C"]["inner"][0] / 2 - cages_t["C"]["wall_t"] / 2
-    wall_d = cages_t["D"]["center"][1] + cages_t["D"]["inner"][1] / 2 + cages_t["D"]["wall_t"] / 2
-    g += _chute_xml("C", cc, "x", wall_c)
-    g += _chute_xml("D", cd, "y", wall_d)
-
-    # actuated exit gates (normally closed)
-    for zone in ("B", "C", "D"):
-        body, extras, act = _gate_xml(zone)
+    # stop blades: normally-closed escapement + pre-gate hold
+    for name, x in (("egate", a["gate_x"]), ("hold2", a["hold2_x"])):
+        body, extras, act = _blade_xml(name, x)
         g.append(body)
         g += extras
         acts.append(act)
 
-    for cname, cage in P.cages_for("table").items():
+    # the tilt-tray carrier train
+    for i in range(P.SORTER["n_carriers"]):
+        body, act = _carrier_xml(i)
+        g.append(body)
+        acts.append(act)
+
+    # chutes into the aperture-walled destinations
+    cages = P.cages_for()
+    wall_c = (cages["C"]["center"][1] + cages["C"]["inner"][1] / 2
+              + cages["C"]["wall_t"] / 2)
+    wall_d = (cages["D"]["center"][1] + cages["D"]["inner"][1] / 2
+              + cages["D"]["wall_t"] / 2)
+    rp = P.REVIEW_PEN
+    wall_r = rp["center"][1] - rp["inner"][1] / 2 - rp["wall_t"] / 2
+    g += _chute_xml("C", P.CHUTE_C, wall_c)
+    g += _chute_xml("D", P.CHUTE_D, wall_d)
+    g += _chute_xml("REVIEW", P.CHUTE_REVIEW, wall_r)
+    for cname, cage in cages.items():
         g += _cage_xml(cname, cage)
+    g += _cage_xml("REVIEW", rp)
 
-    # reject / manual-review bin on the arm's SE side (open-top steel tote):
-    # the exception arm drops a recovered B jam here for a human to inspect
-    rj = P.REJECT_STATION
-    rcx, rcy = rj["center"]
-    rix, riy = rj["inner"]
-    rt, rh, rfz = rj["wall_t"], rj["wall_h"], rj["floor_z"]
-    g.append(f'<geom name="reject_floor" type="box" '
-             f'size="{rix / 2 + rt} {riy / 2 + rt} 0.02" '
-             f'pos="{rcx} {rcy} {rfz}" rgba="0.28 0.30 0.34 1"/>')
-    for nm, dx, dy, sx, sy in (("py", 0, riy / 2 + rt / 2, rix / 2 + rt, rt / 2),
-                               ("my", 0, -(riy / 2 + rt / 2), rix / 2 + rt, rt / 2),
-                               ("px", rix / 2 + rt / 2, 0, rt / 2, riy / 2),
-                               ("mx", -(rix / 2 + rt / 2), 0, rt / 2, riy / 2)):
-        g.append(f'<geom name="reject_w_{nm}" type="box" size="{sx} {sy} {rh / 2}" '
-                 f'pos="{rcx + dx} {rcy + dy} {rfz + rh / 2}" '
-                 f'rgba="0.62 0.30 0.10 1"/>')
+    # powered incline connector to the FIXED belt B
+    g += _b_connector_xml()
 
-    g += _lane_visuals()
+    g += _stations_xml()
     g += _beacons()
     return g, acts
 
 
 def build_xml(manifest, mode=None):
-    mode = mode or P.EXEC_DEFAULT
+    """mode is accepted for legacy callers and ignored: the executive is the
+    tilt-tray sorter ('sorter') — EXEC modes collapsed (see cell/params.py)."""
+    mode = "sorter"
     a, b = P.BELT_A, P.BELT_B
     arm = P.ARM
     bx, by = P.ARM_BASE[mode]
+    cam = P.VIRTUAL_SENSOR["overhead_pos"]
 
     from cell.signs import ensure_signs
     sign_assets, sign_geoms = _signage(ensure_signs())
@@ -546,32 +497,26 @@ def build_xml(manifest, mode=None):
         slug = e["slug"]
         px = 0.6 + i * 0.85
         pz = e["dims_m"][2] / 2 + 0.001
-        # thin items (pen-class, min extent < 20 mm): soft contact + a small
-        # activation margin. A sub-centimeter hull can penetrate a full body
-        # depth in one substep when wedged under heavier items in a cage; a
-        # stiff solver reference then ejects it violently (NaN divergence
-        # found by borderline/close_spacing). Physically: thin light objects
-        # flex and absorb instead of bouncing rigidly.
-        # stiff + overdamped (dampratio 2): holds a heavy neighbor's static
-        # load without sinking past the thin body's half-thickness AND kills
-        # restitution on impact — a soft contact here sags under a 6 kg box
-        # until the geometry inverts and the solver ejects the item
+        # thin items (pen-class, min extent < 20 mm): stiff + overdamped
+        # contact (dampratio 2) + a small activation margin — holds a heavy
+        # neighbor's static load without sinking past the thin body's
+        # half-thickness AND kills restitution on impact.
         soft = (' solref="0.004 2" margin="0.001"'
                 if min(e["dims_m"]) < 0.02 else "")
+        # conaffinity 3: items also collide with the stop blades (contype 2)
         items.append(
             f'<body name="item_{slug}" pos="{px} -1.2 {pz}">\n'
             f'      <freejoint name="fj_{slug}"/>\n'
             f'      <geom name="g_{slug}" type="mesh" mesh="m_{slug}" mass="{e["mass_kg"]}" '
-            f'friction="0.9 0.02 0.0005"{soft} rgba="0.75 0.72 0.65 1"/>\n'
+            f'friction="0.9 0.02 0.0005" conaffinity="3"{soft} rgba="0.75 0.72 0.65 1"/>\n'
             f'    </body>')
         welds.append(f'<weld name="w_{slug}" body1="wrist" body2="item_{slug}" active="false" '
                      f'solref="0.004 1"/>')
 
-    exec_geoms, exec_acts = _executive_geoms(mode)
+    exec_geoms, exec_acts = _executive_geoms()
     executive = "\n    ".join(exec_geoms)
-    egate_body, egate_extras, egate_act = _escapement_gate()
-    statics = "\n    ".join(_vision_markers() + _tower() + egate_extras + sign_geoms)
-    extra_actuators = "\n    ".join(exec_acts + [egate_act])
+    statics = "\n    ".join(_vision_markers() + _tower() + sign_geoms)
+    extra_actuators = "\n    ".join(exec_acts)
 
     xml = f"""
 <mujoco model="sortmaster_cell_{mode}">
@@ -599,28 +544,27 @@ def build_xml(manifest, mode=None):
 
     <!-- look-ahead vision station: overhead depth + profile scanners; the
          sensor hangs BELOW its crossbar so the mount never shadows the FOV -->
-    <camera name="lookahead" pos="6.0 3.0 2.2" xyaxes="1 0 0 0 1 0" fovy="45"/>
-    <geom name="cam_post" type="cylinder" size="0.04 1.175" pos="6.0 2.2 1.175"
+    <camera name="lookahead" pos="{cam[0]} {cam[1]} {cam[2]}" xyaxes="1 0 0 0 1 0" fovy="45"/>
+    <geom name="cam_post" type="cylinder" size="0.04 1.175" pos="{cam[0]} 2.2 1.175"
           rgba="0.45 0.25 0.55 1" contype="0" conaffinity="0" group="2"/>
-    <geom name="cam_bar" type="box" size="0.03 0.42 0.03" pos="6.0 2.6 2.32"
+    <geom name="cam_bar" type="box" size="0.03 0.42 0.03" pos="{cam[0]} 2.6 2.32"
           rgba="0.45 0.25 0.55 1" contype="0" conaffinity="0" group="2"/>
-    <geom name="cam_head" type="box" size="0.06 0.06 0.035" pos="6.0 3.0 2.255"
+    <geom name="cam_head" type="box" size="0.06 0.06 0.035" pos="{cam[0]} {cam[1]} 2.255"
           rgba="0.2 0.1 0.3 1" contype="0" conaffinity="0" group="2"/>
 
     <geom name="floor" type="plane" size="12 8 0.1" pos="5 3 0" material="floor"/>
 
     <!-- conveyor B: sorter infeed (FIXED) -->
-    <geom name="beltB" type="box" size="{b['width'] / 2} {(b['y1'] - b['y0']) / 2} {b['top'] / 2}"
+    <geom name="beltB" type="box" friction="0.06 0.004 0.0001" priority="1" size="{b['width'] / 2} {(b['y1'] - b['y0']) / 2} {b['top'] / 2}"
           pos="{b['cx']} {(b['y0'] + b['y1']) / 2} {b['top'] / 2}" rgba="0.35 0.42 0.55 1"/>
 
-    <!-- executive architecture: {mode} -->
+    <!-- executive architecture: tilt-tray sorter -->
     {executive}
 
-    <!-- escapement gate + vision markers + signage -->
-    {egate_body}
+    <!-- vision markers + signage -->
     {statics}
 
-    <!-- 4-axis palletizer arm ({'primary picker' if mode == 'arm' else 'exception-recovery station'}) -->
+    <!-- 4-axis palletizer arm (exception-recovery station) -->
     <geom name="pedestal" type="cylinder" size="0.15 {arm['pedestal_h'] / 2}"
           pos="{bx} {by} {arm['pedestal_h'] / 2}" rgba="0.25 0.25 0.28 1"/>
     <body name="yawcol" pos="{bx} {by} {arm['pedestal_h']}">
@@ -668,6 +612,8 @@ def build_xml(manifest, mode=None):
 
 
 def make_model(mode=None):
+    """mode accepted for legacy callers (tests, tools) and collapsed to the
+    single 'sorter' executive."""
     import mujoco
     manifest = load_manifest()
     xml = build_xml(manifest, mode=mode)

@@ -1,279 +1,204 @@
 # `isaac/` — SortMaster cell in NVIDIA Isaac Sim (PhysX 5 + RTX)
 
-The **same** sorting cell as the MuJoCo validation engine, built from the one
-source of truth (`cell/params.py`) and taken further: real rendered sensors in
-the loop and a physically-driven conveyor executive. Runs headless on a GPU
-server; produces the jury-facing RTX video, depth-camera captures, and a
-metrics `summary.json` in the same vocabulary as the MuJoCo runs. Results and
-the cross-engine argument:
-[docs/report/isaac_evidence/](../docs/report/isaac_evidence/README.md).
+The high-fidelity digital twin of the Track-3 sorting cell: the same
+`cell/params.py` geometry as the MuJoCo validation twin, rebuilt on the
+Omniverse stack with **real rendered sensors in the loop** and a **physically
+actuated tilt-tray sorter** as the executive. Everything nominal moves by
+contact physics: surface-velocity belts carry the freight, a knife-edge nose
+hands it to a moving tray, a revolute-joint tilt drive discharges it by
+gravity, a 32° brake chute contains it. `direct_velocity_writes_nominal = 0`
+is asserted by the validation gate. Consolidated results:
+[docs/report/isaac_evidence/xbelt/](../docs/report/isaac_evidence/README.md).
 
-**Reference result (ARB-deck build, 12-run matrix / 132 item trials):**
-nominal classification **66/66 = 100%** from the RTX depth station in
-motion · nominal routing **65/66 = 98.5%** (the exception: a 9 mm pen
-micro-stall answered by a safe operator call-out — never a wrong feed) ·
-low/high-friction, high-mass, close-spacing, off-center and jam-drill
-sweeps all **11/11** · **0 unsafe errors and containment 1.0 in every
-run** · 6,064 logged actuator commands, **0 direct velocity writes** ·
-0.71–0.86× real time with the sensors in the loop. Consolidated:
-[docs/report/isaac_evidence/validation_arb/matrix_summary.json](../docs/report/isaac_evidence/validation_arb/matrix_summary.json).
+## The executive: a linear tilt-tray sorter (why)
 
-## Architecture (what makes this an *Isaac* solution)
+The previous executive (an Activated-Roller-Belt patch deck) diverts by
+driving the item's footprint across powered rollers — which puts a hard
+floor (~50–75 mm) on the smallest divertible product. The official rules
+draw the sortable/undersize boundary at **10 mm**: an 11 mm cube is a legal,
+sortable item that an ARB deck physically cannot handle. A **tilt-tray
+sorter carries every item on its own tray** and discharges by gravity, so
+the divert is **size-independent** — the 11 mm cube and the 489 mm pouf ride
+and discharge identically. Tilt-tray/cross-belt is also what real
+parcel-scale sortation (including Ozon's) runs, and «поворотные лотки» is one
+of the mechanism classes named in the official problem brief.
 
-- **Perception is a real sensor.** A 3-head RTX depth station (overhead
-  1024×768 + two side profiler heads at ±0.45 m — the `VIRTUAL_SENSOR`
-  geometry from `cell/params.py`) renders true depth; the item is measured in
-  motion, multi-read fused with legal-metrology guard bands, and classified by
-  the official rule order (dims gate first, then circle-in-section at
-  r_in/R ≥ 0.8). Calibrated **33/33 = 100%** on the official set across three
-  rest yaws (`validate_rtx.py`); 11/11 in the closed-loop run. Safe-side
-  policies throughout: sensor miss → manual lane, unverifiable section on an
-  elongated item → D, guard-banded limits never take the permissive branch.
-- **The executive is driven by contact physics, not scripts.** Belts, the
-  table entry strip and the B-connector are kinematic conveyors with
-  `PhysxSurfaceVelocityAPI` (the Isaac Conveyor-Belt-utility mechanism):
-  items are carried by friction, at the **designed speeds** (belt A at the
-  official 1.0 m/s, table at 0.8 m/s — surface-velocity commands are
-  normalized for PhysX's local-frame × scale semantics and probe-verified).
-  The routing zone is an **ARB actuator deck**: a 4×7 matrix of local
-  150×157 mm surface-velocity patches (`isaac/arb_deck.py`,
-  `cell/params.ARB_DECK`), each an independent actuator with a **40 ms
-  command pipeline, a 6 m/s² velocity ramp, 1.2 m/s saturation and
-  per-command gain noise** — only the patches under the routed item (plus a
-  0.10 m pre-spin halo) receive the divert command; the rest keep feeding
-  forward. Every command is logged (`actuator_log.csv`) and summarized
-  (`actuator_commands_count`, `actuator_latency_ms`,
-  `max_surface_speed_mps`).
+```
+belt A (1 m/s, FIXED) ──► RTX vision station (dual-range, in motion)
+      │ verdict B/C/D committed BEFORE the escapement
+      ▼
+escapement (normally closed) ──► synchronized release to an EMPTY tray
+      ▼ knife-edge nose, 60 mm drop, landing offset logged
+tilt-tray train (9 carriers, 0.6 m pitch, 0.5 m/s, true-time return run)
+      │ position-triggered tilt: latency 40 ms + 160°/s ramp + gain noise
+      ├─ C station (x 7.45, south) ──► 32° chute ──► roll-cage C
+      ├─ B station (x 8.40, north) ──► 16.6° powered incline ──► belt B (FIXED)
+      ├─ D station (x 8.75, south) ──► 32° chute ──► roll-cage D
+      └─ REVIEW  (x 9.05, north) ──► chute ──► manual-review pen
+         (low confidence / double occupancy / discharge-miss fallback)
+```
 
-  **Mechanical embodiment (honest model statement):** the deck renders as
-  the **official `ConveyorBelt_A49` right-angle transfer module** (found by
-  sweeping the full A42–A49 tail of the 6.0 conveyor set; silver carry
-  rollers + interleaved transfer wheel packs — the real industrial
-  mechanism class), fitted as a sanitized shell with its deck top exactly
-  at the ride plane, plus a 4×7 **module-status LED matrix** on the south
-  face tinted per actuator state. The physics is and stays **patch-level
-  ARB actuation**; roller-by-roller bearing/contact simulation is
-  intentionally not used — neither required by the evidence nor validated.
-  (A procedural angled-roller module builder is kept in
-  `asset_shells.py` as the offline fallback; the A49 shell won the
-  side-by-side render comparison.) Exit gates carry industrial hardware:
-  anodized panels with route-color stripes, guided lift rams sliding past
-  fixed actuator bodies, and photoeye brackets at freight height. Flow discipline is enforced by physical
-  **pop-up stop blades** (escapement, pre-gate hold, two zone-accumulation
-  stops, table induction) with a raise-safety interlock; **powered
-  nose-overs** guide discharge onto the 32° brake chutes. No per-item
-  velocity writes anywhere in the nominal flow — `summary.json` proves it:
-  `"nominal_motion_model": "surface_contact_only"`,
-  `"direct_velocity_writes_nominal": 0`.
-- **Items have material-class physics.** `cell/params.MATERIALS` assigns
-  each slug friction/restitution/damping by material (cardboard, PET, HDPE,
-  ABS shell, ceramic, soft sack/pouf with damping); the chute pairs friction
-  by `min` (guaranteed slide), the brake pad by `max` (guaranteed braking
-  even for slippery items). Robustness sweeps scale the whole table:
-  `--friction-mult 0.7/1.3`, `--mass-mult 1.3`.
-- **Faults are handled on sensor data.** A routing-zone depth camera holds a
-  background model of the empty cell; when the zero-displacement watchdog
-  fires, background subtraction localizes the stuck item (best case ~20–30 mm
-  error), known hardware (blades, open gate panels, cage interiors) is
-  excluded, and the **4-axis exception arm** (closed-form IK from
-  `cell/arm_ik.py`, the `cell/controller.py` cycle) picks at the **camera
-  fix** and re-delivers onto the item's lane; unreachable/repeat failures
-  escalate to an operator call-out (MANUAL).
+**Physical (PhysX):** belt transport (kinematic surface velocity — the
+Conveyor Belt utility mechanism), the knife-edge handoff, tray carriage and
+gravity discharge (dynamic tray on a revolute joint + angular position
+drive), chute descent + brake pads, cage containment, the escapement and
+pre-gate hold stop blades (prismatic joints + linear drives), the B incline.
+
+**Modelled (stated honestly):** the traction chain is position-controlled —
+kinematic carrier bodies follow the chain schedule every physics step (a
+real sorter chain is speed-servo'd; the per-carrier "encoder" is the chain
+coordinate). The tray, its joint, its drive and every freight interaction
+remain force-based. The enclosed end modules "wrap" EMPTY carriers between
+the top run and the under-deck return run (the return runs at true return
+time, so carrier availability is never optimistic). The exception arm's
+links are non-colliding kinematic visuals driven by the validated 4-axis IK
+controller; the carried item is welded to the controller TCP (MuJoCo weld
+parity). Soft items (sack, pouf) are rigid approximations with grip/damping
+materials.
+
+## Perception: dual-range RTX depth station
+
+Four rendered RTX depth heads measure every item **in motion** over the
+window x 5.65–6.05:
+
+* **overhead metrology head** (1024×768 at x 5.55 — upstream of the window
+  centre so the macro head's mount never enters its optical path);
+* **two side profiler heads** (flank verticality: a lying cylinder/hex slants,
+  a box wall is vertical — section evidence an overhead view cannot measure);
+* **close-range MACRO head** (768×768 at z 1.42, GSD ≈ 0.4 mm): engages when
+  the smallest overhead dimension is below 25 mm. Legal-metrology guard bands
+  scale with the measuring head: undersize certification floor = 10 mm + 2×GSD
+  → **16 mm** on the overhead head, **10.8 mm** on the macro head. An 11 mm
+  cube honestly certifies as sortable (B); a 10 mm cube and the 9 mm pen stay
+  conservatively C. The measuring volume is bounded above by the 0.5 m max
+  inbound envelope, exactly like a real dimensioner's specified volume.
+
+Fusion (`perception_rtx.fuse_reads`) applies the OFFICIAL rule order
+(dimensions strictly before shape; r_in/R ≥ 0.8 circle criterion) with
+frame-completeness gating (a truncated/stale read is rejected, never
+evidence), dual-bound dimension fusion (25th percentile certifies undersize,
+75th certifies oversize — each check uses the bound that cannot hide a
+violation), and safe-side rules: sensor miss → D (manual review lane), an
+elongated item whose section cannot be verified → D, persistent weak circle
+evidence → D. Zero valid reads never route to B.
 
 ## What's here
 
-| File | Role |
-|---|---|
-| `scene_usd.py` | USD stage from `cell/params.py`: surface-velocity conveyors, pop-up blades (prismatic drives), normally-closed exit gates, 32° chutes + nose-overs, aperture-walled cages, convex-hull items from the official STLs, all cameras. No importers — binary STLs parse straight into `UsdGeom.Mesh`. |
-| `run_isaac.py` | The closed loop: spawning, flow discipline, RTX multi-read classification, ARB deck command, watchdog + camera-fix arm recovery, containment tracking. Writes `summary.json` + `events.csv` + `actuator_log.csv`, optional MP4 frames + vision stills. |
-| `arb_deck.py` | The ARB actuator deck controller: per-patch command pipeline (latency), velocity ramp, saturation, per-command gain noise, state machine (`forward`/`divert:B|C|D`), per-patch visual activation, actuator command log + metrics. |
-| `run_matrix.sh` | Host-side validation matrix: 6-seed nominal + friction/mass/spacing/off-center/jam sweeps → per-run `summary.json` (consolidate with `tools/consolidate_isaac_matrix.py`). |
-| `perception_rtx.py` | Depth → world cloud → identity-gated segmentation → dims (percentile extents), footprint circularity, mirrored-hull section r_in/R, dome score, side-head flank verticality → official rule order; `fuse_reads()` = guard-banded multi-read fusion. |
-| `jam_locator.py` | Background-subtraction jam localization on the routing-zone depth camera (grid clustering, hardware exclusions, route-corridor association). |
-| `arm.py` | Kinematic 4-axis palletizer (MuJoCo parity: collision-free links, item carried at the TCP) + the recovery state machine. |
-| `validate_rtx.py` | Static calibration: 11 items × N yaws under the real cameras vs ground truth → `rtx_validation.json`. |
-| `dressing.py` | Industrial presentation + route-storytelling layer (visuals only, physics/sensor-safe): dark rubber belts + end drums + skirts + hazard-striped edges + support legs + white direction chevrons, roller deck + omni-puck field, labeled roll cages («C OVERSIZE»/«D REPACK», tubes, casters), Intel RealSense D455 sensor assets (official Isaac models, hand-made housings as offline fallback), Ozon design language (wall wordmark, blue/magenta accents), warehouse lighting. Runtime route storytelling (`RouteVizRuntime`): items tint with their category, carry a floating «>> B SORTER / C OVERSIZE / D REPACK» flag, the ACTIVE ROUTE lamp panel + routing-deck arrows + chevron trails to each container brighten for the commanded route. Verified bit-identical physics with the layer on (same sim time, same 11/11). |
+```
+scene_usd.py      USD stage from params: belts + knife nose, carrier train,
+                  stations, chutes, cages, review pen, cameras, items
+sorter.py         the executive controller: chain schedule, synchronized
+                  escapement release, carrier tagging, position-triggered
+                  tilt with latency/ramp/noise, review fallback, stuck-tilt
+                  timeout, station lockout during arm recovery, evidence
+run_isaac.py      the closed loop: spawn → perception → induction →
+                  discharge → containment watch → metrics (summary.json,
+                  events.csv, actuator_log.csv, reads_log.json)
+perception_rtx.py dual-range RTX depth station + guard-banded rule fusion
+jam_locator.py    background-subtraction jam localization (real camera)
+arm.py            UR10e exception arm (chute snags → route-correct cage)
+materials.py      OmniPBR world-triplanar grunge library
+dressing.py       industrial presentation layer (lighting truss, signage,
+                  cabinets, fences, route storytelling) — visuals only
+asset_shells.py   official conveyor/robot/sensor assets as sanitized shells
+cinematic.py      cinematic camera paths + item-follow camera
+run_matrix.sh     the validation matrix (below)
+showcase5.sh      the final video set
+```
 
 ## Run it (inside the isaac-sim container)
 
 ```bash
-# full official set, RTX perception + surface-conveyor executive (defaults)
-/isaac-sim/python.sh /tmp/sortmaster/isaac/run_isaac.py \
-    --seed 42 --out /tmp/sortmaster_out/final_seed42
+# full official set, RTX perception + tilt-tray executive (defaults)
+/isaac-sim/python.sh isaac/run_isaac.py --seed 42 \
+  --out /workspace/sortmaster_out/run1
 
-# with the RTX video + vision stills (the demo run)
-/isaac-sim/python.sh /tmp/sortmaster/isaac/run_isaac.py \
-    --seed 42 --out /tmp/sortmaster_out/final_seed42 --record --camera overview
+# with video frames + vision stills (demo run)
+... --record --fps 30 --camera deck_front --depth-stills 3
 
-# perception calibration (static, 3 yaws)
-/isaac-sim/python.sh /tmp/sortmaster/isaac/validate_rtx.py \
-    --out /tmp/sortmaster_out/rtxval --yaws 0,35,120
+# edge cases merged in (incl. the 11 mm cube headline proof)
+... --manifest-extra
+... --manifest-extra --items edge_cube11,edge_cube10,edge_rod9,pen
 
-# fault drill: inject a snag so the watchdog + jam camera + arm fire
-/isaac-sim/python.sh /tmp/sortmaster/isaac/run_isaac.py \
-    --inject-jam box_s@8.05 --out /tmp/sortmaster_out/jam_drill
+# fault drills
+... --inject-jam box_l@2.62        # chute snag -> watchdog -> jam camera -> arm
+... --inject-tray-fault D          # dead tilt actuator -> end-line call-out
 
-# robustness / fault-case runs (SUPER_REALISTIC plan P3/P6)
-#   --friction-mult 0.7     low-friction material sweep
-#   --mass-mult 1.3         heavy-item sweep
-#   --spawn-offset-y 0.10   off-center entry
-#   --spawn-gap 3.5,4.5     close spacing
-#   --probe all             1 Hz trace of every item + flow state (diagnosis)
-
-# regression baselines
-#   --perception oracle   ground truth + latency (debug)
-#   --drive scripted      legacy per-item velocity drive
+# robustness sweeps
+#   --friction-mult 0.7 | --mass-mult 1.3 | --spawn-offset-y 0.06
+#   --spawn-gap 3.0,4.0 (close spacing) | --probe all (1 Hz diagnosis trace)
 ```
-
-Cameras for `--record`: `overview | top_view | routing | lookahead`.
-
-Branding note: `dressing.py` composites the Ozon wordmark from
-`isaac/assets/ozon_logo.png` — copy it to `/tmp/sortmaster_signs/ozon_logo.png`
-on the sim host (that directory is also the dressing's generated-texture
-working dir; mount it read-write into the container).
 
 ### Full validation matrix (host-side)
 
 ```bash
-scp -P <port> isaac/run_matrix.sh root@<host>:/root/ && ssh ... \
-    "bash /root/run_matrix.sh /root/sortmaster_out/final_arb"
-# 6-seed nominal + low/high friction + high mass + close spacing +
-# off-center + jam drill; then consolidate:
-python tools/consolidate_isaac_matrix.py <matrix_dir>
+bash isaac/run_matrix.sh /root/sortmaster_out/xbelt_matrix
+python3 tools/consolidate_isaac_matrix.py /root/sortmaster_out/xbelt_matrix
+# gates: classification >= 0.98, nominal routing >= 0.97, unsafe = 0,
+# containment = 1.0, direct velocity writes = 0, command margin > 0,
+# 11 mm cube delivered to B. Non-zero exit on any failure.
 ```
 
-### From the host: assemble + serve the evidence
+## Outputs (per run)
 
-```bash
-docker exec isaac-sim /isaac-sim/python.sh /tmp/sortmaster/isaac/run_isaac.py ...
-bash /root/make_evidence.sh final_seed42        # frames -> MP4 + index.html
-# systemd-run --unit=sortmaster-http python3 -m http.server 8080 --directory /root/evidence
-# view over the SSH tunnel (ssh -L 8080:localhost:8080 ...):
-#   http://localhost:8080/final_seed42/
-```
+* `summary.json` — classification block (accuracy, reads/item, misses),
+  `sorter` block (carrier commands, tilt_time_ms, discharge_latency_ms,
+  landing offsets, wraps, double-occupancy, review fallbacks, stuck-tilt
+  flattens, end-line call-outs), routing/containment/cycle/margins/throughput,
+  per-item rows with the full timing ladder.
+* `events.csv` — every event of every item's life: `item_classified` →
+  `escapement_release` → `induction_landed` (with offset) → `routing_cmd` →
+  `tilt_cmd` → `tilt_full` → `discharge_confirmed` → `item_delivered`, plus
+  jam/recovery/fault events.
+* `actuator_log.csv` — every tilt command (t, carrier, station, target).
+* `reads_log.json` — every RAW perception read behind every fused verdict
+  (dims per read, head used, guard bands, circle features).
+* `vision_rgb_*.png`, `vision_depth_*.png/.npy`, `vision_macro_*.png` —
+  sensor's-eye stills (`tools/make_perception_panels.py` builds the
+  side-by-side panels + perception_demo.mp4).
 
-## Outputs
+## Exit gate
 
-- `summary.json` — classification accuracy (n, correct, sensor misses,
-  reads/item), routing accuracy, unsafe errors, containment (rate, violations,
-  cage-entry speed, bounce height), cycle stats, throughput, flow-discipline
-  counters, per-item margins.
-- `events.csv` — `item_spawned/detected/classified` (with fused features and
-  reasons), `routing_cmd`, `table_entry` (command margin), `item_delivered`,
-  `jam_detected`, `jam_located` (camera fix + error vs truth),
-  `recovery_started/attached/released/job_done`, `containment_violation`.
-- `frames/*.png` → MP4 (`/root/make_mp4.sh`); `vision_rgb_*.png`,
-  `vision_depth_*.{png,npy}` → jury-facing side-by-side perception panels
-  via `tools/make_perception_panels.py` (RGB | sensor's-eye depth with the
-  item segmented, measured dims, verdict chip, confidence, rule line).
-- Video set v2 (`isaac/showcase2.sh`, evidence in
-  `docs/report/isaac_evidence/final_arb/`): clean nominal runs FIRST
-  (full-cell overview with no arm intervention + per-route B/C/D deck
-  close-ups + sensor-station pass), then the fault program (jam → UR10e
-  recovery; gate stuck-closed → timeout → safe call-out), then the
-  cinematic metrics end-card (`tools/make_endcard.py`).
+The run exits non-zero on ANY bad physical outcome: an undelivered item, an
+unsafe misroute into B, a floor drop, a containment escape, a negative
+command margin, or a failed recovery. MANUAL/REVIEW deliveries are safe
+designed outcomes (they already cost routing accuracy). Success means
+success.
 
-## Requirements
+## Engine gotchas this build encodes (learned the hard way)
 
-Nothing to install — the official `nvcr.io/nvidia/isaac-sim:6.0.1` container
-ships Python 3.12, USD/PhysX and PIL. The repo inputs are pure Python
-(`cell/params.py`, `cell/assets/manifest.json`) and the 11 official STL meshes.
+1. `PhysxSurfaceVelocityAPI.surfaceVelocity` is local-frame and scaled by the
+   prim's xform scale — commanded speeds are pre-divided by half-extents.
+2. `World(physics_dt = rendering_dt)` + manual `world.render()`; RTX
+   annotators serve stale frames — reads flush the pipeline (10×) and the
+   fusion rejects incomplete frames (an item never pauses in the window).
+3. Runtime joint-frame rewrites (`physics:localPos0`) are NOT applied by
+   omni.physx — the carrier legs are kinematic poses, never joint edits.
+4. Referenced official assets own their xformOps and ship their own lights —
+   every referenced subtree is sanitized (colliders off, lights zeroed).
+5. PhysX skips sleeping bodies — items and trays run `sleepThreshold = 0`.
+6. Fixed exposure (`/rtx/post/histogram/enabled = False`) or mixed-camera
+   renders auto-brighten and clip dark surfaces.
+7. A camera mount inside another head's frustum shadows its depth image —
+   the overhead head sits upstream so the macro rig never occludes it (the
+   sensor layout is part of the measuring instrument).
+8. Only ONE Kit instance per GPU; kill leftover containers before launching.
 
-## Conveyor design choice (defense note)
+## Design notes for the jury
 
-The official test set includes a **9 mm pen**, so every item-contact surface
-in the cell is **continuous**: belt conveyors (official A05 asset) for
-infeed/vision/entry and an **Intralox-class Activated Roller Belt** for the
-routing zone — a continuous belt with small steering rollers embedded flush
-in its surface. This is deliberately NOT an open roller bed: small items
-cannot fall between or jam under anything, which is exactly what the physics
-simulates (vectored surface velocity on a continuous surface) and exactly how
-real mixed-parcel ARB sorters are built. Roller drive hardware remains
-visible where it belongs — end drums, side frames, and the flush ARB caps.
-
-## Collision proxies (visual mesh ≠ collision mesh)
-
-Every item renders its **true official STL** (this is what the RTX depth
-station measures — the sensor sees real geometry, including the cylinder's
-rounded end caps and the helmet dome), while **contact** uses a documented
-proxy: a PhysX convex hull of that surface (≤64 vertices, mirroring the
-MuJoCo twin's `maxhullvert=64`), with manifest-true mass and the material
-table above. The proxy choice is deliberate: hulls are the robust,
-jury-reproducible baseline, and the perception/physics split means proxy
-simplification can never leak into classification. Known limitation and
-upgrade path (documented, not hidden): concave items (helmet interior,
-plate rim) contact as their hulls; per-category compounds (capsule stacks
-for bottles, convex decomposition for the helmet) are the next fidelity
-step and slot into `build_item()` without touching the flow logic.
-
-## Design parity & documented deltas
-
-The flow logic mirrors `cell/belt.py`, `cell/table.py` and `cell/run_sim.py`;
-the drive mechanism is *more* physical than the MuJoCo twin (surface-velocity
-conveyors and real stop blades instead of velocity writes). Engine-specific
-tolerances are localized to this package (canonical `cell/params.py`
-untouched): tight contact offsets, a hood lift over the chute apertures, and
-powered nose-overs at the crest handoffs — PhysX resolves the discharge
-dynamics differently from MuJoCo (free tipping is snappier), and each delta is
-validated by the containment gates (violations must be 0, `cage_max_z ≤ 0.56 m`
-≪ aperture top 0.83 m). Full rationale in
-[docs/report/isaac_evidence/README.md](../docs/report/isaac_evidence/README.md).
-
-**Strict-realism audit (2026-07-09, all found by scene forensics, physics
-bit-identical throughout):** (1) the A05 conveyor shells' interior
-`Rollers`/`Rubberbands` sub-meshes sat visibly UNDER the belt band ("item
-rides a flat belt over stray rollers") — hidden, sides closed with steel
-skirting; (2) the single stretched belt-A tile pushed the asset's tail
-drive drums 3.4 m past the belt end into the cage-C volume — every shell
-segment is now bbox-fitted to its exact span; (3) the routing deck is a
-procedural 45° steerable-wheel sorter top (8×14 wheels on shafts with
-bearing brackets, crowns exactly at the ride plane) — no official asset
-ships a lateral ARB mechanism (full A01–A49 sweep documented); (4) the
-"blown-out C bin / spotlight on the arm" was root-caused by pixel
-forensics to **light prims shipped inside the referenced UR10e / gripper /
-RealSense assets** — `sanitize()` now disables lights in every referenced
-shell; the powered discharge belts were also recolored from pale steel to
-dark rubber, the classification tint desaturated, and all statics carry
-matte industrial PBR materials with per-prim value variation instead of
-glossy displayColor plastic; (5) lighting was rebuilt as a **ceiling truss
-carrying downward-facing RectLight area high-bays** (`Dressing._truss` +
-`_highbay`): visible steel roof girders + roof deck over the whole cell,
-four soft area lights illuminating the floor evenly — no local point light
-near the arm, no hot specular spots. Two fixture bugs were caught (a
-RectLight emits from its −Z face, so an earlier RotateX(180) lit the roof
-not the floor; the visible reflector panel was moved above the emitter so
-it stops occluding the beam), and exposure is pinned
-(`/rtx/post/histogram/enabled=False`) so hundreds of mixed-camera renders
-don't auto-brighten into a clipped bin; (6) a final material pass
-(`isaac/materials.py`) binds **OmniPBR.mdl with world-space triplanar
-projection** — no per-prim UVs needed on the primitive cubes — carrying a
-low-contrast procedural grunge map (FFT-tileable, generated once) so cages,
-guards, rails and floor read as worn painted steel with dirt/roughness
-variation instead of glossy toy plastic; route colours are pulled toward a
-neutral grey-paint base, big flat walls stay plain matte (a tiled detail
-map reads as wallpaper on them), and key-zone accent area lights lift the
-vision station and the ARB deck. Cinematic export: `isaac/cinematic.py`
-drives the recording camera along smooth **orbit / dolly / crane** paths
-(`--camera-path`) plus new static angles (`hero_sw`, `cell_iso`,
-`deck_front`, `deck_top`) — all on the open south/west side with no wall or
-arm occlusion, for the defense reel. Before/after evidence:
-[docs/report/isaac_evidence/final_arb/before_after_cbin_lighting.png](../docs/report/isaac_evidence/final_arb/before_after_cbin_lighting.png).
-
-**PhysX gotcha worth knowing (found by probing, fixed 2026-07-08):**
-`PhysxSurfaceVelocityAPI.surfaceVelocity` is applied in the prim's *local
-frame scaled by its xform scale*. A cube-based belt with half-length 3.45
-commanded `(1,0,0)` dragged freight at exactly 3.450 m/s. All surface-velocity
-commands are therefore pre-divided by the prim's half-extents
-(`make_conveyor`, `ArbDeck.step`), and the true speeds are probe-verified
-(`--probe all`): belt A 1.000 m/s (official spec), table/deck 0.800 m/s.
-Timing-sensitive results from before the fix are superseded by the current
-validation matrix.
-
-## Engineering calculations cross-check
-
-Every design number (time on deck, lateral displacement, friction budget,
-chute entry speed, cycle time, actuator response vs command margin) is
-derived from first principles and cross-checked against the measured matrix:
-[docs/report/calculations_vs_simulation.md](../docs/report/calculations_vs_simulation.md).
-Example: calculated cage entry ≈ 2.09 m/s at μ 0.40; measured 2.081 m/s
-(bottle, seed 42).
+* **Sweep corridor**: nothing collidable intrudes into the tilting tray
+  edge's swept volume (y 2.69–3.31, down to z 0.44) — chute rails start
+  0.12 m down-slope, the B-incline rails start at y 3.45. (A rail tip at the
+  chute mouth pinned a discharging tray at 13° in an early build; the trace
+  is in the dev log.)
+* **Deep-drop discharge**: the chutes start 50 mm under the tilted tray lip,
+  so a sliding long box can never bridge tray→chute and yaw-wedge; trays
+  carry central-strip end fences (rounds stay contained in the dish centre,
+  a 0.4 m box's corners clear the fence ends).
+* **Every failure mode has a designed safe terminal**: misclassified → guard
+  bands / safe-side D; unverifiable → REVIEW pen; wedged discharge →
+  stuck-tilt flatten → next-station / REVIEW fallback; dead tilt actuator →
+  end-line operator call-out; chute snag → jam camera + arm → route-correct
+  cage (station locked out while the arm works); anything unreachable →
+  operator call-out. Nothing fails silently, and the run's exit code proves
+  it.

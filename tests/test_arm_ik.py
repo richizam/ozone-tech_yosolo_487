@@ -32,22 +32,28 @@ def test_ik_fk_roundtrip_random_targets():
 
 
 def test_all_task_points_reachable():
-    """Pick, B place, C drop, D drop — including the worst-case item heights."""
-    top = params.BELT_A["top"]
+    """Chute-mouth picks + route-correct cage places, worst-case heights.
+    The arm is the exception handler: it recovers C/D chute snags only."""
+    place = params.PLACE_BY_MODE["sorter"]
     cases = [
-        (7.9, 3.0, top + 0.009),            # pen pick (thinnest)
-        (7.85, 3.0, top + 0.264),           # pouf pick (tallest)
-        (params.PLACE["B"]["xy"][0], params.PLACE["B"]["xy"][1], top + 0.202),  # box_s onto B
-        (params.PLACE["C"]["xy"][0], params.PLACE["C"]["xy"][1], params.CAGE_WALL_TOP + 0.264 + 0.05),
-        (params.PLACE["D"]["xy"][0], params.PLACE["D"]["xy"][1], params.CAGE_WALL_TOP + 0.282 + 0.05),
-        (7.9, 3.0, params.LIFT_Z),          # lift over accumulator
+        # picks on the chute bodies (slope z 0.16..0.43 + item top)
+        (params.STATIONS["C"]["x"], 2.60, 0.43 + 0.05),   # thin snag high on C chute
+        (params.STATIONS["C"]["x"], 2.45, 0.30 + 0.30),   # box_l mid-chute
+        (params.STATIONS["D"]["x"], 2.60, 0.43 + 0.09),   # bottle on D chute
+        (params.STATIONS["D"]["x"], 2.35, 0.20 + 0.28),   # helmet low on D chute
+        # route-correct placements over the cage walls
+        (place["C"]["xy"][0], place["C"]["xy"][1], params.CAGE_WALL_TOP + 0.30 + 0.06),
+        (place["D"]["xy"][0], place["D"]["xy"][1], params.CAGE_WALL_TOP + 0.30 + 0.06),
+        (params.ARM["base"][0], params.ARM["base"][1] + 0.55, params.LIFT_Z),  # lift
     ]
     for x, y, z in cases:
         q = ik(np.array([x, y, z]))
         tcp, wrist = fk(q)
         assert np.allclose(tcp, [x, y, z], atol=1e-9)
-        # elbow-up: wrist stays above the belt line
-        assert wrist[2] > 0.85
+        # elbow-up: the wrist rides the tool length above the TCP and always
+        # clears the chute surface under it (z0=0.43 is the slope maximum)
+        assert wrist[2] >= z + 0.20
+        assert wrist[2] > 0.43 + 0.20
 
 
 def test_unwrap_yaw_takes_shortest_path():

@@ -221,59 +221,68 @@ class Dressing:
     def rollers(self):
         """Make the DRIVE readable. Belt conveyors read as: dark rubber band
         (the conveyor top itself) + proud end drums + side skirts + yellow
-        guards. The transfer table reads as machinery: a roller deck on the
-        entry strip and an omni-puck field on the ARB routing zone, both
-        proud of the deck by 2 mm (non-colliding — items visually ride them,
-        which is exactly the point)."""
-        a, b, tb, cb = P.BELT_A, P.BELT_B, P.TABLE, P.CONNECT_B
+        guards. The tilt-tray train carries its own engineered embodiment
+        (chassis, skirts, end modules) from scene_usd; the incline connector
+        gets skirts + a tail drum here."""
+        a, b, bc = P.BELT_A, P.BELT_B, P.B_CONNECT
         r = 0.035
-        if getattr(self, "shells", False):
-            return                                  # official assets carry the look
-        # belt A: side skirts + end drums peeking beyond the band ends
-        for sgn in (-1, 1):
-            self.box(((tb["x0"]) / 2, a["y"] + sgn * (a["width"] / 2 + 0.035),
-                      a["top"] - 0.09), (tb["x0"] / 2 + 0.02, 0.02, 0.115),
-                     FRAME, tag="cheekA")
-        for x in (-0.045, tb["x0"] + 0.02):
-            self.cyl((x, a["y"], a["top"] - r), r + 0.008,
+        ang = math.atan2(bc["z_top1"] - bc["z_top0"], bc["y1"] - bc["y0"])
+        cy_c = (bc["y0"] + bc["y1"]) / 2
+        cz_c = (bc["z_top0"] + bc["z_top1"]) / 2
+        clen = float(np.hypot(bc["y1"] - bc["y0"], bc["z_top1"] - bc["z_top0"]))
+        if not getattr(self, "shells", False):
+            # belt A: side skirts + end drums peeking beyond the band ends
+            for sgn in (-1, 1):
+                self.box((a["knife_x0"] / 2,
+                          a["y"] + sgn * (a["width"] / 2 + 0.035),
+                          a["top"] - 0.09),
+                         (a["knife_x0"] / 2 + 0.02, 0.02, 0.115),
+                         FRAME, tag="cheekA")
+            self.cyl((-0.045, a["y"], a["top"] - r), r + 0.008,
                      a["width"] / 2 + 0.01, (0.5, 0.52, 0.55), axis="Y",
                      tag="drumA")
-        # belt B + connector: side skirts + drums (bands run along Y)
-        for nm, cx, y0, y1 in (("B", b["cx"], b["y0"], b["y1"]),
-                               ("Cn", cb["cx"], cb["y0"], cb["y1"])):
+            # belt B: side skirts + drums (band runs along Y)
             for sgn in (-1, 1):
-                self.box((cx + sgn * (b["width"] / 2 + 0.035),
-                          (y0 + y1) / 2, b["top"] - 0.09),
-                         (0.02, (y1 - y0) / 2 + 0.02, 0.115), FRAME,
-                         tag=f"cheek{nm}")
-            for y in (y0 - 0.045, y1 + 0.045):
+                self.box((b["cx"] + sgn * (b["width"] / 2 + 0.035),
+                          (b["y0"] + b["y1"]) / 2, b["top"] - 0.09),
+                         (0.02, (b["y1"] - b["y0"]) / 2 + 0.02, 0.115), FRAME,
+                         tag="cheekB")
+            for y in (b["y0"] - 0.045, b["y1"] + 0.045):
                 if 0.0 < y < 6.0:
-                    self.cyl((cx, y, b["top"] - r), r + 0.008,
+                    self.cyl((b["cx"], y, b["top"] - r), r + 0.008,
                              b["width"] / 2 + 0.01, (0.5, 0.52, 0.55),
-                             axis="X", tag=f"drum{nm}")
-        # table entry strip: PROUD transport rollers (apex 2 mm above deck)
-        for x in np.arange(tb["x0"] + 0.08, tb["route_x"] - 0.04, 0.15):
-            self.cyl((float(x), tb["y"], tb["top"] + 0.002 - r), r,
-                     tb["width"] / 2 - 0.02, STEEL, axis="Y", tag="rollT")
-        # ARB routing zone: omni-puck field (the thing that steers items)
-        for x in np.arange(tb["route_x"] + 0.06, tb["x1"] - 0.03, 0.13):
-            for y in np.arange(tb["y"] - tb["width"] / 2 + 0.08,
-                               tb["y"] + tb["width"] / 2 - 0.05, 0.13):
-                self.cyl((float(x), float(y), tb["top"] + 0.0015), 0.032,
-                         0.0012, (0.60, 0.62, 0.66), tag="puck")
-        # table skirt (machinery housing impression)
-        self.box(((tb["x0"] + tb["x1"]) / 2, tb["y"], (tb["top"] - 0.05) / 2),
-                 ((tb["x1"] - tb["x0"]) / 2 + 0.03, tb["width"] / 2 + 0.03,
-                  (tb["top"] - 0.05) / 2), (0.22, 0.24, 0.28), tag="skirtT")
+                             axis="X", tag="drumB")
+        # knife-edge nose: slim side cheeks + a small nose roller under the
+        # lip (the thin-section transfer hardware small-item lines use)
+        for sgn in (-1, 1):
+            self.box(((a["knife_x0"] + a["nose_x"]) / 2,
+                      a["y"] + sgn * (a["width"] / 2 + 0.028),
+                      a["top"] - a["knife_t"] / 2),
+                     ((a["nose_x"] - a["knife_x0"]) / 2, 0.012,
+                      a["knife_t"] / 2 + 0.012), FRAME, tag="knife_cheek")
+        self.cyl((a["nose_x"] - 0.008, a["y"], a["top"] - a["knife_t"] - 0.009),
+                 0.011, a["width"] / 2 - 0.01, (0.5, 0.52, 0.55), axis="Y",
+                 tag="knife_drum")
+        # incline connector: sloped side skirts + head/tail drums
+        for sgn in (-1, 1):
+            self.box((bc["cx"] + sgn * (bc["width"] / 2 + 0.035), cy_c,
+                      cz_c - 0.085), (0.02, clen / 2 + 0.02, 0.105), FRAME,
+                     tag="cheekCn", euler_deg=(math.degrees(ang), 0, 0))
+        for y, z in ((bc["y0"] - 0.03, bc["z_top0"] - r),
+                     (bc["y1"] + 0.03, bc["z_top1"] - r)):
+            self.cyl((bc["cx"], y, z), r + 0.006, bc["width"] / 2 + 0.01,
+                     (0.5, 0.52, 0.55), axis="X", tag="drumCn")
 
     def cages_detail(self):
-        cages = P.cages_for("table")
+        cages = dict(P.cages_for())
+        cages["REVIEW"] = P.REVIEW_PEN
         for zone, cage in cages.items():
             cx, cy = cage["center"]
             ix, iy = cage["inner"]
             t, h = cage["wall_t"], cage["wall_h"]
             hx, hy = ix / 2 + t, iy / 2 + t
-            col = tuple(0.60 * v + 0.14 for v in P.ROUTE_RGBA[zone])
+            col = tuple(0.60 * v + 0.14
+                        for v in P.ROUTE_RGBA.get(zone, (0.5, 0.5, 0.5)))
             # vertical tubes along the walls
             for sgn_x in (-1, 1):
                 for y in np.arange(-hy + 0.10, hy - 0.05, 0.20):
@@ -299,17 +308,24 @@ class Dressing:
             # wall-level printed label only — the tall mast boards were
             # oversized signalization over the C/D boxes (user directive:
             # keep the destinations readable, not billboarded)
-            txt = "C OVERSIZE" if zone == "C" else "D REPACK"
+            txt = {"C": "C OVERSIZE", "D": "D REPACK",
+                   "REVIEW": "MANUAL REVIEW"}[zone]
             fn = f"cage_{zone.lower()}.png"
-            self.label(txt, fn, (cx, cy - hy - 0.02, 0.45), 0.85,
-                       yaw_deg=0.0)
+            if zone == "REVIEW":
+                # the pen's SOUTH face is its aperture: label the west face
+                self.label(txt, fn, (cx - hx - 0.02, cy, min(0.35, h - 0.05)),
+                           min(0.68, cage["inner"][1] + 0.1), yaw_deg=-90.0)
+            else:
+                self.label(txt, fn, (cx, cy - hy - 0.02, min(0.45, h - 0.05)),
+                           min(0.85, cage["inner"][0] + 0.15), yaw_deg=0.0)
         # B lane label on the sorter infeed (west face)
         b = P.BELT_B
         self.label("B SORTER", "lane_b.png",
                    (b["cx"] - b["width"] / 2 - 0.06, 5.0, 1.35), 0.95,
                    yaw_deg=-90.0)
         # brand board over the vision station gantry, facing the camera
-        self.label("OZON  SORT CELL", "brand.png", (6.0, 3.9, 2.65), 1.6,
+        self.label("OZON  SORT CELL", "brand.png",
+                   (P.VIRTUAL_SENSOR["overhead_pos"][0], 3.9, 2.65), 1.6,
                    yaw_deg=0.0)
 
     def sensors_hw(self):
@@ -331,11 +347,21 @@ class Dressing:
                      BLACK, tag=f"profiler_{nm}")
             self.cyl((ox, py - sgn * 0.028, zc + 0.04), 0.02, 0.006,
                      (0.02, 0.02, 0.025), axis="Y", tag=f"proflens_{nm}")
+        # close-range MACRO head (dual-range small-item metrology): hangs from
+        # the gantry beam on a slim drop tube, looking straight down from
+        # 1.42 m — 0.2 m above the 0.5 m max inbound envelope. Every part of
+        # the mount stays ABOVE the sensor's measuring volume ceiling
+        # (belt + 0.56 m), so it can never enter a depth segmentation.
+        mx, my, mz = vs["macro_pos"]
+        self.cyl((mx + 0.09, my, (mz + 0.06 + 2.47) / 2), 0.014,
+                 (2.47 - mz - 0.06) / 2, FRAME, tag="macrodrop")
+        self.box((mx + 0.045, my, mz + 0.055), (0.06, 0.025, 0.016),
+                 FRAME, tag="macroarm")
+        self.camera_box((mx, my, mz), tag="cam_macro")
         # jam camera hangs from a ceiling mast that stops ABOVE the lens
-        # plane (a pole through z=3.8 sits dead-centre in the camera's view
-        # and blinded the jam locator — box_s recovery failed on camera)
-        self.box((8.3, 2.6, 4.35), (0.03, 0.03, 0.42), FRAME, tag="jammast")
-        self.camera_box((8.3, 2.6, 3.8), tag="cam_jam")
+        # plane (a pole through the frame centre blinds the jam locator)
+        self.box((8.15, 2.3, 4.35), (0.03, 0.03, 0.42), FRAME, tag="jammast")
+        self.camera_box((8.15, 2.3, 3.8), tag="cam_jam")
         # industrial sensing detail (§6): cable tray along the gantry beam,
         # cable drops to each head, small status LEDs on the housings
         self.box((ox, oy, 2.585), (0.05, 1.10, 0.012), (0.42, 0.44, 0.47),
@@ -463,23 +489,21 @@ class Dressing:
     def conveyor_details(self):
         """Hazard striping, plinth + legs cladding, and white direction
         chevrons painted on the belts (the visible roller/flow direction)."""
-        a, b, tb, cb = P.BELT_A, P.BELT_B, P.TABLE, P.CONNECT_B
+        a, b, bc = P.BELT_A, P.BELT_B, P.B_CONNECT
         # black dashes over the yellow side guides -> yellow/black safety
         # edge. ONLY when the official shells are absent: the shells carry
         # their own side rails, and doubled rail hardware crowds the freight
         # corridor on camera (items read as clipping through the stripes)
         if not getattr(self, "shells", False):
-            for x in np.arange(0.3, 6.5, 0.45):
+            for x in np.arange(0.3, a["knife_x0"] - 0.1, 0.45):
                 for sgn in (-1, 1):
                     self.box((float(x), a["y"] + sgn * (a["width"] / 2 + 0.015),
                               a["top"] + 0.041), (0.11, 0.017, 0.051), BLACK,
                              tag="hzA")
-        # plinth band + proud legs on belt A and belt B (reads as supports)
-        if getattr(self, "shells", False):
-            for x in []:
-                pass
+        # plinth legs on belt A and belt B (reads as supports)
         legs_needed = not getattr(self, "shells", False)
-        for x in (np.arange(0.6, tb["x0"] - 0.2, 1.2) if legs_needed else []):
+        for x in (np.arange(0.6, a["knife_x0"] - 0.3, 1.2)
+                  if legs_needed else []):
             for sgn in (-1, 1):
                 self.box((float(x), a["y"] + sgn * (a["width"] / 2 + 0.045),
                           0.26), (0.045, 0.028, 0.26), FRAME, tag="legA2")
@@ -491,18 +515,26 @@ class Dressing:
         # white direction chevrons ON the belts (1 mm thick, far below the
         # perception z-margin) — the flow direction is unmistakable
         wht = (0.92, 0.92, 0.95)
-        for x in np.arange(0.6, tb["x0"] - 0.15, 0.55):
+        for x in np.arange(0.6, a["knife_x0"] - 0.25, 0.55):
             for j, sw in ((0, 40.0), (1, -40.0)):
                 self.box((float(x) - 0.03 * j, a["y"] + (0.05 if j else -0.05),
                           a["top"] + 0.0005), (0.075, 0.012, 0.0004), wht,
                          tag="dirA", euler_deg=(0, 0, sw))
-        for nm, cx, y0, y1 in (("B", b["cx"], b["y0"] + 0.3, b["y1"] - 0.2),
-                               ("Cn", cb["cx"], cb["y0"] + 0.1, cb["y1"] - 0.05)):
-            for y in np.arange(y0, y1, 0.5):
-                for j, sw in ((0, 50.0), (1, 130.0)):
-                    self.box((cx + (0.05 if j else -0.05), float(y),
-                              b["top"] + 0.0005), (0.075, 0.012, 0.0004), wht,
-                             tag=f"dir{nm}", euler_deg=(0, 0, sw))
+        for y in np.arange(b["y0"] + 0.3, b["y1"] - 0.2, 0.5):
+            for j, sw in ((0, 50.0), (1, 130.0)):
+                self.box((b["cx"] + (0.05 if j else -0.05), float(y),
+                          b["top"] + 0.0005), (0.075, 0.012, 0.0004), wht,
+                         tag="dirB", euler_deg=(0, 0, sw))
+        # chevrons on the incline connector surface (rotated with the slope)
+        ang = math.degrees(math.atan2(bc["z_top1"] - bc["z_top0"],
+                                      bc["y1"] - bc["y0"]))
+        for yy in np.arange(bc["y0"] + 0.15, bc["y1"] - 0.1, 0.4):
+            frac = (float(yy) - bc["y0"]) / (bc["y1"] - bc["y0"])
+            zz = bc["z_top0"] + frac * (bc["z_top1"] - bc["z_top0"]) + 0.0008
+            for j, sw in ((0, 50.0), (1, 130.0)):
+                self.box((bc["cx"] + (0.05 if j else -0.05), float(yy), zz),
+                         (0.07, 0.012, 0.0004), wht, tag="dirCn",
+                         euler_deg=(-ang, 0, sw))
 
     # ------------------------------------------------------- route visuals
     def _chevron(self, center, yaw_deg, color, size=0.075, z_thick=0.0005,
@@ -520,45 +552,49 @@ class Dressing:
         return paths
 
     def route_viz(self):
-        """Everything that answers 'where is THIS item going': zone arrows on
-        the routing deck, chevron trails to each container, and the ACTIVE
-        ROUTE indicator panel. Returns prim paths for runtime brightness."""
-        tb, cb, b = P.TABLE, P.CONNECT_B, P.BELT_B
-        cc, cd = P.CHUTE_C, P.CHUTE_D
+        """Everything that answers 'where is THIS item going': chevron trails
+        down each chute, and the ACTIVE ROUTE indicator panel. Returns prim
+        paths for runtime brightness."""
+        S, b, bc = P.SORTER, P.BELT_B, P.B_CONNECT
         viz = {"zone_arrows": {}, "trails": {}, "lamps": {}}
-        # name the mechanism on the hardware: the deck IS an ARB sorter
-        self.label("ARB SORTER DECK", "arb_deck.png",
-                   (8.25, tb["y"] - tb["width"] / 2 - 0.02, 0.52), 0.62,
-                   yaw_deg=0.0)
-        dim = {z: tuple(0.35 * v for v in P.ROUTE_RGBA[z]) for z in "BCD"}
-        # NO painted arrows on the deck (user directive: the deck is real
-        # hardware — angled roller modules with per-module status LEDs; the
-        # LEDs and the ACTIVE ROUTE panel carry the state story instead)
-        # chevron trails: routing table -> container
-        trails = {"B": [], "C": [], "D": []}
-        for y in np.arange(cb["y0"] + 0.12, b["y1"] - 0.3, 0.42):
-            trails["B"] += self._chevron((cb["cx"], float(y), b["top"] + 0.004),
+        # name the mechanism on the hardware (south skirt of the train)
+        self.label("TILT-TRAY SORTER", "sorter_deck.png",
+                   (8.05, S["y"] - 0.395, 0.55), 0.72, yaw_deg=0.0)
+        dim = {z: tuple(0.35 * v for v in P.ROUTE_RGBA[z])
+               for z in P.ROUTE_RGBA}
+        # chevron trails: discharge station -> destination
+        trails = {"B": [], "C": [], "D": [], "REVIEW": []}
+        # B: up the incline connector, then along belt B
+        for yy in np.arange(bc["y0"] + 0.30, bc["y1"] - 0.15, 0.45):
+            frac = (float(yy) - bc["y0"]) / (bc["y1"] - bc["y0"])
+            zz = bc["z_top0"] + frac * (bc["z_top1"] - bc["z_top0"]) + 0.004
+            trails["B"] += self._chevron((bc["cx"], float(yy), zz),
                                          90.0, dim["B"], tag="trB", bind=False)
-        ang_c = math.degrees(math.atan2(cc["z0"] - cc["z1"], cc["x1"] - cc["x0"]))
-        for x in np.arange(cc["x0"] + 0.12, cc["x1"] - 0.05, 0.28):
-            zc = cc["z0"] - (float(x) - cc["x0"]) * math.tan(math.radians(ang_c)) + 0.006
-            for sw in (140.0, -140.0):
-                wa = math.radians(sw)
-                c = (float(x) + 0.06 * 0.55 * math.cos(wa), cc["cy"]
-                     + 0.06 * 0.55 * math.sin(wa), zc)
-                p = self.box(c, (0.07, 0.015, 0.0005), dim["C"], tag="trC",
-                             euler_deg=(0, -ang_c, sw), bind=False)
-                trails["C"].append(p.GetPath().pathString)
-        ang_d = math.degrees(math.atan2(cd["z0"] - cd["z1"], cd["y0"] - cd["y1"]))
-        for y in np.arange(cd["y0"] - 0.12, cd["y1"] + 0.05, -0.28):
-            zc = cd["z0"] - (cd["y0"] - float(y)) * math.tan(math.radians(ang_d)) + 0.006
-            for sw in (140.0, -140.0):
-                wa = math.radians(-90.0 + sw)
-                c = (cd["cx"] + 0.06 * 0.55 * math.cos(wa),
-                     float(y) + 0.06 * 0.55 * math.sin(wa), zc)
-                p = self.box(c, (0.07, 0.015, 0.0005), dim["D"], tag="trD",
-                             euler_deg=(ang_d, 0, -90.0 + sw), bind=False)
-                trails["D"].append(p.GetPath().pathString)
+        for yy in np.arange(b["y0"] + 0.25, b["y1"] - 0.3, 0.5):
+            trails["B"] += self._chevron((b["cx"], float(yy), b["top"] + 0.004),
+                                         90.0, dim["B"], tag="trB", bind=False)
+        # C / D / REVIEW: down their chutes (rotX with the 32-deg slope)
+        tan32 = math.tan(math.radians(32.0))
+        for zone, cc in (("C", P.CHUTE_C), ("D", P.CHUTE_D),
+                         ("REVIEW", P.CHUTE_REVIEW)):
+            d = float(cc["dir"])
+            y1, _pad = P.chute_run(cc)
+            yaw0 = -90.0 if d < 0 else 90.0        # chevrons point down-chute
+            n = 3
+            for k in range(n):
+                yy = cc["y0"] + d * (0.10 + k * 0.16)
+                if (d < 0 and yy < y1 + 0.05) or (d > 0 and yy > y1 - 0.05):
+                    continue
+                zc = cc["z0"] - abs(yy - cc["y0"]) * tan32 + 0.006
+                for sw in (140.0, -140.0):
+                    wa = math.radians(yaw0 + sw)
+                    c = (cc["cx"] + 0.06 * 0.55 * math.cos(wa),
+                         float(yy) + 0.06 * 0.55 * math.sin(wa), zc)
+                    p = self.box(c, (0.07, 0.015, 0.0005), dim[zone],
+                                 tag=f"tr{zone}",
+                                 euler_deg=(-d * 32.0, 0, yaw0 + sw),
+                                 bind=False)
+                    trails[zone].append(p.GetPath().pathString)
         viz["trails"] = trails
         # ACTIVE ROUTE status as a LOW floor-standing HMI console (was a
         # 1.9 m mast that read as a vertical stick beside the deck) — the
@@ -570,13 +606,14 @@ class Dressing:
                  tag="hmi_screen_bezel")
         self.label("ACTIVE ROUTE", "active_route.png", (px, py - 0.135, 0.95),
                    0.44, yaw_deg=0.0)
-        for i, z in enumerate("BCD"):
-            lp = self.box((px - 0.14 + 0.14 * i, py - 0.13, 0.80),
-                          (0.05, 0.02, 0.05), dim[z], tag=f"lamp{z}",
+        for i, z in enumerate(("B", "C", "D", "REVIEW")):
+            cap = "R" if z == "REVIEW" else z
+            lp = self.box((px - 0.165 + 0.11 * i, py - 0.13, 0.80),
+                          (0.042, 0.02, 0.05), dim[z], tag=f"lamp{z}",
                           bind=False)
             viz["lamps"][z] = lp.GetPath().pathString
-            self.label(z, f"lampcap_{z}.png",
-                       (px - 0.14 + 0.14 * i, py - 0.135, 0.68), 0.10,
+            self.label(cap, f"lampcap_{cap}.png",
+                       (px - 0.165 + 0.11 * i, py - 0.135, 0.68), 0.085,
                        yaw_deg=0.0, bg=tuple(0.55 * v for v in P.ROUTE_RGBA[z]))
         # floating per-item route flags: textures made here, quads at runtime
         flags = {
@@ -616,13 +653,13 @@ class Dressing:
                        yaw_deg=0.0)
         self.box((5.0, 6.26, 2.94), (1.3, 0.012, 0.035), MAGENTA,
                  tag="brand_accent")
-        # blue band along the table skirt + magenta kick strip
-        tb = P.TABLE
-        self.box(((tb["x0"] + tb["x1"]) / 2, tb["y"] - tb["width"] / 2 - 0.036,
-                  0.50), ((tb["x1"] - tb["x0"]) / 2 + 0.03, 0.006, 0.045),
+        # blue band along the sorter-train south skirt + magenta kick strip
+        S = P.SORTER
+        scx = (S["x_west"] + S["x_east"]) / 2
+        shx = (S["x_east"] - S["x_west"]) / 2 - 0.05
+        self.box((scx, S["y"] - 0.394, 0.435), (shx, 0.005, 0.028),
                  OZON_BLUE, tag="ozon_band")
-        self.box(((tb["x0"] + tb["x1"]) / 2, tb["y"] - tb["width"] / 2 - 0.036,
-                  0.42), ((tb["x1"] - tb["x0"]) / 2 + 0.03, 0.006, 0.014),
+        self.box((scx, S["y"] - 0.394, 0.385), (shx, 0.005, 0.011),
                  MAGENTA, tag="ozon_kick")
         # blue crossbeam accent on the vision gantry
         vs = P.VIRTUAL_SENSOR
@@ -699,7 +736,7 @@ class Dressing:
 
         # --- floor safety zones (flat decals, sensor-safe): hazard hatch
         # around the arm base + a cage keep-clear band, painted markings
-        abx, aby = P.ARM_BASE["table"]
+        abx, aby = P.ARM["base"]
         for k in range(-3, 4):
             self.box((abx + 0.42 * math.cos(k), aby + 0.42 * math.sin(k),
                       0.003), (0.34, 0.03, 0.001), HAZ, tag="arm_zone",
@@ -820,9 +857,9 @@ class RouteVizRuntime:
     def __init__(self, stage, viz):
         self.stage = stage
         self.viz = viz or {}
-        self.bright = {z: Gf.Vec3f(*P.ROUTE_RGBA[z]) for z in "BCD"}
-        self.dim = {z: Gf.Vec3f(*[0.30 * v for v in P.ROUTE_RGBA[z]])
-                    for z in "BCD"}
+        self.bright = {z: Gf.Vec3f(*c) for z, c in P.ROUTE_RGBA.items()}
+        self.dim = {z: Gf.Vec3f(*[0.30 * v for v in c])
+                    for z, c in P.ROUTE_RGBA.items()}
         self._color_attrs = {"lamps": {}, "zone_arrows": {}, "trails": {}}
         for z, p in self.viz.get("lamps", {}).items():
             self._color_attrs["lamps"][z] = [self._attr(p)]

@@ -51,13 +51,24 @@ def math_sqrt(v):
 
 
 def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
-               dome_tau=0.75, flank_tau_mm=6.0, window_x=(5.6, 6.6)):
+               dome_tau=0.75, flank_tau_mm=6.0, window_x=None):
     """Fuse the window's multi-read evidence per the OFFICIAL decision order,
-    with legal-metrology guard bands: a fused dimension within the sensor's
-    uncertainty of a limit cannot take the permissive branch, and zero valid
-    reads divert to the manual-review lane — never to the sorter.
+    with legal-metrology guard bands: a fused dimension within the measuring
+    head's uncertainty of a limit cannot take the permissive branch, and zero
+    valid reads divert to the manual-review lane — never to the sorter.
+
+    DUAL-RANGE metrology: reads may carry `dims_macro_mm` from the
+    close-range macro head (gsd ~0.4 mm). Macro-sourced dimensions are fused
+    with a MEDIAN (unbiased) and certified against the macro guard band
+    (10 mm + 2*gsd = ~10.8 mm), so an 11 mm cube honestly certifies as
+    sortable while a 10 mm cube or a 9 mm pen stays conservatively C.
+    Overhead-sourced dimensions keep the validated MIN fusion + 6 mm guard.
 
     Returns {'zone', 'reason', 'dims_mm', features..., 'n_reads', 'sensor_miss'}."""
+    if window_x is None:
+        w0, w1 = P.VIRTUAL_SENSOR["window_x"]
+        window_x = (w0 - 0.12, w1 + 0.42)
+    guard_macro = P.VIRTUAL_SENSOR.get("guard_macro_mm", 0.8)
     reads = [r for r in reads if r]
     # a read longer than any certifiable single item is a multi-item echo
     # (contact pair in the window) — invalid, never evidence
@@ -74,17 +85,64 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
             and r.get("x_hi", window_x[1] - 1) < window_x[1] - 0.015]
     if full:
         reads = full
+    # FRAME-COMPLETENESS GATE: a stale annotator frame of the 1 m/s item
+    # yields a truncated sliver (tiny x-span / collapsed point count) whose
+    # min() would poison every dimension AND whose distorted silhouette
+    # would poison the shape features. A real dimensioning tunnel rejects
+    # frames that fail completeness checks; reads of the SAME item at the
+    # SAME resting yaw must agree on span and density.
+    if len(reads) >= 2:
+        spans = np.array([float(r.get("x_hi", 0.0)) - float(r.get("x_lo", 0.0))
+                          for r in reads])
+        npts = np.array([float(r.get("n_points", 0)) for r in reads])
+        good = [r for r, sp, pn in zip(reads, spans, npts)
+                if sp >= 0.65 * float(spans.max())
+                and pn >= 0.25 * float(npts.max())]
+        if good:
+            reads = good
 
-    # element-wise MIN over reads: in-motion frame mixing can only INFLATE an
-    # extent (the cloud smears along the belt), and the boundary guard above
-    # keeps truncated reads out, so the smallest read per dimension is the
-    # clean estimate
-    dims = np.min(np.array([r["dims_mm"] for r in reads], dtype=float),
-                  axis=0)                          # each read sorted desc
-    # shape features: median over the 3 FRESHEST reads (smallest dims sum =
-    # least smear; a single read is noisy, the full median drags in smeared
-    # tails)
-    top = sorted(reads, key=lambda r: sum(r["dims_mm"]))[:3]
+    # DUAL-BOUND per-axis fusion (each read sorted desc): report the median;
+    # certify UNDERSIZE against the LOW bound (25th pct — conservative: a
+    # residual truncated read can only push toward the safe C branch) and
+    # OVERSIZE against the HIGH bound (75th pct — an under-measuring read can
+    # never hide a too-big item). Both bounds are honest per-frame data.
+    arr = np.array([r["dims_mm"] for r in reads], dtype=float)
+    dims = np.median(arr, axis=0)
+    dims_lo = np.percentile(arr, 25, axis=0)
+    dims_hi = np.percentile(arr, 75, axis=0)
+    guards = np.full(3, float(guard_mm))
+    macro_reads = [r for r in reads if r.get("dims_macro_mm")]
+    macro_note = ""
+    if macro_reads:
+        dm = np.median(np.array([r["dims_macro_mm"] for r in macro_reads],
+                                dtype=float), axis=0)
+        if dims[0] <= 240.0:
+            # the whole item fits the macro footprint: certify all three
+            # dimensions from the close-range head
+            dims = dims_lo = dims_hi = dm
+            guards = np.full(3, guard_macro)
+        else:
+            # long item: length from overhead, the two smallest (the
+            # undersize-critical ones) from the macro head
+            merged = sorted([(dims[0], guard_mm, dims_lo[0], dims_hi[0]),
+                             (float(dm[1]), guard_macro, float(dm[1]),
+                              float(dm[1])),
+                             (float(dm[2]), guard_macro, float(dm[2]),
+                              float(dm[2]))],
+                            key=lambda p: -p[0])
+            dims = np.array([m[0] for m in merged])
+            guards = np.array([m[1] for m in merged])
+            dims_lo = np.array([m[2] for m in merged])
+            dims_hi = np.array([m[3] for m in merged])
+        macro_note = (f" [macro head: {len(macro_reads)} reads, floor "
+                      f"{LIMIT_MIN_MM + guard_macro:.1f} mm]")
+    # shape features: median over the 3 most TYPICAL surviving reads (span
+    # closest to the surviving median — neither a residual sliver nor a
+    # double-exposure smear tail)
+    med_span = float(np.median([float(r.get("x_hi", 0.0))
+                                - float(r.get("x_lo", 0.0)) for r in reads]))
+    top = sorted(reads, key=lambda r: abs(
+        (float(r.get("x_hi", 0.0)) - float(r.get("x_lo", 0.0))) - med_span))[:3]
 
     def med(key):
         return float(np.median([r[key] for r in top]))
@@ -96,25 +154,29 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
     flanks = [float(r["flank_mm"]) for r in top if float(r["flank_mm"]) >= 0.0]
     flank = float(np.median(flanks)) if flanks else None
     d_votes = sum(1 for r in reads if r["zone"] == "D")
-    under = bool(dims.min() < LIMIT_MIN_MM + guard_mm)
-    over = bool(np.any(np.sort(dims)[::-1] > LIMIT_MAX_MM - guard_mm))
+    under = bool(np.any(dims_lo < LIMIT_MIN_MM + guards))
+    over = bool(np.any(np.sort(dims_hi)[::-1] > LIMIT_MAX_MM - guard_mm))
     flank_s = "n/a" if flank is None else f"{flank:.1f}mm"
     feats = (f"circ={circ:.2f} sect={sect:.2f} dome={dome:.2f} "
              f"flank={flank_s} elong={elong:.1f} h/w={aspect:.2f}")
     if under:
-        zone, reason = "C", (f"undersize: min dim {dims.min():.1f} mm below "
-                             f"certification floor {LIMIT_MIN_MM + guard_mm:.0f} mm")
+        i_min = int(np.argmin(dims_lo - guards))
+        zone, reason = "C", (f"undersize: dim {dims_lo[i_min]:.1f} mm below "
+                             f"certification floor "
+                             f"{LIMIT_MIN_MM + guards[i_min]:.1f} mm"
+                             + macro_note)
     elif over:
         zone, reason = "C", f"oversize (guard band {guard_mm:.0f} mm)"
     elif (circ >= circle_ratio or sect >= circle_ratio or dome >= dome_tau
           or (circ >= 0.78 and dome >= 0.40)
           or (flank is not None and elong >= 1.8 and flank >= flank_tau_mm)
-          or (circ >= 0.68 and dome >= 0.35 and aspect >= 0.85)):
+          or (circ >= 0.60 and dome >= 0.35 and aspect >= 0.85)):
         # last clause: TALL ROUND DOME, triple-gated — near-circular
-        # footprint AND curved top AND as tall as it is wide (helmet
-        # h/w 0.93). Each B item is blocked by a wide margin on a
-        # DIFFERENT gate: detergent by aspect (0.69), boxes by dome (~0),
-        # bottle by circ (0.37)
+        # footprint AND curved top AND as tall as it is wide (helmet:
+        # circ 0.63 / dome 0.48 / h/w 0.94 from the upstream oblique head).
+        # Each B item is blocked on a DIFFERENT gate with margin:
+        # detergent by aspect (0.79), box_s/lunchbox by dome (0.0/0.15),
+        # the 11 mm cube (square, circ 0.71) by dome (~0), bottle by circ
         zone, reason = "D", f"circle evidence: {feats}"
     elif elong >= 2.5 and flank is None and sect < circle_ratio:
         # SAFE-SIDE: an elongated prism whose section could not be verified
@@ -124,13 +186,15 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
     elif d_votes >= 2 and 2 * d_votes >= len(reads):
         zone, reason = "D", f"persistent D evidence: {d_votes}/{len(reads)} reads"
     else:
-        zone, reason = "B", f"fits, no circle evidence: {feats}"
+        zone, reason = "B", f"fits, no circle evidence: {feats}" + macro_note
     # confidence = per-read zone agreement with the fused verdict (logged
     # evidence quality, not a routing gate — the guard bands and safe-side
     # rules above already make the low-evidence decisions)
     votes = sum(1 for r in reads if r["zone"] == zone)
     return {"zone": zone, "reason": reason,
             "dims_mm": [round(float(v), 1) for v in dims],
+            "guards_mm": [round(float(g), 2) for g in guards],
+            "macro_reads": len(macro_reads),
             "footprint_circularity": round(circ, 3),
             "section_ratio": round(sect, 3), "dome_score": round(dome, 3),
             "flank_mm": None if flank is None else round(flank, 1),
@@ -149,14 +213,23 @@ class RTXPerception:
 
     def __init__(self, camera, belt_z=BELT_Z, z_margin=0.006,
                  circle_ratio=P.CIRCLE_RATIO, dome_tau=0.75, elong_min=1.8,
-                 window_x=(5.6, 6.6), belt_y=P.BELT_A["y"],
+                 window_x=None, belt_y=P.BELT_A["y"],
                  belt_half_w=P.BELT_A["width"] / 2 - 0.01,
-                 grid_mm=4.0, min_points=40):
+                 grid_mm=4.0, min_points=60, macro=None):
         # belt_half_w stays INSIDE the physical side guides (rails at
         # width/2 + 0.015): the guides are permanent hardware in the frame
         # and merging their slivers into the item cloud reads as oversize
+        if window_x is None:
+            w0, w1 = P.VIRTUAL_SENSOR["window_x"]
+            window_x = (w0 - 0.12, w1 + 0.42)      # crop wider than the read
+                                                   # window, ends before the
+                                                   # escapement slab
         self.cams = list(camera) if isinstance(camera, (list, tuple)) else [camera]
         self.cam = self.cams[0]                    # primary (overhead) head
+        self.macro = macro                         # close-range head (dual
+                                                   # range small-item metrology)
+        self.macro_engage_mm = P.VIRTUAL_SENSOR.get("macro_engage_mm", 25.0)
+        self.macro_gsd_mm = P.VIRTUAL_SENSOR.get("macro_gsd_mm", 0.4)
         self.belt_z = belt_z
         self.z_margin = z_margin
         self.circle_ratio = circle_ratio    # official 0.8 (footprint + section)
@@ -236,7 +309,12 @@ class RTXPerception:
         return np.concatenate(clouds, axis=0) if clouds else None
 
     def _segment(self, world, exclude_x=()):
+        # measuring volume: bounded ABOVE by the max inbound envelope
+        # (0.5 m + margin) like a real dimensioner's specified volume — the
+        # macro head's drop-tube mount lives above this ceiling and can never
+        # enter a segmentation
         m = ((world[:, 2] > self.belt_z + self.z_margin)
+             & (world[:, 2] < self.belt_z + 0.56)
              & (np.abs(world[:, 1] - self.belt_y) < self.belt_half_w)
              & (world[:, 0] > self.window_x[0]) & (world[:, 0] < self.window_x[1]))
         # known-hardware exclusion: a RAISED stop blade inside the crop is
@@ -408,6 +486,34 @@ class RTXPerception:
         _, lo, hi = best
         return obj[(obj[:, 0] >= lo - 1e-6) & (obj[:, 0] <= hi + 1e-6)]
 
+    # ------------------------------------------------- close-range macro head
+    def _measure_macro(self, exclude_x=(), x_hint=None):
+        """Small-item metrology from the close-range head: sub-millimetre
+        ground sampling, edge-filtered + eroded cloud, extents with a
+        half-pixel-per-side silhouette compensation (the gradient erosion
+        removes the outermost sample ring). Returns (dims_mm sorted desc,
+        xy cloud, obj cloud) or None."""
+        if self.macro is None:
+            return None
+        pts = self._head_points(self.macro, edge_filter=True)
+        if pts is None or not len(pts):
+            return None
+        obj = self._segment(pts, exclude_x)
+        obj = self._identity_gate(obj, x_hint)
+        if len(obj) < 25:
+            return None
+        xy = obj[:, :2]
+        c = xy.mean(axis=0)
+        _, _, vt = np.linalg.svd(xy - c, full_matrices=False)
+        t1 = (xy - c) @ vt[0]
+        t2 = (xy - c) @ vt[1]
+        comp = self.macro_gsd_mm / 1000.0          # one gsd total (half/side)
+        L = float(np.percentile(t1, 99.7) - np.percentile(t1, 0.3)) + comp
+        Wd = float(np.percentile(t2, 99.7) - np.percentile(t2, 0.3)) + comp
+        Hh = float(np.percentile(obj[:, 2], 99.7) - self.belt_z)
+        dims = sorted([L * 1000.0, Wd * 1000.0, Hh * 1000.0], reverse=True)
+        return dims, xy, obj
+
     def measure(self, debug=False, exclude_x=(), x_hint=None):
         """Return a dict with dims/features/verdict, or None on a sensor miss.
         exclude_x: [(x0, x1), ...] slabs of known raised hardware to drop.
@@ -420,6 +526,41 @@ class RTXPerception:
         obj = self._segment(world, exclude_x)
         obj = self._identity_gate(obj, x_hint)
         if len(obj) < self.min_points:
+            # SMALL-ITEM PATH: freight below the overhead head's reliable
+            # sampling (an 11 mm cube is ~7 px there) is measured by the
+            # close-range macro head instead of being declared a miss.
+            m = self._measure_macro(exclude_x, x_hint)
+            if m is not None:
+                dims_mm, mxy, mobj = m
+                circ = self._footprint_circularity(mxy)
+                mc = mxy.mean(axis=0)
+                _, _, mvt = np.linalg.svd(mxy - mc, full_matrices=False)
+                top, filled = self._raster(mobj, mvt[0], mvt[1], mc)
+                dome = self._dome_score(top, filled)
+                guard_macro = P.VIRTUAL_SENSOR.get("guard_macro_mm", 0.8)
+                under = any(d < LIMIT_MIN_MM + guard_macro for d in dims_mm)
+                if under:
+                    zone, reason = "C", ("undersize (macro head, floor "
+                                         f"{LIMIT_MIN_MM + guard_macro:.1f} mm)")
+                elif circ >= self.circle_ratio or dome >= self.dome_tau:
+                    zone, reason = "D", f"circle (macro): circ={circ:.2f}"
+                else:
+                    zone, reason = "B", (f"fits (macro head): circ={circ:.2f} "
+                                         f"dome={dome:.2f}")
+                elong = (dims_mm[0] / dims_mm[1]) if dims_mm[1] > 1e-6 else 99.0
+                return {
+                    "zone": zone, "reason": reason,
+                    "dims_mm": [round(float(v), 2) for v in dims_mm],
+                    "dims_macro_mm": [round(float(v), 2) for v in dims_mm],
+                    "footprint_circularity": round(circ, 3),
+                    "section_ratio": 0.0, "dome_score": round(dome, 3),
+                    "flank_mm": -1.0, "plateau_frac": 1.0,
+                    "aspect_hw": round(dims_mm[2] / max(dims_mm[1], 1e-6), 3),
+                    "elongation": round(elong, 2),
+                    "n_points": int(len(mobj)), "head": "macro",
+                    "x_lo": round(float(mobj[:, 0].min()), 3),
+                    "x_hi": round(float(mobj[:, 0].max()), 3),
+                }
             if debug and len(world):
                 lo = world.min(axis=0)
                 hi = world.max(axis=0)
@@ -428,6 +569,14 @@ class RTXPerception:
                       f"y[{lo[1]:.2f},{hi[1]:.2f}] z[{lo[2]:.2f},{hi[2]:.2f}] "
                       f"above_belt={above} segmented={len(obj)}", flush=True)
             return None
+        # STALENESS GATE against the cell's own item odometry: a depth frame
+        # whose cloud sits well BEHIND the tracked position is a stale
+        # render of the moving item (no legitimate geometry lags the track —
+        # a crop-clipped entry biases the cloud FORWARD, never back).
+        if x_hint is not None and len(obj):
+            mid = 0.5 * (float(obj[:, 0].min()) + float(obj[:, 0].max()))
+            if x_hint - mid > 0.20:
+                return None
         xy = obj[:, :2]
         c = xy.mean(axis=0)
         # principal horizontal axes (PCA on the footprint)
@@ -472,7 +621,21 @@ class RTXPerception:
                    else 1.0)
         aspect_hw = (Hh / Wd) if Wd > 1e-6 else 0.0
 
-        undersize = bool(np.any(dims_mm < LIMIT_MIN_MM))
+        # DUAL RANGE: when the smallest overhead dimension is inside the
+        # macro engage band, re-measure the undersize-critical dimensions on
+        # the close-range head (sub-mm gsd). The fusion certifies them
+        # against the macro guard band.
+        dims_macro = None
+        if self.macro is not None and float(dims_mm.min()) < self.macro_engage_mm:
+            m = self._measure_macro(exclude_x, x_hint)
+            if m is not None:
+                dims_macro = [round(float(v), 2) for v in m[0]]
+
+        check_dims = np.array(dims_macro) if (
+            dims_macro is not None and dims_mm[0] <= 240.0) else dims_mm
+        if dims_macro is not None and dims_mm[0] > 240.0:
+            check_dims = np.array([dims_mm[0]] + dims_macro[1:])
+        undersize = bool(np.any(check_dims < LIMIT_MIN_MM))
         oversize = bool(np.any(dims_mm > LIMIT_MAX_MM))
         if undersize or oversize:
             zone, reason = "C", ("undersize" if undersize else "oversize")
@@ -496,6 +659,7 @@ class RTXPerception:
         return {
             "zone": zone, "reason": reason,
             "dims_mm": [round(float(v), 1) for v in dims_mm],
+            "dims_macro_mm": dims_macro,
             "footprint_circularity": round(circ, 3),
             "section_ratio": round(sect, 3),
             "dome_score": round(dome, 3),
@@ -503,7 +667,7 @@ class RTXPerception:
             "plateau_frac": round(plateau, 3),
             "aspect_hw": round(aspect_hw, 3),
             "elongation": round(elong, 2),
-            "n_points": int(len(obj)),
+            "n_points": int(len(obj)), "head": "overhead",
             # cloud x bounds: lets the fusion drop partial-view reads (item
             # touching the crop boundary, e.g. a stale entry frame)
             "x_lo": round(float(obj[:, 0].min()), 3),

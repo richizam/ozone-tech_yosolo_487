@@ -4,9 +4,7 @@
 
 A software–hardware complex (ПАК), delivered **entirely in simulation**, that detects a product on the infeed conveyor, classifies it into one of three categories, and physically routes it to the correct processing zone — perception, decision and actuation working as one closed loop.
 
-> **Status: validated closed loop + full scenario evidence base ✅** — the physics cell runs end to end on sensor data: items travel conveyor A at 1 m/s, classify **in motion** via the multi-head DWS sensor pipeline (route command ready **0.5+ s before table entry**, belt never stops), and the actuated transfer table routes them through normally-closed exit gates and guided brake chutes into aperture-walled roll cages. **Across the entire validation matrix — 22 runs, 235 items: nominal, borderline threshold attacks, close spacing, sensor noise, injected jams, failed transfers, 1.3× overload — ZERO unsafe errors, ZERO deadlocks, containment 1.0 everywhere.** Nominal runs: 100% routing at the reference seed (oracle: 100% on all seeds); on other seeds the official set's designed borderline items (detergent 0.73 ratio, helmet dome) occasionally rock into a **safe-side** divert — every logged error across every scenario is conservative, never an unsafe feed to the sorter. Jam → zero-displacement watchdog → arm recovery → guided re-delivery; escalation to operator call-out when out of reach or a cage fills. One command reproduces all of it: `python -m cell.validate`. This README is the root navigation document required by the submission rules ("Полнота комплекта сдачи решения", 0–5 pts). See [ROADMAP.md](ROADMAP.md) for the winning plan and [STEP_BY_STEP.md](STEP_BY_STEP.md) for the execution guide.
-
----
+> **Status: tilt-tray executive, both engines validated end-to-end ✅** — the cell runs closed-loop on sensor data in BOTH engines (MuJoCo twin: 11/11 nominal, 68/68 tests; Isaac Sim + RTX: the full validation matrix below): items travel conveyor A at 1 m/s, classify **in motion** on the dual-range RTX depth station (verdict committed **before the escapement**, belt never stops), release synchronized onto their own tilt tray, and discharge by gravity — C/D into aperture-walled roll-cages via 32° brake chutes, B over a powered incline onto the fixed sorter infeed, uncertain freight into a dedicated REVIEW pen. The divert is **size-independent**: the smallest certified parcel in the evidence set is an **11 mm cube**, measured by a close-range macro head (certification floor 10.8 mm) and physically delivered to B. Zero scripted freight motion (`direct_velocity_writes_nominal = 0` is a hard gate), every failure mode has a designed safe terminal, and the run's exit code proves the outcome. Reproduce: `python -m cell.run_sim --seed 42` (any machine) / `bash isaac/run_matrix.sh` (GPU server). This README is the root navigation document required by the submission rules. See [isaac/README.md](isaac/README.md) for the Isaac build and [docs/report/calculations_vs_simulation.md](docs/report/calculations_vs_simulation.md) for the first-principles cross-check.
 
 ## 1. The task in one page
 
@@ -37,22 +35,22 @@ flowchart LR
     VS -->|measured geometry| PC[Perception core<br/>dims + section-circularity<br/>multi-read fusion]
     PC -->|category + confidence| DE[Decision engine<br/>official rule order<br/>+ safe-side policies]
     DE -->|route command| CTRL[Cell controller<br/>watchdogs, exceptions]
-    A --> TT[Transfer table<br/>tri-directional routing<br/>normally-closed exit gates]
+    A --> TT[Tilt-tray sorter train<br/>synchronized induction<br/>one item per tray]
     CTRL --> TT
-    TT -->|B gate + powered connector| B[Zone B: sorter infeed]
-    TT -->|C gate + guided brake chute| C[Zone C: oversize cage<br/>aperture + hood, contained]
-    TT -->|D gate + guided brake chute| D[Zone D: repack cage<br/>aperture + hood, contained]
-    CTRL -.zero-displacement jam watchdog.-> ARM[Exception arm<br/>4-axis palletizer<br/>lifts snag back onto its lane]
-    ARM -.re-feeds guided path.-> TT
+    TT -->|B tilt + powered incline| B[Zone B: sorter infeed]
+    TT -->|C tilt + guided brake chute| C[Zone C: oversize cage<br/>aperture-walled, contained]
+    TT -->|D tilt + guided brake chute| D[Zone D: repack cage<br/>aperture-walled, contained]
+    TT -->|fallback tilt| R[REVIEW pen<br/>uncertain / double occupancy]
+    CTRL -.zero-displacement jam watchdog.-> ARM[Exception arm<br/>chute snags only<br/>route-correct into the cage]
 ```
 
 Key design decisions (each is defended in the report):
 
 - **Look-ahead classification.** The camera sits upstream: an item is classified *while still travelling* toward the accumulator, so inference latency (~tens of ms) is hidden and the arm receives its command *before* the item arrives — this addresses the scored "Синхронизация по времени" criterion directly.
 - **Geometry-first perception (built, validated).** The official rules are purely geometric, so the pipeline measures geometry and implements the *formal* 0.8 criterion — not a black-box class label. The virtual sensor suite mirrors a standard DWS dimensioning tunnel: an overhead depth grid plus a light-section profile scanner with side heads (ray-cast — deterministic, zero OpenGL/GPU dependency, identical headless and in the jury's server). Analysis: min-area-rect dims + pose-robust minor axis from section radii; transverse slices along the item's main axis, densified at both ends; per-slice radial circularity + surface-of-revolution test; end-cap circles must be confirmed by several nearby slices. Multi-read fusion during belt transit follows the official decision order, and uncertain shapes divert to D — never to the sorter. **Validated: 100/99.1/99.1% categories over 330 randomized poses (3 seeds); closed-loop 8-seed campaign: 97.7% end-to-end, 100% executive, zero unsafe errors.** A learned detector (YOLO on synthetic renders) is a Phase-3+ add-on for tracking only; the category never comes from a network. This makes borderline behaviour explainable — worth points in three rubric lines.
-- **Transfer table routes, the arm recovers.** The primary executive is a **tri-directional powered transfer table**: items are routed to B (north connector), C (east chute) or D (south chute) without ever being grasped — no universal-gripper assumption for arbitrary materials. The 4-axis palletizer arm stands at an **exception station**: a zero-displacement routing watchdog detects true jams (queue creep is flow, not a fault), the arm lifts the snagged item back onto its lane and the table re-delivers it through the normal guided path; unreachable snags escalate to operator call-out. The arm-primary design is preserved (`--executive arm`, tag `arm-primary-baseline`) and measured against the table in [docs/report/executive_mechanism_tradeoff.md](docs/report/executive_mechanism_tradeoff.md): both 100% executive-accurate and zero unsafe errors; the table needs **zero arm interventions** in nominal flow and has pipelining headroom.
-- **Containment by design (перекладка без брака).** The item is guided and bounded at every hop, never thrown and never in free fall: funnel rails on belt A → edge rails + **normally-closed actuated lift gates** on the table (a route command is the only thing that opens a path off the table) → side-railed **single-slope chutes** (32°, μ < tan 32° — physically no stall points, even for recovery drops) with **brake pads** just above the cage floor → roll cages whose receiving wall carries a chute-sized **aperture with flanks, under-slope skirt and an anti-fly-out hood** (a cover parallel to the flow — no catch faces) plus a full-floor landing mat. Measured cage-entry speeds ≤ 2.1 m/s; every delivery is then tracked to the end of the run — the containment metric (below) proves items **stay** in the correct container.
-- **The cell shows what it is doing (jury-readable executive).** Every station carries bilingual signage (EN/RU billboards + floor decals): A-infeed, vision station, active transfer table, B-sorter, C-oversize, D-repack, exception arm. Route state is live: the item is tinted with its perceived category the moment classification commits; zone-coloured lane markings, chevrons and chute flow-arrows pulse along the active route; destination beacons and gate lamps track the actual gate opening; an andon tower reads green/amber/red (idle / routing / jam-recovery); the escapement gate is a visible lifting flag. All presentation geoms are non-colliding, live in a sensor-invisible geom group (a depth camera does not image painted lines either), and are animated by [cell/visuals.py](cell/visuals.py) — physics and perception results are bit-identical with the layer on or off.
+- **A tilt-tray sorter routes, the arm recovers.** The executive is a **linear tilt-tray sorter** («поворотные лотки» — one of the mechanism classes named in the official brief): after classification the escapement releases each item synchronized to an inbound EMPTY tray (landing offset measured per item), and the tray's revolute-joint tilt drive discharges it by gravity at its station — C/D south into 32° brake chutes and roll-cages, B north over a powered incline onto the fixed sorter infeed, REVIEW north into a dedicated manual-review pen for uncertain freight. The divert is **size-independent** (an 11 mm cube and a 489 mm pouf ride and discharge identically) — the engineering reason this executive replaced the roller/ARB deck, which cannot divert products under ~50–75 mm. The exception arm handles exactly one thing: a chute snag (watchdog + jam camera) is lifted route-correct into its own cage while that station is locked out; a stuck tray needs no arm at all — its freight rides to the REVIEW fallback / end-line operator call-out by design.
+- **Containment by design (перекладка без брака).** The item is guided and bounded at every hop, never thrown and never in free fall: side guides on belt A → dished trays with central end fences (rounds self-centre and cannot roll off; a long box's corners clear the fence ends at discharge) → **deep-drop discharge** (the chute starts 50 mm under the tilted tray lip, so freight can never bridge tray→chute and wedge) → side-railed **single-slope chutes** (32°, μ < tan 32° — physically no stall points, even for recovery drops) with **brake pads** just above the cage floor → roll cages whose receiving wall carries a chute-sized **aperture with flanks and header** plus a full-floor landing mat; the slope crosses the aperture at z ≈ 0.22 m, low and slow. Measured cage-entry speeds ≈ 2 m/s; every delivery is then tracked to the end of the run — the containment metric (below) proves items **stay** in the correct container.
+- **The cell shows what it is doing (jury-readable executive).** Every station carries bilingual signage (EN/RU billboards + floor decals): A-infeed, vision station, tilt-tray sorter, B-sorter, C-oversize, D-repack, manual review, exception arm. Route state is live: the item is tinted with its perceived category the moment classification commits; zone-coloured lane markings, chevrons and chute flow-arrows pulse along the active route; destination beacons and station lamps track the active route; an andon tower reads green/amber/red (idle / routing / jam-recovery); the escapement is a visible pop-up stop. All presentation geoms are non-colliding, live in a sensor-invisible geom group (a depth camera does not image painted lines either), and are animated by [cell/visuals.py](cell/visuals.py) — physics and perception results are bit-identical with the layer on or off.
 - **Safety by design.** Fenced cell, light curtain across the human access side, e-stop chain, reduced-speed service mode — modelled in the layout and described per the "Безопасность эксплуатации" criterion.
 
 ### 2.1 Containment validation — routed ≠ done
@@ -61,7 +59,7 @@ Reaching the right zone is necessary, not sufficient: the item must **stay insid
 
 | Metric (per item → aggregated in `summary.json`) | Meaning | Gate |
 |---|---|---|
-| `contained` / `containment_rate` | never left the cage envelope (walls + hooded aperture zone) after delivery | **must be 1.0 — the run exits non-zero otherwise, same as a misroute** |
+| `contained` / `containment_rate` | never left the cage envelope (walls + aperture zone) after delivery | **must be 1.0 — the run exits non-zero otherwise, same as a misroute** |
 | `containment_violations` | count of escape events (`cell_event: containment_violation` with position) | 0 |
 | `v_entry` / `cage_entry_speed_max_mps` | speed crossing into the cage — evidence of guided, non-thrown transfer | ≤ 2.2 m/s measured (≈ a 25 cm drop equivalent) |
 | `cage_settle_s` | time from cage entry to rest (< 0.1 m/s for 0.5 s) | ~1–2 s measured |
@@ -76,9 +74,9 @@ The `camera` mode is a **virtual multi-head depth/dimensioning station** (DWS-tu
 | Parameter | Value | Meaning |
 |---|---|---|
 | Sensing heads | **4 viewpoints** | overhead depth grid + light-section profilers: top fan + two side heads |
-| Overhead head | (6.0, 3.0, 2.2) m | ray-cast depth grid, **3 mm** ground sampling |
+| Overhead head | (5.55, 3.0, 2.2) m | ray-cast depth grid, **3 mm** ground sampling |
 | Profiler fans | 0.1° top / 0.2° side, planes every **4 mm** | swept along the belt (physically: one scanner + belt motion at 1 m/s) |
-| Measurement window | x ∈ 5.85–6.28 m | items measured **in motion**; window ends before the escapement gate |
+| Measurement window | x ∈ 5.65–6.05 m | items measured **in motion**; every verdict commits before the escapement |
 | Capture cadence | 0.12 s (~8 Hz) | multi-read evidence per item, fused per the official rule order |
 | Depth noise | σ = 0 mm default, **scenario-tunable** | `sensor: {depth_noise_mm: 2.0}`; 0 = ideal-optics baseline |
 | Processing latency | 80 ms | fusion verdict → route command (logged per item as `perception_latency_ms`) |
@@ -127,11 +125,16 @@ Machine-readable: [docs/ground_truth/item_ground_truth.json](docs/ground_truth/i
 │   └── presentation/            ← 🔜 defence deck (≤ 7 min)
 ├── tools/
 │   ├── classify_mesh.py         ← reference classifier: STL/STEP → category (CLI)
-│   └── make_borderline_items.py ← 5 designed threshold attacks (GT computed, not asserted)
+│   ├── make_borderline_items.py ← designed threshold attacks (GT computed, not asserted)
+│   ├── make_edge_items.py       ← §edge set: 11/10 mm cubes, 9 mm rod, 2 mm card
+│   ├── consolidate_isaac_matrix.py ← matrix → matrix_summary.json + §8 gates
+│   ├── make_perception_panels.py / make_endcard.py ← jury-facing visuals
+│   └── fetch_evidence.sh        ← pull videos/logs from the render server
 ├── cad/
 │   ├── layout_v0.py             ← parametric cell layout (single source of truth for all dims)
 │   └── out/                     ← generated: top-view PNG, 3D GLB scene, reach_check.json
-├── cell/                        ← MuJoCo cell: scene gen, belts+gates, arm IK, controller, metrics
+├── cell/                        ← MuJoCo twin: scene gen, belts + tilt-tray sorter, arm IK,
+│   │                              controller, metrics (cell/sorter.py = the executive)
 │   ├── run_sim.py               ← entrypoint (--perception camera|oracle, --viewer, --record MP4)
 │   ├── validate.py              ← batch validation runner → validation_report.md (one command)
 │   ├── visuals.py               ← live presentation state: route lights, lane pulse, andon tower
@@ -145,7 +148,7 @@ Machine-readable: [docs/ground_truth/item_ground_truth.json](docs/ground_truth/i
 ├── scenarios/                   ← base, borderline, close_spacing, low_confidence,
 │                                  fault_jam, failed_transfer, stress_mix
 ├── tests/                       ← rules + kinematics + containment invariants + sensor-config
-│                                  truth + end-to-end smoke (pytest, 38 tests)
+│                                  truth + end-to-end smoke (pytest, 68 tests)
 ├── perception/                  ← ray-cast multi-head sensing + geometric classification
 │   ├── pipeline.py              ← DWS sensor suite → dims, sections, category, confidence
 │   ├── geometry.py              ← min-area rect, circle fit, envelope primitives
@@ -221,33 +224,34 @@ RTX rendering) — a port from the same single source of truth
 (`cell/params.py`) that goes a step *beyond* the MuJoCo twin on sensor and
 actuator realism:
 
-- **Classification comes from a real rendered sensor.** The 3-head RTX depth
-  station (overhead + two side profiler heads — the `VIRTUAL_SENSOR` geometry)
-  measures each item **in motion**; multi-read fusion with legal-metrology
-  guard bands applies the official rule order. Static calibration:
-  **33/33 = 100%** over the official set × 3 rest poses
-  (`isaac/validate_rtx.py`); final 12-run matrix (132 item trials):
-  **classification 66/66 nominal, routing 65/66 (98.5%), all five
-  robustness/fault sweeps 11/11, 0 unsafe errors and containment 1.0 in
-  every run** — the single exception is a safe operator call-out, never a
-  wrong feed.
+- **Classification comes from a real rendered sensor — dual-range.** The RTX
+  depth station (overhead metrology head + two side profiler heads + a
+  close-range MACRO head for small freight) measures each item **in motion**;
+  multi-read fusion with frame-completeness gating and legal-metrology guard
+  bands applies the official rule order. The guard band scales with the
+  measuring head (undersize certification floor = 10 mm + 2×GSD → 16 mm
+  overhead, **10.8 mm macro**): the **11 mm cube certifies honestly as
+  sortable and is physically delivered to B**, while the 10 mm cube and the
+  9 mm pen stay conservatively C.
 - **The executive is contact physics with real actuators.** Conveyors carry
   items via PhysX surface velocity (the Isaac Conveyor-Belt-utility
   mechanism) at the designed speeds (belt A at the official 1.0 m/s —
-  probe-verified). The routing zone is an **ARB actuator deck**: a 4×7
-  matrix of independent 150 mm surface-velocity patches, each with a 40 ms
-  command pipeline, a 6 m/s² ramp, saturation and gain noise — only the
-  patches under the routed item activate, every command is logged, and
-  `summary.json` certifies `direct_velocity_writes_nominal: 0`. Flow
-  discipline is physical pop-up stop blades; discharge is guided by powered
-  nose-overs onto the 32° brake chutes. Items carry material-class physics
-  (cardboard/PET/HDPE/ABS/soft-sack friction, restitution, damping) swept
-  ×0.7/×1.3 in validation.
-- **Faults are handled on camera data.** A routing-zone depth camera
-  localizes a stuck item by background subtraction (best fix ~20–30 mm); the
-  4-axis exception arm picks at the **camera fix** (same `cell/arm_ik.py`
-  IK, same controller cycle) and re-delivers onto the item's lane; repeats
-  escalate to an operator call-out.
+  probe-verified). The **tilt-tray train** carries each item on its own
+  dynamic tray (revolute joint + angular position drive, 40 ms command
+  pipeline, 160°/s ramp, gain noise, torque saturation); the discharge is
+  position-triggered off the chain encoder and confirmed against the item's
+  actual departure; every command is logged and `summary.json` certifies
+  `direct_velocity_writes_nominal: 0`. Flow discipline is physical pop-up
+  stop blades; induction is a synchronized release over a knife-edge nose
+  with the landing offset measured per item. Items carry material-class
+  physics (cardboard/PET/HDPE/ABS/soft-sack friction, restitution, damping)
+  swept ×0.7/×1.3 in validation.
+- **Faults are handled on camera data.** A chute-zone depth camera localizes
+  a stuck item by background subtraction; the exception arm picks at the
+  camera fix (odometry-refined) and places it **route-correct into its own
+  cage** while the station is locked out; a dead tilt actuator needs no arm —
+  its freight rides to the REVIEW fallback / end-line operator call-out by
+  design (`--inject-tray-fault` proves it).
 
 ```bash
 # on the GPU server, inside the official isaac-sim:6.0.1 container
@@ -282,8 +286,8 @@ details: [isaac/README.md](isaac/README.md).
 | 1. Presentation | 10 | 7-min deck + rehearsed demo narrative |
 | 2. Readiness matrix (УГТ 4×4) | 20 | CV L4 × Executive L4 = validated sim vs calculations |
 | 3. Category correctness | 20 | Formal-rule classifier + borderline analysis + test-set demo |
-| 4. Executive part & manipulation | 30 | Arm cell in physics sim: routing, grasping per shape, safety concept |
-| 5. Performance & timing | 20 | Measured cycle_mean/p95/max + perception_latency_ms + command_margin_s per item; look-ahead sync (command ready 0.5+ s before table entry, belt never stops); fault/overload scenario suite |
+| 4. Executive part & manipulation | 30 | Tilt-tray sorter in real physics: full cycle (signal → tilt → discharge → tray re-flattens), size-independent divert incl. 11 mm cube, per-shape behaviour swept, safety concept |
+| 5. Performance & timing | 20 | Measured cycle_mean/p95/max + perception_latency_ms + command_margin_s per item; look-ahead sync (verdict committed before the escapement; min command margin > 1.4 s; belt never stops); fault/overload scenario suite |
 | 6. Integration & realism | 15 | One message bus, category → command trace, industrially plausible cell |
 | 7. Report, reproducibility, README | 15 | This README, Docker one-command run, full report |
 

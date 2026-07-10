@@ -1,0 +1,66 @@
+[
+  {
+    "slug": "edge_cube11",
+    "source": "synthetic:edge_cube11",
+    "file": "edge_cube11.stl",
+    "dims_m": [
+      0.011,
+      0.011,
+      0.011
+    ],
+    "half_z": 0.0055,
+    "mass_kg": 0.005,
+    "zone": "B",
+    "category": "Подходит для сортировки",
+    "max_ratio": 0.707,
+    "faces": 12
+  },
+  {
+    "slug": "edge_cube10",
+    "source": "synthetic:edge_cube10",
+    "file": "edge_cube10.stl",
+    "dims_m": [
+      0.01,
+      0.01,
+      0.01
+    ],
+    "half_z": 0.005,
+    "mass_kg": 0.005,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "max_ratio": 0.707,
+    "faces": 12
+  },
+  {
+    "slug": "edge_rod9",
+    "source": "synthetic:edge_rod9",
+    "file": "edge_rod9.stl",
+    "dims_m": [
+      0.12,
+      0.009,
+      0.009
+    ],
+    "half_z": 0.0045,
+    "mass_kg": 0.005,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "max_ratio": 0.707,
+    "faces": 12
+  },
+  {
+    "slug": "edge_card2",
+    "source": "synthetic:edge_card2",
+    "file": "edge_card2.stl",
+    "dims_m": [
+      0.15,
+      0.1,
+      0.002
+    ],
+    "half_z": 0.001,
+    "mass_kg": 0.0075,
+    "zone": "C",
+    "category": "Не подходит для сортировки по габаритам",
+    "max_ratio": 0.555,
+    "faces": 12
+  }
+]

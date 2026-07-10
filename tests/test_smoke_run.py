@@ -63,7 +63,7 @@ def test_containment_reported_and_clean(smoke_run):
 def test_modes_and_sensor_are_logged(smoke_run):
     _, s, _ = smoke_run
     assert s["perception_mode"] == "camera"
-    assert s["executive_mode"] == "table"
+    assert s["executive_mode"] == "sorter"
     assert s["sensor_model"] != "oracle_ground_truth"
     assert s["oracle_used_for_classification"] is False
 
@@ -78,15 +78,19 @@ def test_timing_instrumentation(smoke_run):
 
 
 def test_events_csv_schema(smoke_run):
-    """The per-item log answers the reviewer questions of brief §9."""
+    """The event log carries the full executive story (same vocabulary as
+    the Isaac build): release -> landing -> route -> tilt -> discharge ->
+    delivery, so a reviewer can replay any item's life."""
     import csv
     _, _, run_dir = smoke_run
     with open(run_dir / "events.csv", encoding="utf-8") as f:
-        cols = csv.DictReader(f).fieldnames
-    for col in ("measured_length_mm", "rule_dimension_result", "route_command",
-                "destination_reached", "contained_at_cycle_end",
-                "perception_latency_ms", "command_margin_s", "cycle_time_s"):
-        assert col in cols
+        rows = list(csv.DictReader(f))
+    assert rows and set(rows[0].keys()) >= {"t", "event", "slug"}
+    events = {r["event"] for r in rows}
+    for needed in ("item_classified", "escapement_release",
+                   "induction_landed", "routing_cmd", "tilt_cmd",
+                   "discharge_confirmed", "item_delivered"):
+        assert needed in events, needed
 
 
 def test_fault_jam_produces_intervention(tmp_path):
@@ -94,11 +98,11 @@ def test_fault_jam_produces_intervention(tmp_path):
     scenario = {
         "seed": 42,
         "perception": "camera",
-        "executive": "table",
+        "executive": "sorter",
         "items": {"helmet": 1, "box_s": 1},
         "spawn_gap_s": [6.0, 8.0],
-        "inject_jam": {"slug": "helmet", "at_x": 7.95},
-        "max_sim_s": 180,
+        "inject_jam": {"slug": "helmet", "at_y": 2.6},
+        "max_sim_s": 200,
     }
     sc_file = tmp_path / "jam.yaml"
     sc_file.write_text(yaml.safe_dump(scenario), encoding="utf-8")

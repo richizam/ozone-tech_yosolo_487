@@ -23,23 +23,27 @@ import numpy as np
 from cell import params as P
 
 
-# route corridors: polyline per route the stuck item should be on
+# route corridors: polyline per route the stuck item should be on (train
+# axis to the station, then down the station's chute / connector)
 def _route_polyline(route):
-    tb = P.TABLE
+    S = P.SORTER
+    y = S["y"]
     if route == "B":
-        cb = P.CONNECT_B
-        return [(tb["x0"], tb["y"]), (tb["route_x"], tb["y"]),
-                (tb["lane_B_cx"], tb["y"]), (cb["cx"], cb["y1"]),
+        bc = P.B_CONNECT
+        return [(S["x_west"], y), (P.STATIONS["B"]["x"], y),
+                (bc["cx"], bc["y1"]),
                 (P.BELT_B["cx"], P.BELT_B["y_delivered"])]
-    if route == "C":
-        cc = P.CHUTE_C
-        return [(tb["x0"], tb["y"]), (tb["route_x"], tb["y"]),
-                (tb["x1"], cc["cy"]), (cc["pad_x1"], cc["cy"])]
-    if route == "D":
-        cd = P.CHUTE_D
-        return [(tb["x0"], tb["y"]), (tb["route_x"], tb["y"]),
-                (cd["cx"], cd["y0"]), (cd["cx"], cd["pad_y1"])]
-    return [(tb["x0"], tb["y"]), (tb["x1"], tb["y"])]
+    if route in ("C", "D"):
+        cc = P.CHUTE_C if route == "C" else P.CHUTE_D
+        y1, pad_end = P.chute_run(cc)
+        return [(S["x_west"], y), (cc["cx"], y), (cc["cx"], cc["y0"]),
+                (cc["cx"], pad_end)]
+    if route == "REVIEW":
+        cc = P.CHUTE_REVIEW
+        y1, pad_end = P.chute_run(cc)
+        return [(S["x_west"], y), (cc["cx"], y), (cc["cx"], cc["y0"]),
+                (cc["cx"], pad_end)]
+    return [(S["x_west"], y), (S["x_east"], y)]
 
 
 def _dist_to_polyline(pt, poly):
@@ -156,9 +160,10 @@ class JamLocator:
                             labels[nb] = len(clusters)
                             q.append(nb)
             clusters.append(comp)
-        # delivered items inside the roll-cages are legitimate foreground —
-        # the cages are terminals, not routing surfaces: exclude their interiors
-        cages = P.cages_for("table")
+        # delivered items inside the roll-cages / review pen are legitimate
+        # foreground — terminals, not routing surfaces: exclude their interiors
+        cages = dict(P.cages_for())
+        cages["REVIEW"] = P.REVIEW_PEN
         def in_cage(xy):
             for cage in cages.values():
                 cx, cy2 = cage["center"]
@@ -179,9 +184,12 @@ class JamLocator:
             if in_cage(ctr[:2]):
                 continue
             if ctr[2] > 1.10:
-                # overhead hardware, not freight: an OPEN exit gate's panel
-                # hangs at z ~1.4-1.7 and differs from the closed-state
-                # background
+                # overhead hardware, not freight
+                continue
+            if 0.55 < ctr[2] < 0.90 and abs(ctr[1] - P.SORTER["y"]) < 0.36:
+                # a TILTED TRAY over the train line is commanded machine
+                # state, not a stuck item (trays differ from the flat-tray
+                # background while discharging)
                 continue
             half = (pts.max(axis=0) - pts.min(axis=0)) / 2
             # a RAISED stop blade is foreground too: an x-thin sliver sitting

@@ -23,27 +23,14 @@ GRASP_Z_TOL = 0.05           # m: TCP must be this close to the item top
 
 
 class Controller:
-    def __init__(self, model, data, bus, mode="arm"):
+    def __init__(self, model, data, bus, mode="sorter"):
         self.m, self.d, self.bus = model, data, bus
-        self.mode = mode
+        self.mode = mode = "sorter"        # EXEC modes collapsed to 'sorter'
         self.base = P.ARM_BASE[mode]
-        # UNIFIED recovery policy (matches the Isaac twin): a jammed item is
-        # recovered to its CORRECT category, not coerced or re-fed to the
-        # sorter — C -> cage C, D -> cage D, B -> reject/review bin. The arm
-        # places directly (no table gate is reopened for re-delivery).
-        if mode == "table":
-            rj = P.REJECT_STATION
-            cw = P.CAGE_WALL_TOP
-            self.place = {
-                "B": {"xy": rj["center"], "mode": "drop", "z_clear": 0.06,
-                      "surface_z": rj["floor_z"], "dest": "REJECT"},
-                "C": {"xy": (9.2, 3.0), "mode": "drop", "z_clear": 0.05,
-                      "surface_z": cw},
-                "D": {"xy": (8.05, 1.55), "mode": "drop", "z_clear": 0.05,
-                      "surface_z": cw},
-            }
-        else:
-            self.place = P.PLACE_BY_MODE[mode]
+        # Recovery policy (matches the Isaac twin): a jammed item is recovered
+        # to its CORRECT category — C snag -> cage C, D snag -> cage D; every
+        # other jam location is an operator call-out handled by run_sim.
+        self.place = P.PLACE_BY_MODE[mode]
         self.jids = [model.joint(j).id for j in JOINTS]
         self.qadr = [model.jnt_qposadr[j] for j in self.jids]
         self.aids = [model.actuator(f"a{i+1}").id for i in range(4)]
@@ -135,7 +122,8 @@ class Controller:
         self.state = "MOVE_ABOVE"
         self._set_target(wp_above, t)
         self._pick_wp = (center[0], center[1], top_z + 0.002)
-        self.bus.publish("routing_cmd", t=t, slug=slug, zone=zone)
+        self.bus.publish("cell_event", t=t, event="recovery_start", slug=slug,
+                         target=zone)
 
     @property
     def busy(self):

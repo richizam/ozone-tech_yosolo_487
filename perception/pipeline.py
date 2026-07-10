@@ -29,7 +29,11 @@ BELT_Z = 0.700                # calibrated belt plane (measured: 0.7000 +- 0.000
 RAY_GROUPS = np.array([1, 1, 0, 1, 1, 1], dtype=np.uint8)   # group 2 = presentation layer, invisible to rays
 ROI_X = (5.35, 6.55)          # camera footprint used for analysis (ends before
                               # the table entry so downstream items stay out)
-ROI_Y_HALF = 0.26             # belt corridor half-width
+ROI_Y_HALF = 0.24             # belt corridor half-width, INSIDE the physical
+                              # side guides (inner faces at +-0.25): the
+                              # guides are permanent hardware in the frame and
+                              # merging their slivers reads as a giant item
+                              # (same crop as the Isaac RTX head)
 Z_MIN, Z_MAX = 0.004, 0.55    # item height window above belt (masks the mount bar)
 CIRCLE_RMS_FRAC = 0.05        # accept a circle fit if rms < 5% of radius
 CIRCLE_MIN_ARC = 100.0        # and the visible arc covers at least this many degrees
