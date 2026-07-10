@@ -115,7 +115,7 @@ def _cage_xml(name, cage):
     if open_side:
         g.append(f'<geom name="cage{name}_mat" type="box" size="{hx} {hy} 0.004" '
                  f'pos="{cx} {cy} {t + 0.004}" friction="{P.CAGE_MAT_FRICTION}" '
-                 f'priority="2" solref="0.012 1" rgba="0.15 0.15 0.17 1"/>')
+                 f'priority="2" solref="0.008 1" rgba="0.15 0.15 0.17 1"/>')
     # frame posts + top rails (visual only)
     for sx in (-1, 1):
         for sy in (-1, 1):
@@ -171,14 +171,14 @@ def _chute_xml(zone, cc, wall_at):
              f'size="{cc["width"] / 2} {ch_len / 2:.4f} 0.002" '
              f'pos="{cx} {(ch_top_y + ch_base_y) / 2:.4f} '
              f'{z0 + (ch_rise - 0.003) / 2:.4f}" euler="{ch_ang:.6f} 0 0" '
-             f'friction="{cc["friction"]}" priority="1" solref="0.012 1" '
+             f'friction="{cc["friction"]}" priority="1" '
              f'rgba="0.50 0.50 0.55 1"/>')
     fill_y0 = ch_top_y + d * 0.004               # inside the face footprint
     fill_y1 = ch_base_y - d * 0.002
     g.append(f'<geom name="chute{zone}_chamfill" type="box" '
              f'size="{cc["width"] / 2} {abs(fill_y1 - fill_y0) / 2:.4f} 0.014" '
              f'pos="{cx} {(fill_y0 + fill_y1) / 2:.4f} {z0 - 0.017:.4f}" '
-             f'friction="{cc["friction"]}" priority="1" solref="0.012 1" '
+             f'friction="{cc["friction"]}" priority="1" '
              f'rgba="0.50 0.50 0.55 1"/>')
     # MOUTH CHEEKS: side wings over the throat gap (see params.CHUTE)
     ck_t = 0.015
@@ -191,7 +191,7 @@ def _chute_xml(zone, cc, wall_at):
                  f'size="{ck_t} {cc["cheek_len"] / 2:.4f} 0.034" '
                  f'pos="{cx + off} {ck_cy:.4f} {z0 + cc["cheek_h"] - 0.034:.4f}" '
                  f'friction="{cc["friction"]}" priority="1" '
-                 f'solref="0.012 1" rgba="{frame}"/>')
+                 f'rgba="{frame}"/>')
     # side guides from just below the tray-lip sweep down to the wall plane
     rail_t = 0.015
     r0 = y0 + d * RAIL_SETBACK
@@ -216,7 +216,7 @@ def _chute_xml(zone, cc, wall_at):
     plen = abs(pad_end - y1)
     g.append(f'<geom name="chute{zone}_pad" type="box" size="{cc["width"] / 2} {plen / 2} 0.015" '
              f'pos="{cx} {pmid} {z1 - 0.020}" friction="{cc["pad_friction"]}" '
-             f'priority="1" solref="0.012 1" rgba="0.30 0.31 0.35 1"/>')
+             f'priority="1" solref="0.008 1" rgba="0.30 0.31 0.35 1"/>')
     # NO HOOD: the deep-drop chute crosses the aperture at z ~0.22 — no
     # fly-out window remains, and the open chute keeps every jam point
     # vertically extractable by the exception arm.
@@ -581,7 +581,8 @@ def build_xml(manifest, mode=None):
 <mujoco model="sortmaster_cell_{mode}">
   <compiler meshdir="{ASSETS / 'meshes'}" texturedir="{ASSETS}" angle="radian"/>
   <option timestep="{P.SIM['timestep']}" integrator="implicitfast"
-          cone="elliptic" noslip_iterations="3"/>
+          cone="elliptic" noslip_iterations="3"
+          iterations="200" ls_iterations="100"/>
   <visual>
     <headlight ambient="0.45 0.45 0.45" diffuse="0.7 0.7 0.7"/>
     <global offwidth="1280" offheight="720"/>

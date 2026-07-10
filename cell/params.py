@@ -168,9 +168,11 @@ CHUTE = {"width": 0.70, "z0": 0.395, "z1": 0.16, "len_pad": 0.25,
          # zone). A hot small roller with residual +x drift can cross the
          # open sides of the gap before touching any chute surface (stress
          # s99 pen pogo at v_entry 2.4); the cheeks close that window. Their
-         # top is capped by the tilting PLATE-EDGE arc (test-locked); the
-         # mouth strip itself is rubber-faced (soft solref) so thin light
-         # freight is absorbed, not returned — same cure as the brake pad.
+         # top is capped by the tilting PLATE-EDGE arc (test-locked). All
+         # mouth parts are STIFF: soft solref on a thin shell lets a fast
+         # item penetrate past its thickness and wedge (solver blow-up) —
+         # compliance belongs only on thick backed surfaces (brake pad,
+         # cage mat).
          "cheek_len": 0.048, "cheek_h": 0.033, "cheek_inset": 0.004}
 CHUTE_C = {"cx": STATIONS["C"]["x"], "y0": 2.75, "dir": -1, **CHUTE}
 CHUTE_D = {"cx": STATIONS["D"]["x"], "y0": 2.75, "dir": -1, **CHUTE}
