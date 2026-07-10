@@ -293,11 +293,22 @@ details: [isaac/README.md](isaac/README.md).
 
 ## 8. For the expert jury (проверка решения)
 
-- **Run instructions with pinned versions** — `requirements.txt` (Dockerfile 🔜).
-- **One-command evidence:** `python -m cell.validate` runs every scenario × seed with explicit pass/fail gates and writes `validation_report.md`.
-- **Tunable input parameters** (all per scenario YAML): item mix and spawn order (`items`, `seed`), arrival intensity (`spawn_gap_s`), sensor noise (`sensor: {depth_noise_mm: ...}`), classification policy (`classification: {min_confidence_for_B, low_confidence_route, ...}`), fault injection (`inject_jam: {slug, at_x}`), perception/executive mode (CLI `--perception camera|oracle --executive table|arm`).
-- **Prepared scenarios:** nominal (`base`), borderline threshold attacks (`borderline`), close-spaced arrivals (`close_spacing`), degraded sensing (`low_confidence`), jam recovery (`fault_jam`), failed transfer (`failed_transfer`), 1.3× overload (`stress_mix`).
-- **Cloud links** (large binaries: weights, full video, CAD sources) — collected here with descriptions when uploaded 🔜.
+> **Быстрый старт (RU).** Всё решение проверяется двумя командами.
+> MuJoCo-твин (любая машина, CPU): `python -m cell.validate` — полная матрица
+> 22 прогонов с гейтами, отчет в `runs/validation_*/validation_report.md`.
+> Isaac-твин (GPU, официальный контейнер `isaac-sim:6.0.1`):
+> `bash isaac/run_matrix.sh /out/m && python3 tools/consolidate_isaac_matrix.py /out/m`
+> — 14 прогонов + консолидация с жесткими гейтами (ненулевой выход при любом
+> провале). Одиночный прогон с видео и кадрами сенсоров:
+> `/isaac-sim/python.sh isaac/run_isaac.py --seed 42 --record --depth-stills 3`.
+> Итоговый отчет: [docs/report/final_report_ru.md](docs/report/final_report_ru.md).
+
+- **Run instructions with pinned versions** — `requirements.txt`; Isaac runs inside the official `nvcr.io/nvidia/isaac-sim:6.0.1` container (exact mount set in [isaac/README.md](isaac/README.md)).
+- **One-command evidence:** `python -m cell.validate` (MuJoCo, 22 runs × gates) and `bash isaac/run_matrix.sh <out>` + `tools/consolidate_isaac_matrix.py <out>` (Isaac, 14 runs + hard gates). Both exit non-zero on any failure.
+- **Tunable input parameters — MuJoCo** (per scenario YAML or CLI): item mix and spawn order (`items`, `--seed`), arrival intensity (`spawn_gap_s`), sensor noise (`sensor: {depth_noise_mm}`), classification policy (`classification: {...}`), fault injection (`inject_jam: {slug, at_x}`), perception mode (`--perception camera|oracle`).
+- **Tunable input parameters — Isaac** (CLI of `isaac/run_isaac.py`): `--seed`, `--items <subset>`, `--manifest-extra` (adds the edge set incl. the 11/10 mm cubes, Ø9 mm rod, 2 mm card), `--spawn-gap A,B`, `--spawn-offset-y`, `--friction-mult`, `--mass-mult`, `--inject-jam SLUG@Y` (chute snag → arm recovery), `--inject-tray-fault ZONE` (dead tilt actuator → end-line call-out), `--perception rtx|oracle`, `--record --camera ... --fps`, `--depth-stills N` (sensor's-eye RGB/depth/macro frames).
+- **Prepared scenarios:** nominal (`base`), borderline threshold attacks (`borderline`), close-spaced arrivals (`close_spacing`), degraded sensing (`low_confidence`), jam recovery (`fault_jam`), failed transfer (`failed_transfer`), 1.3× overload (`stress_mix`); the Isaac matrix additionally sweeps friction ×0.7, mass ×1.3, close spacing, off-centre feed and runs both fault drills.
+- **Cloud links** (large binaries: full showcase videos, sensor stills/NPY, CAD sources) — collected here with per-link descriptions when uploaded 🔜; the in-repo evidence set lives under [docs/report/isaac_evidence/](docs/report/isaac_evidence/).
 
 ## 9. Team & contacts 🔜
 
