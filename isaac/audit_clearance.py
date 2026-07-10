@@ -131,21 +131,29 @@ pivot_dz = S["pivot_z"] - (S["shuttle_top"] - 0.025)
 z_shut = S["shuttle_top"] - 0.025
 
 quarter = [TILT_MAX * i / args.samples for i in range(args.samples + 1)]
-angles = quarter + quarter[::-1][1:]
-angles = angles + [-a for a in angles]
+cycle = quarter + quarter[::-1][1:]        # 0 -> max -> 0
 
-# sweep x: station lines +- the travel covered during a tilt cycle
-xs = set()
+# STATION-INTERLOCKED pose set: a tilt command only exists inside a
+# station's discharge window and only with that station's sign (the
+# controller enforces this: triggers are per-station position gates).
+# Sweeping impossible poses (a tilt at the knife line) produces phantom
+# findings — the audit models the commandable envelope: full tilt cycle
+# across each station's onset->flatten travel, plus FLAT everywhere.
+poses = []                                  # (x, angle)
 for st in P.STATIONS.values():
-    for dx in (-0.30, -0.15, 0.0, 0.15, 0.30):
-        xs.add(round(st["x"] + dx, 3))
-xs |= {round(S["x_west"] + 0.1, 3), round(S["x_east"] - 0.1, 3)}
+    sign = -st["side"]                      # +roll dips the SOUTH edge
+    for dx in (-0.10, 0.05, 0.20, 0.35, 0.55):
+        for a in cycle:
+            poses.append((round(st["x"] + dx, 3), sign * a))
+for x in [S["x_west"] + 0.1, S["x_east"] - 0.1] +          [st["x"] + dx for st in P.STATIONS.values()
+          for dx in (-0.4, 0.0, 0.4)]:
+    poses.append((round(x, 3), 0.0))
 
 worst = {}
-for x in sorted(xs):
+for x, ang in poses:
     set_op(shut_prim, UsdGeom.XformOp.TypeTranslate,
            Gf.Vec3d(float(x), y0, z_shut))
-    for ang in angles:
+    if True:
         set_op(tray_prim, UsdGeom.XformOp.TypeTranslate,
                Gf.Vec3d(float(x), y0, z_shut + pivot_dz))
         set_op(tray_prim, UsdGeom.XformOp.TypeRotateX, float(ang))

@@ -470,7 +470,12 @@ class SceneBuilder:
         # discharging tray at 13 deg and flicked the item off the far side).
         # The first 0.12 m is the discharge AIRBORNE zone anyway.
         rail_t = 0.015
-        setback = 0.12
+        # 0.09: rails reach y0-0.09 = 2.66 — 77 mm clear of the tilted lip
+        # tip's southmost reach (y 2.737). The old 40 mm STUB rails over the
+        # first 0.12 m are deleted: the clearance audit showed them grazing
+        # the fully-tilted plate (-3.5 mm AABB at 38.8 deg); their lateral-
+        # containment job at the throat belongs to the mouth CHEEKS now.
+        setback = 0.09
         col = soft(P.ROUTE_RGBA.get(zone, (0.6, 0.6, 0.6)))
         r0 = y0 + d * setback
         rmid = (r0 + wall_at) / 2
@@ -482,14 +487,6 @@ class SceneBuilder:
             rz = z0 - abs(rmid - y0) * tanang + P.GUIDE_H / 2
             self.add_box(f"chute{zone}_rail_{nm}", (cx + off, rmid, rz),
                          (rail_t, rlen / 2, P.GUIDE_H / 2), euler, col,
-                         mat=mat_chute)
-            # LOW STUB RAIL over the setback zone: 40 mm — under the tray
-            # sweep floor, but enough to keep a skittering 9 mm pen from
-            # exiting sideways off the unrailed first 0.12 m (twin stress)
-            smid = y0 + d * setback / 2
-            sz = z0 - abs(smid - y0) * tanang + 0.022
-            self.add_box(f"chute{zone}_stub_{nm}", (cx + off, smid, sz),
-                         (rail_t, setback / 2 + 0.01, 0.020), euler, col,
                          mat=mat_chute)
         # brake pad (inside the destination)
         pmid = (y1 + pad_end) / 2

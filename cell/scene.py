@@ -203,12 +203,6 @@ def _chute_xml(zone, cc, wall_at):
         g.append(f'<geom name="chute{zone}_rail_{nm}" type="box" size="{rail_t} {rlen / 2} {P.GUIDE_H / 2}" '
                  f'pos="{cx + off} {rmid} {rz}" euler="{ang:.6f} 0 0" '
                  f'friction="{cc["friction"]}" priority="1" rgba="{frame}"/>')
-        smid = y0 + d * RAIL_SETBACK / 2
-        sz = (z0 - abs(smid - y0) * TAN32) + 0.022
-        g.append(f'<geom name="chute{zone}_stub_{nm}" type="box" '
-                 f'size="{rail_t} {RAIL_SETBACK / 2 + 0.01:.4f} 0.020" '
-                 f'pos="{cx + off} {smid:.4f} {sz:.4f}" euler="{ang:.6f} 0 0" '
-                 f'friction="{cc["friction"]}" priority="1" rgba="{frame}"/>')
     # brake pad: flat, 5 mm below the slope tail (a downhill step, never a
     # lip). Soft (rubber-faced): absorbs the landing instead of returning it
     # — a stiff contact can eject a thin light item (pen pogo)
