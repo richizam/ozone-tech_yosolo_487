@@ -199,10 +199,11 @@ class ItemManager:
                     and self.CAM_WINDOW[1] - 0.05 < pos[0] < a["nose_x"]
                     and abs(pos[1] - a["y"]) < 0.35):
                 dims_meas = (st.get("cls") or {}).get("dims_mm")
-                L_meas = (dims_meas[0] / 1000.0) if dims_meas else                     self.entries[slug]["dims_m"][0]
+                dims_m = [v / 1000.0 for v in dims_meas] if dims_meas \
+                    else list(self.entries[slug]["dims_m"])
                 self.sorter.offer(t, slug, st["zone"], float(pos[0]),
                                   vx=float(vel[0]), ready=True,
-                                  length_m=L_meas)
+                                  length_m=dims_m[0], dims_m=dims_m)
             # ---- landing confirmation (tag the carrier)
             if ("t_released" in st and "t_inducted" not in st
                     and pos[0] > a["nose_x"] - 0.10):
@@ -523,8 +524,10 @@ class ItemManager:
             self.d.qpos[qadr:qadr + 3] = [0.6 + idx * 0.85, -2.5, e["dims_m"][2] / 2 + 0.001]
             self.d.qpos[qadr + 3:qadr + 7] = [1, 0, 0, 0]
             self.d.qvel[dadr:dadr + 6] = 0
+        pos_now = [round(float(v), 3) for v in self.d.qpos[qadr:qadr + 3]]
         self.bus.publish("item_delivered", t=t, slug=slug, zone=zone_actual, ok=ok,
                          zone_true=e["zone"], v_entry=round(v_entry, 3),
+                         pos=pos_now,
                          route_command=st.get("zone"),
                          gate_hold_s=round(st.get("gate_hold_s", 0.0), 2),
                          hold2_hold_s=round(st.get("hold2_hold_s", 0.0), 2))
@@ -869,6 +872,12 @@ def main(argv=None):
                 pp = items.pose(inject["slug"])
                 on_chute = (pp[2] < 0.50 and st_i.get("zone") in ("C", "D")
                             and pp[1] < inject.get("at_y", 2.6))
+                # B-path stall drill: pin the item on the incline connector
+                # (north). The arm cannot reach there -> the honest outcome
+                # is a watchdog -> operator call-out, never a deadlock.
+                if st_i.get("zone") == "B":
+                    on_chute = (pp[1] > inject.get("at_y", 3.4)
+                                and pp[2] < 0.78)
                 if on_chute and not st_i.get("recovering"):
                     items.frozen.add(inject["slug"])
                     items.frozen_pose[inject["slug"]] = \

@@ -72,8 +72,32 @@ The tray's 30 mm end lips bound the residual slip of rolling items: a bottle
 arriving with 0.35–0.5 m/s of slip carries `v²·(3/4)/g ≈ 10–19 mm` of
 climbing energy against a lip that needs ≈ 40 mm — it stays on the tray.
 
+### 3.1 Rolling smalls: a different re-acceleration model
+
+A blade-held LYING ROD (the 9 mm pen) does not re-accelerate at the sliding
+lock μ·g: belt friction at the contact line both pushes it forward and spins
+it up, so the contact point matches belt speed while the centre is still
+slow — it leaves the friction-driven regime early and creeps up to belt
+speed. Released with the sliding model it arrived ≈ 0.2 m behind tray
+centre; at the twin's close-spacing stress this crossed the ±0.22 m
+association gate and the freight rode an untagged tray around the loop.
+Two-layer fix, both engines:
+
+```
+aim model:   thin (min dim < 50 mm), round-sectioned (mid/min < 1.6),
+             elongated (max/min ≥ 2.5) freight released from a blade hold
+             is aimed with a_roll = 0.42·a_slide  → lands ≈ −0.18 m,
+             40+ mm inside the association gate
+safety net:  induction miss ⇒ the matched carrier AND its follower are
+             flagged SUSPECT ⇒ precautionary tilt into REVIEW at the next
+             pass (empty tray: harmless flatten; loaded tray: the freight
+             lands in the manual lane — never circumnavigates the loop)
+```
+
 Cross-check (measured): `landing_offset_mean_mm` / `landing_offset_max_mm`
-per run (target: max well under ±150 mm, i.e. half the lip-to-lip span).
+per run (target: max well under ±150 mm, i.e. half the lip-to-lip span);
+`suspect_purge_tilts` in the sorter block (0 in nominal runs — the net is
+untriggered defense-in-depth).
 
 ## 4. Position-triggered discharge and command margin
 

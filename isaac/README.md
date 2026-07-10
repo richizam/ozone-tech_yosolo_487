@@ -205,6 +205,15 @@ success.
   bands / safe-side D; unverifiable → REVIEW pen; wedged discharge →
   stuck-tilt flatten → next-station / REVIEW fallback; dead tilt actuator →
   end-line operator call-out; chute snag → jam camera + arm → route-correct
-  cage (station locked out while the arm works); anything unreachable →
+  cage (station locked out while the arm works); induction miss → the
+  matched carrier and its follower are flagged SUSPECT and get a
+  precautionary purge tilt into REVIEW at their next pass (a phantom load
+  can never circumnavigate the loop untagged); anything unreachable →
   operator call-out. Nothing fails silently, and the run's exit code proves
   it.
+* **Rolling smalls get their own release model**: a blade-held lying rod
+  re-accelerates by rolling (contact line reaches belt speed while the
+  centre is still slow), not by sliding lock — the escapement aims thin,
+  round-sectioned, elongated freight with `a_roll = 0.42·a_slide`. Without
+  it the pen landed ~0.2 m behind tray centre under close-spacing holds and
+  crossed the association gate.

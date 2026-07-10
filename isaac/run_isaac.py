@@ -607,11 +607,11 @@ def main():
                         and p[0] > win1 - 0.05 and p[0] < a["nose_x"]
                         and abs(p[1] - a["y"]) < 0.35):
                     dims_meas = (st.get("cls") or {}).get("dims_mm")
-                    L_meas = (dims_meas[0] / 1000.0) if dims_meas else \
-                        entries[slug]["dims_m"][0]
+                    dims_m = [v / 1000.0 for v in dims_meas] if dims_meas \
+                        else list(entries[slug]["dims_m"])
                     sorter.offer(t, slug, st["zone"], float(p[0]),
                                  vx=float(vel(slug)[0]), ready=True,
-                                 length_m=L_meas)
+                                 length_m=dims_m[0], dims_m=dims_m)
                 # ---- landing confirmation (tag the carrier)
                 if ("t_released" in st and "t_inducted" not in st
                         and p[0] > a["nose_x"] - 0.10):

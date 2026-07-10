@@ -121,6 +121,15 @@ INDUCT = {
                                        # (belt friction mu~0.5 * g)
     "release_tol_s": 0.05,             # release timing tolerance
     "tag_radius_m": 0.22,              # landing->carrier association gate
+    # rolling smalls: a lying cylinder (pen, rod) re-accelerates from a
+    # blade hold by ROLLING — a_roll ~ (2/3)*mu*g, well under the sliding
+    # lock the release model assumes. Aim such freight at a correspondingly
+    # later tray, or a held pen lands ~0.2 m behind tray centre and the
+    # association gate calls an induction miss (close-spacing floor drop).
+    "roll_accel_frac": 0.42,           # a_roll / a_slide for held releases
+    "roll_min_dim_m": 0.05,            # rolls if: thinnest dim under this,
+    "roll_sect_max": 1.6,              #   round-ish section (mid/min), and
+    "roll_min_elong": 2.5,             #   clearly elongated (a lying rod)
 }
 
 # ---------------------------------------------------------------- discharge stations

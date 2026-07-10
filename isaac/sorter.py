@@ -104,6 +104,7 @@ class SorterControl:
         self.debug_tilt = False         # per-tick roll trace (--probe runs)
         self.station_hold = set()       # stations out of service (arm active)
         self.stuck_flattens = 0
+        self.purge_tilts = 0
 
     # ---------------------------------------------------------------- helpers
     def bind_escapement(self, blade_attr, blade_clear_fn):
@@ -138,15 +139,28 @@ class SorterControl:
         return out
 
     # -------------------------------------------------------------- induction
+    @staticmethod
+    def freight_rolls(dims_m):
+        """A lying rod/cylinder re-accelerates by rolling, not sliding lock:
+        thin, round-sectioned, elongated (SENSOR dims, metres)."""
+        ind = P.INDUCT
+        if not dims_m or len(dims_m) < 3:
+            return False
+        hi, mid, lo = sorted((float(v) for v in dims_m), reverse=True)
+        lo = max(lo, 1e-6)
+        return (lo < ind["roll_min_dim_m"] and mid / lo < ind["roll_sect_max"]
+                and hi / lo >= ind["roll_min_elong"])
+
     def offer(self, t, slug, zone, x_center, vx=0.0, ready=True,
-              length_m=None):
+              length_m=None, dims_m=None):
         """run_isaac offers the head item pressed at (or approaching) the
         escapement. When a suitable empty carrier is inbound, the blade drops
         and the item is released to ride the knife nose onto that carrier.
         length_m: the SENSOR-measured longest dimension — long freight is
         aimed slightly behind the tray centre so its leading edge lands clear
         of the front lip (box_l wedged ON the lip at +0.07 offset otherwise).
-        Returns True while the release for this slug is active."""
+        dims_m: full measured dims — a lying rod is aimed with the ROLLING
+        re-acceleration model. Returns True while the release is active."""
         if self.release is not None:
             return self.release["slug"] == slug
         if not ready or self.egate_attr is None:
@@ -156,11 +170,14 @@ class SorterControl:
         land_bias = -0.05 if (length_m or 0.0) > 0.34 else 0.0
         # time for the item to reach the landing point after the blade drops:
         # already-moving items ride at belt speed; a gate-held item first
-        # re-accelerates under belt friction
+        # re-accelerates under belt friction — by ROLLING (slower) if it is
+        # a lying rod
         if vx > 0.85 * a["speed"]:
             t_item = (a["nose_x"] - x_center) / a["speed"] + ind["flight_s"]
         else:
             v0, acc = max(0.0, vx), ind["accel_mps2"]
+            if self.freight_rolls(dims_m):
+                acc *= ind["roll_accel_frac"]
             t_acc = (a["speed"] - v0) / acc
             d_acc = v0 * t_acc + 0.5 * acc * t_acc ** 2
             d_rest = max(0.0, (a["nose_x"] - x_center) - d_acc)
@@ -236,6 +253,19 @@ class SorterControl:
                 c["expected"] = None
                 if self.release and self.release["slug"] == slug:
                     self.release = None
+                # SUSPECT-CARRIER PURGE: the freight is somewhere — most
+                # likely riding the matched tray's trailing edge (or the
+                # follower) below the association gate. Flag both: each gets
+                # a precautionary tilt into REVIEW at its next pass. Empty
+                # tray -> harmless flatten; loaded tray -> the freight lands
+                # in the manual-review pen instead of circumnavigating the
+                # loop and falling off the return run.
+                follower = self.cars[(c["i"] - 1) % len(self.cars)]
+                for sc in (c, follower):
+                    if not sc.get("suspect"):
+                        sc["suspect"] = True
+                        self.ev(t, "carrier_suspect_flagged", slug,
+                                carrier=sc["i"])
         return None
 
     def carrier_of(self, slug):
@@ -272,11 +302,14 @@ class SorterControl:
                 station=station, target_deg=round(goal, 2))
 
     def item_discharged(self, t, c, item_pos):
-        # gone = clearly past the tray edge (0.31 + sway margin) or below
-        # the tray plane: a discharging item must CONFIRM before it can
-        # reach any downstream snag point, or a chute jam races the
-        # carrier's own missed-discharge escalation
-        gone = (abs(float(item_pos[1]) - self.S["y"]) > 0.38
+        # gone = past the tray edge ON THE COMMANDED SIDE (0.33 > tray half
+        # 0.31 + sway) or below the tray plane. Side-aware: a wide box
+        # resting correctly on the B connector keeps its CENTRE near
+        # y 3.35-3.45 — a symmetric 0.38 line misread it as still aboard
+        # and the stuck-tilt path threw it (twin stress drill).
+        side = P.STATIONS.get(c.get("station") or "", {}).get("side", 0)
+        dy = float(item_pos[1]) - self.S["y"]
+        gone = ((side != 0 and side * dy > 0.33) or abs(dy) > 0.42
                 or float(item_pos[2]) < 0.50)
         if gone and c["t_cmd"] is not None:
             self.discharge_latencies.append(t - c["t_cmd"])
@@ -381,7 +414,7 @@ class SorterControl:
                 if st is not None:
                     # long freight discharges earlier: its leading edge
                     # travels further before the CG clears the tray
-                    extra = 0.5 * max(0.0, (c.get("len_m") or 0.0) - 0.30)
+                    extra = 0.9 * max(0.0, (c.get("len_m") or 0.0) - 0.30)
                     trig = st["x"] - st["trigger_lead_m"] - extra
                     if x >= trig and not c.get("cmd_issued_at_station") == route:
                         c["cmd_issued_at_station"] = route
@@ -396,6 +429,27 @@ class SorterControl:
                                     carrier=c["i"], station=route)
                         else:
                             self._command_tilt(t, c, route, c["route"])
+            # suspect purge: an induction-miss suspect gets a precautionary
+            # REVIEW tilt (untagged freight may be riding it — see
+            # confirm_landing). occupied() is False, so after the tilt the
+            # empty-tilt path re-flattens it without discharge-confirm noise.
+            if (c.get("suspect") and not self.occupied(c)
+                    and c["cmd"] is None and c["flat_at"] is None
+                    and c["target"] == 0.0
+                    and "REVIEW" not in self.station_hold
+                    and c["i"] not in self.dead_carriers):
+                stp = P.STATIONS["REVIEW"]
+                if x >= stp["x"] - stp["trigger_lead_m"] \
+                        and c.get("cmd_issued_at_station") != "RVW_PURGE":
+                    c["cmd_issued_at_station"] = "RVW_PURGE"
+                    c["suspect"] = False
+                    self.purge_tilts += 1
+                    self.ev(t, "suspect_purge_tilt", c["slug"] or "",
+                            carrier=c["i"])
+                    self._command_tilt(t, c, "REVIEW", "REVIEW")
+                    # full dwell: latency + ramp + a stowaway's slide-off
+                    # (the 0.4 s empty-tilt settle is not enough for that)
+                    c["flat_at"] = t + 1.8
             # end-of-line: an occupied carrier at the east module line is an
             # operator call-out (dead tilt / unresolvable freight)
             if (self.occupied(c) and x >= S["occupied_callout_x"]
@@ -516,6 +570,7 @@ class SorterControl:
             "double_occupancy_events": self.double_occupancy,
             "discharge_misses_to_review": self.discharge_misses,
             "stuck_tilt_flattens": self.stuck_flattens,
+            "suspect_purge_tilts": self.purge_tilts,
             "end_line_callouts": self.end_callouts,
         }
 
