@@ -109,6 +109,12 @@ SORTER = {
     # 0.15 s: enough for a flat box to seat after the drop, small enough
     # that the C discharge point shifts < 0.08 m east (mouth half 0.35).
     "seat_time_s": 0.15,
+    # SMALL-FREIGHT TILT: len < small_len_m discharges at tilt_deg *
+    # small_tilt_frac (28.5 deg) — still 10 deg above the slide onset, but
+    # without vault energy: a full-38 pen rolled off at ~1.4 m/s, banked off
+    # the mouth cheeks and hopped the throat window that the tray's own
+    # sweep keeps open (stress s11). Real sorters modulate tilt profiles.
+    "small_len_m": 0.20, "small_tilt_frac": 0.75,
     # DISCHARGE CONFIRM, shape-independent: the geometric "gone" condition
     # must PERSIST before the carrier is released (an item pivoting on the
     # tray edge oscillates through any threshold — a one-tick confirm let

@@ -488,6 +488,20 @@ class SceneBuilder:
             self.add_box(f"chute{zone}_rail_{nm}", (cx + off, rmid, rz),
                          (rail_t, rlen / 2, P.GUIDE_H / 2), euler, col,
                          mat=mat_chute)
+            # LOW GUARD BRIDGE cheek-end -> main-rail start: closes the
+            # lateral window the deleted stubs used to cover (a discharged
+            # rod rolled out the chute's side there). 60 mm tall at plate
+            # level — a rolling rod cannot climb it, and it clears the
+            # tilted lip-tip arc by ~80 mm (the stubs' 40 mm sat directly
+            # under the tip's low point; this sits down-slope of it).
+            gb0 = y0 + d * cc.get("cheek_len", 0.048)
+            gb1 = y0 + d * setback
+            gmid = (gb0 + gb1) / 2
+            glen = abs(gb1 - gb0)
+            gz = z0 - abs(gmid - y0) * tanang + 0.030
+            self.add_box(f"chute{zone}_guard_{nm}", (cx + off, gmid, gz),
+                         (rail_t, glen / 2 + 0.005, 0.030), euler, col,
+                         mat=mat_chute)
         # brake pad (inside the destination)
         pmid = (y1 + pad_end) / 2
         plen = abs(pad_end - y1)

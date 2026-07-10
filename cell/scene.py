@@ -203,6 +203,18 @@ def _chute_xml(zone, cc, wall_at):
         g.append(f'<geom name="chute{zone}_rail_{nm}" type="box" size="{rail_t} {rlen / 2} {P.GUIDE_H / 2}" '
                  f'pos="{cx + off} {rmid} {rz}" euler="{ang:.6f} 0 0" '
                  f'friction="{cc["friction"]}" priority="1" rgba="{frame}"/>')
+        # LOW GUARD BRIDGE cheek-end -> rail start (see isaac twin): closes
+        # the lateral window the deleted stubs covered; 60 mm tall, clears
+        # the tilted lip-tip arc by ~80 mm.
+        gb0 = y0 + d * cc.get("cheek_len", 0.048)
+        gb1 = y0 + d * RAIL_SETBACK
+        gmid = (gb0 + gb1) / 2
+        glen = abs(gb1 - gb0)
+        gz = z0 - abs(gmid - y0) * TAN32 + 0.030
+        g.append(f'<geom name="chute{zone}_guard_{nm}" type="box" '
+                 f'size="{rail_t} {glen / 2 + 0.005:.4f} 0.030" '
+                 f'pos="{cx + off} {gmid:.4f} {gz:.4f}" euler="{ang:.6f} 0 0" '
+                 f'friction="{cc["friction"]}" priority="1" rgba="{frame}"/>')
     # brake pad: flat, 5 mm below the slope tail (a downhill step, never a
     # lip). Soft (rubber-faced): absorbs the landing instead of returning it
     # — a stiff contact can eject a thin light item (pen pogo)

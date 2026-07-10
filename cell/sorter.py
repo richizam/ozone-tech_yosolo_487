@@ -294,7 +294,11 @@ class SorterControl:
     # -------------------------------------------------------------- discharge
     def _command_tilt(self, t, c, station, zone):
         side = P.STATIONS[station]["side"]
-        goal = side * self.S["tilt_deg"] * (
+        # small freight discharges at a reduced angle (no vault energy)
+        frac = (self.S["small_tilt_frac"]
+                if 0.0 < (c.get("len_m") or 0.0) < self.S["small_len_m"]
+                else 1.0)
+        goal = side * self.S["tilt_deg"] * frac * (
             1.0 + float(self.rng.normal(0.0, self.S["noise_frac"])))
         c["cmd"] = (t + self.S["latency_s"], goal)
         c["t_cmd"], c["t_onset"], c["t_full"] = t, None, None
