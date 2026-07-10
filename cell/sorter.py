@@ -422,6 +422,14 @@ class SorterControl:
                     # long freight discharges earlier: its leading edge
                     # travels further before the CG clears the tray
                     extra = 0.9 * max(0.0, (c.get("len_m") or 0.0) - 0.30)
+                    # rolling smalls exit at the mouth's WEST third: their
+                    # eastward carrier drift then carries them INTO the
+                    # chute instead of past its east edge (a roller's exit
+                    # speed barely drops with tilt angle - rolling has no
+                    # friction threshold - so aim, not energy, is the knob)
+                    ln = c.get("len_m") or 0.0
+                    if 0.0 < ln < self.S["small_len_m"]:
+                        extra += 0.22
                     trig = st["x"] - st["trigger_lead_m"] - extra
                     # SEAT TIME: never tilt during landing settle — long
                     # C-bound freight otherwise tilts AT the landing instant

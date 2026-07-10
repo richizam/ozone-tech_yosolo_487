@@ -243,10 +243,14 @@ class ItemManager:
             # the catch pan: no release, no route -> operator call-out ->
             # MANUAL removal, the pan's designed safe terminal)
             S_ = P.SORTER
-            on_pan = (S_["pan_x0"] - 0.05 < pos[0] < S_["pan_x1"] + 0.05
-                      and abs(pos[1] - S_["y"]) < S_["pan_y_half"] + 0.06
+            # carrier-tracked freight is NEVER pan debris (see isaac twin)
+            on_car = (self.sorter is not None
+                      and self.sorter.carrier_of(slug) is not None)
+            on_pan = (not on_car
+                      and S_["pan_x0"] - 0.05 < pos[0] < S_["pan_x1"] + 0.05
+                      and abs(pos[1] - S_["y"]) < S_["pan_y_half"] - 0.02
                       and S_["pan_z_top"] - 0.03 < pos[2]
-                      < S_["pan_z_top"] + 0.10)
+                      < S_["pan_z_top"] + 0.08)
             if on_pan and st.get("pan_since") is None:
                 st["pan_since"] = t
             elif not on_pan:
