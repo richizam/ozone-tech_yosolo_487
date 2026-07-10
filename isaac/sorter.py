@@ -301,6 +301,7 @@ class SorterControl:
             1.0 + float(self.rng.normal(0.0, self.S["noise_frac"])))
         c["cmd"] = (t + self.S["latency_s"], goal)
         c["t_cmd"], c["t_onset"], c["t_full"] = t, None, None
+        c["gone_since"] = None
         c["station"] = station
         self.commands += 1
         self.cmd_log.append((round(t, 4), c["i"], station, round(goal, 2)))
@@ -508,16 +509,28 @@ class SorterControl:
                     self.tilt_times.append(t - c["t_cmd"])
                     self.ev(t, "tilt_full", c["slug"] or "", carrier=c["i"],
                             tilt_ms=round((t - c["t_cmd"]) * 1000, 1))
-            # discharge confirmation -> schedule re-flatten
+            # discharge confirmation -> schedule re-flatten. The "gone"
+            # condition must PERSIST (a mid-pivot item oscillates through
+            # any geometric threshold — a one-tick confirm let the flatten
+            # scoop a mid-pivot sack), and the tray then dwells tilted so
+            # the item finishes falling before the tray moves.
             if abs(c["goal"]) > 1.0 and self.occupied(c) \
                     and item_pos_of is not None and c["flat_at"] is None:
                 ip = item_pos_of(c["slug"])
-                if ip is not None and self.item_discharged(t, c, ip):
+                gone_now = ip is not None and self.item_discharged(t, c, ip)
+                if gone_now and c.get("gone_since") is None:
+                    c["gone_since"] = t
+                elif not gone_now:
+                    c["gone_since"] = None
+                if gone_now and t - c["gone_since"] >= \
+                        S["confirm_persist_s"]:
                     self.ev(t, "discharge_confirmed", c["slug"],
                             carrier=c["i"], station=c["station"],
-                            latency_ms=round((t - c["t_cmd"]) * 1000, 1))
+                            latency_ms=round(
+                                (c["gone_since"] - c["t_cmd"]) * 1000, 1))
                     c["slug"], c["route"] = None, None
-                    c["flat_at"] = t + S["settle_s"]
+                    c["gone_since"] = None
+                    c["flat_at"] = t + S["discharge_dwell_s"]
                 elif ((c["t_full"] is not None and t - c["t_full"] > 1.2)
                       or (c["t_onset"] is not None and c["t_full"] is None
                           and t - c["t_onset"] > 2.0)):

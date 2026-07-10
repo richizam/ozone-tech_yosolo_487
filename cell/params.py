@@ -105,6 +105,13 @@ SORTER = {
     # 0.15 s: enough for a flat box to seat after the drop, small enough
     # that the C discharge point shifts < 0.08 m east (mouth half 0.35).
     "seat_time_s": 0.15,
+    # DISCHARGE CONFIRM, shape-independent: the geometric "gone" condition
+    # must PERSIST before the carrier is released (an item pivoting on the
+    # tray edge oscillates through any threshold — a one-tick confirm let
+    # the re-flatten scoop a mid-pivot sack), and the tray then dwells
+    # tilted long enough for the item to finish falling before it moves.
+    "confirm_persist_s": 0.15,
+    "discharge_dwell_s": 0.90,
     # debris CATCH PAN under the top run: freight thinner than the
     # escapement's 3 mm skim gap (a 2 mm card) can arrive unmetered and
     # knife into an inter-tray gap — it lands on the pan and the watchdog
@@ -402,8 +409,12 @@ CLASSIFICATION = {
 
 # ---------------------------------------------------------------- simulation
 SIM = {
-    "timestep": 0.002,
-    "control_decimation": 10,          # control at 50 Hz
+    # 1 kHz: a 50 g pen settling under multi-kg cage freight on compliant
+    # pads is a stiff 60:1 mass-ratio contact stack — at 2 ms it explodes
+    # (mjWARN_BADQACC) whenever arrival micro-timing lines up; halving the
+    # step removes the class instead of re-tuning compliances per shuffle.
+    "timestep": 0.001,
+    "control_decimation": 20,          # control at 50 Hz
     "settle_speed": 0.05,              # m/s: item considered settled below this
     "settle_time": 0.3,                # s at low speed before pick
 }
