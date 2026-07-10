@@ -114,6 +114,31 @@ the aperture flanks/header still close every fly-out window.
 Cross-check (measured): `containment.cage_entry_speed_max_mps`,
 `cage_max_z`, `containment_rate = 1.0` in every matrix run.
 
+### 5.1 The discharge fall corridor and the catch-pan bound
+
+Everything under the top run must clear the FULL-TILT tray plane
+`z(y) = pivot_z − tan(38°)·|y − y₀|` and stay out of the fall corridor a
+discharging item crosses between the lip (z 0.444) and the chute mouth
+(z 0.395). The debris catch pan (catches sub-3 mm freight that arrives
+under the escapement's skim gap) is sized against that bound:
+
+```
+pan edge:      |Δy| = 0.22  →  tray plane 0.616 − 0.781·0.22 = 0.444
+pan top:       0.42  →  24 mm clear at FULL tilt (22 mm with +1% gain noise)
+lip hang:      |Δy| = (0.62/2)·cos 38° = 0.244  →  pan edge 24 mm inboard
+```
+
+This bound was learned, not assumed: a first-cut pan (half-width 0.33, top
+0.515) stood across the corridor. Heavy freight toppled over it unaffected —
+only the 9 mm pen, rolling at tray-surface height, deflected along its face
+and dribbled off the chute's east edge to the floor, in every perturbed run,
+deterministically. `test_catch_pan_clears_the_tilt_sweep_and_fall_corridor`
+now locks the analytic bound against any re-tuning.
+
+Cross-check (measured): pen delivered to cage C with `floor_drops = 0` in
+every matrix run of the fixed build; discharge-confirm latency back at the
+nominal ~700 ms (the deflection had shown as a 1 200 ms outlier).
+
 ## 6. B connector incline: friction hold
 
 Every B item is **non-round by rule** (round → D), so the 16.6° powered

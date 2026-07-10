@@ -104,6 +104,27 @@ def test_arm_grasp_clamp_stays_clear_of_the_tray_sweep():
     assert P.ARM_GRASP_Y_MAX < tray_south_lip_y - 0.10
 
 
+def test_catch_pan_clears_the_tilt_sweep_and_fall_corridor():
+    """The debris pan lives in the dead zone under the top run. It must stay
+    (a) below the FULL-TILT tray plane z = pivot_z - tan(tilt)*|dy| with
+    margin (tilt gain noise inflates the angle ~1%), and (b) north of the
+    discharge fall corridor so a dribbling small item never deflects off a
+    chute mouth (the 9 mm pen floor-drop of the 0.33 x 0.515 pan)."""
+    S = P.SORTER
+    tan_t = math.tan(math.radians(S["tilt_deg"] * 1.02))
+    tray_plane_at_pan_edge = S["pivot_z"] - tan_t * S["pan_y_half"]
+    assert S["pan_z_top"] < tray_plane_at_pan_edge - 0.015
+    # fall corridor: the tilted lip hangs at |dy| ~ (tray_w/2)*cos(tilt);
+    # freight leaves it moving outward — the pan edge stays inboard of it
+    lip_dy = (S["tray_w"] / 2) * math.cos(math.radians(S["tilt_deg"]))
+    assert S["pan_y_half"] < lip_dy - 0.02
+    # still wide enough to catch the induction-gap fall zone under belt A's
+    # centreline (a knifed card tumbles, but lands near |dy| < 0.15)
+    assert S["pan_y_half"] >= 0.18
+    # and below the shuttle undersides on the top run
+    assert S["pan_z_top"] < 0.50
+
+
 def test_everything_inside_the_work_zone():
     zone_x, zone_y = P.ZONE
     for z, c in {**P.cages_for(), "REVIEW": P.REVIEW_PEN}.items():

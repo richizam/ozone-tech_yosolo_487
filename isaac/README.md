@@ -188,9 +188,15 @@ success.
 
 * **Sweep corridor**: nothing collidable intrudes into the tilting tray
   edge's swept volume (y 2.69–3.31, down to z 0.44) — chute rails start
-  0.12 m down-slope, the B-incline rails start at y 3.45. (A rail tip at the
-  chute mouth pinned a discharging tray at 13° in an early build; the trace
-  is in the dev log.)
+  0.12 m down-slope, the B-incline rails start at y 3.45, and the debris
+  catch pan under the top run obeys the analytic bound
+  `pan_z_top ≤ pivot_z − tan(tilt)·pan_y_half − margin` (a containment test
+  locks it). Two field lessons live here: a rail tip at the chute mouth
+  pinned a discharging tray at 13°, and a first-cut pan (0.33 half-width,
+  top 0.515) stood across the discharge fall path — every heavy item
+  toppled over it, but the 9 mm pen rolled along its face and dribbled off
+  the chute's east edge to the floor, deterministically, in every perturbed
+  run. Small rolling freight is the sharpest probe of discharge geometry.
 * **Deep-drop discharge**: the chutes start 50 mm under the tilted tray lip,
   so a sliding long box can never bridge tray→chute and yaw-wedge; trays
   carry central-strip end fences (rounds stay contained in the dish centre,

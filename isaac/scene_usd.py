@@ -418,6 +418,14 @@ class SceneBuilder:
             self.add_box(f"chute{zone}_rail_{nm}", (cx + off, rmid, rz),
                          (rail_t, rlen / 2, P.GUIDE_H / 2), euler, col,
                          mat=mat_chute)
+            # LOW STUB RAIL over the setback zone: 40 mm — under the tray
+            # sweep floor, but enough to keep a skittering 9 mm pen from
+            # exiting sideways off the unrailed first 0.12 m (twin stress)
+            smid = y0 + d * setback / 2
+            sz = z0 - abs(smid - y0) * tanang + 0.022
+            self.add_box(f"chute{zone}_stub_{nm}", (cx + off, smid, sz),
+                         (rail_t, setback / 2 + 0.01, 0.020), euler, col,
+                         mat=mat_chute)
         # brake pad (inside the destination)
         pmid = (y1 + pad_end) / 2
         plen = abs(pad_end - y1)
@@ -625,6 +633,14 @@ class SceneBuilder:
                     self.add_box(f"train_leg_{nm}{k}_{lx:.2f}",
                                  (lx, by, 0.26), (0.025, 0.025, 0.26),
                                  color=FRAME_COL, collide=False)
+        # debris CATCH PAN under the top run: anything that slips through an
+        # inter-tray gap (sub-3 mm freight arrives unmetered under the
+        # escapement blade) lands here and the watchdog raises an operator
+        # call-out — never a floor spill. Return leg passes underneath.
+        self.add_box("train_pan", ((S["pan_x0"] + S["pan_x1"]) / 2, y,
+                                   S["pan_z_top"] - 0.005),
+                     ((S["pan_x1"] - S["pan_x0"]) / 2, S["pan_y_half"], 0.005),
+                     color=(0.13, 0.14, 0.16), mat=mat_tray)
         # end modules (enclose the end wheels; the wrap teleports happen
         # inside them). Visual shells only.
         self.add_box("train_end_e", (9.57, y, 0.46), (0.15, 0.40, 0.28),

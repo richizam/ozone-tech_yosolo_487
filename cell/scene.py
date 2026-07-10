@@ -167,6 +167,12 @@ def _chute_xml(zone, cc, wall_at):
         g.append(f'<geom name="chute{zone}_rail_{nm}" type="box" size="{rail_t} {rlen / 2} {P.GUIDE_H / 2}" '
                  f'pos="{cx + off} {rmid} {rz}" euler="{ang:.6f} 0 0" '
                  f'friction="{cc["friction"]}" priority="1" rgba="{frame}"/>')
+        smid = y0 + d * RAIL_SETBACK / 2
+        sz = (z0 - abs(smid - y0) * TAN32) + 0.022
+        g.append(f'<geom name="chute{zone}_stub_{nm}" type="box" '
+                 f'size="{rail_t} {RAIL_SETBACK / 2 + 0.01:.4f} 0.020" '
+                 f'pos="{cx + off} {smid:.4f} {sz:.4f}" euler="{ang:.6f} 0 0" '
+                 f'friction="{cc["friction"]}" priority="1" rgba="{frame}"/>')
     # brake pad: flat, 5 mm below the slope tail (a downhill step, never a
     # lip). Soft (rubber-faced): absorbs the landing instead of returning it
     # — a stiff contact can eject a thin light item (pen pogo)
@@ -332,6 +338,16 @@ def _stations_xml():
                  f'pos="{x} {by} 1.02" rgba="{STEEL}" contype="0" conaffinity="0" group="2"/>')
         g.append(f'<geom name="st{zone}_lamp" type="box" size="0.10 0.025 0.025" '
                  f'pos="{x} {by} 1.08" rgba="{col}" contype="0" conaffinity="0" group="2"/>')
+    # debris CATCH PAN under the top run: freight that slips through an
+    # inter-tray gap at induction (sub-3 mm arrives unmetered; a thin pen on
+    # an unlucky tray phase deflects at the nose) lands HERE and the
+    # watchdog raises an operator call-out — never a floor spill.
+    S = P.SORTER
+    g.append(f'<geom name="train_pan" type="box" '
+             f'size="{(S["pan_x1"] - S["pan_x0"]) / 2} {S["pan_y_half"]} 0.005" '
+             f'pos="{(S["pan_x0"] + S["pan_x1"]) / 2} {S["y"]} '
+             f'{S["pan_z_top"] - 0.005}" friction="0.8 0.01 0.0001" '
+             f'rgba="0.13 0.14 0.16 1"/>')
     # enclosed end modules (the carrier wrap teleports happen inside them)
     y = P.SORTER["y"]
     g.append(f'<geom name="train_end_e" type="box" size="0.15 0.40 0.28" pos="9.57 {y} 0.46" '

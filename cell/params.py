@@ -74,11 +74,11 @@ SORTER = {
     "tray_t": 0.024,
     "dish_deg": 2.0,                   # V half-plate inward angle
     "lip_h": 0.030, "lip_t": 0.012,    # low end fences on the +-x edges only
-    "lip_w": 0.30,                     # ...spanning only the CENTRAL strip:
-                                       # rounds ride the dish centre (contained),
-                                       # while a sliding 0.4 m box's corners
-                                       # clear the fence ends instead of yaw-
-                                       # wedging between full-width lips
+    "lip_w": 0.62,                     # full width: with the deep-drop chute
+                                       # (no tray->chute bridge, no yaw drag)
+                                       # a long box discharges cleanly between
+                                       # full fences, and a rolling pen cannot
+                                       # take a corner exit during the tilt
     "pivot_z": 0.616,                  # revolute (tilt) axis height, along +x
     "shuttle_top": 0.582,              # carrier body below the tray
     # tilt actuation (PhysX angular drive) + realistic command dynamics
@@ -97,6 +97,16 @@ SORTER = {
     "tray_mu": (0.32, 0.30),
     "occupied_callout_x": 9.30,        # an occupied carrier reaching the east
                                        # module = dead-tilt fault -> operator
+    # debris CATCH PAN under the top run: freight thinner than the
+    # escapement's 3 mm skim gap (a 2 mm card) can arrive unmetered and
+    # knife into an inter-tray gap — it lands on the pan and the watchdog
+    # raises an operator call-out (a real sorter's drip pan / debris tray).
+    # SWEEP-CORRIDOR CONSTRAINT: the full-tilt tray plane is
+    # z = pivot_z - tan(tilt)*|y - y0| (0.616 - 0.781*|dy|), so the pan must
+    # satisfy pan_z_top <= 0.616 - 0.781*pan_y_half - margin, and its edge
+    # must stay north of the discharge fall corridor (|dy| < 0.24). A 0.33 x
+    # 0.515 pan deflected the rolling pen off the C chute mouth (floor drop).
+    "pan_z_top": 0.42, "pan_y_half": 0.22, "pan_x0": 6.78, "pan_x1": 9.28,
 }
 
 # ---------------------------------------------------------------- induction (physical, synchronized)
@@ -150,7 +160,9 @@ def chute_run(cc):
 # powered incline connector from the B station tray lip up to the FIXED
 # belt B infeed (rise 0.28 m over 0.94 m = 16.6 deg; every B item is
 # non-round by rule, holds by friction: tan 16.6 = 0.30 << mu_pair ~0.6)
-B_CONNECT = {"cx": BELT_B["cx"], "width": 0.5, "y0": 3.26, "y1": 4.20,
+# width 0.62 = flared infeed: a 445 mm box lands with margin, then the
+# fixed 0.5 m belt B's own side guides take over at the crest
+B_CONNECT = {"cx": BELT_B["cx"], "width": 0.62, "y0": 3.26, "y1": 4.20,
              "z_top0": 0.42, "z_top1": 0.70, "speed": 0.9}
 
 GUIDE_H = 0.14                          # chute side-guide height above the surface
@@ -194,10 +206,10 @@ CAGES = {
     "sorter": {
         "C": {"center": (STATIONS["C"]["x"], 1.865), "inner": (0.8, 1.2),
               "wall_h": 0.8, "wall_t": 0.03, "open_side": "+y",
-              "aperture_w": 0.80, "aperture_top": 0.83, "sill_top": 0.20},
+              "aperture_w": 0.76, "aperture_top": 0.83, "sill_top": 0.20},
         "D": {"center": (STATIONS["D"]["x"], 1.865), "inner": (0.8, 1.2),
               "wall_h": 0.8, "wall_t": 0.03, "open_side": "+y",
-              "aperture_w": 0.80, "aperture_top": 0.83, "sill_top": 0.20},
+              "aperture_w": 0.76, "aperture_top": 0.83, "sill_top": 0.20},
     },
 }
 # manual-review pen (north-east): uncertain items, double occupancy and
