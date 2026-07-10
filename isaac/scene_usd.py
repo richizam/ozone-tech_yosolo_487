@@ -273,6 +273,22 @@ class SceneBuilder:
         geom.CreateSizeAttr(2.0)
         half = ((t2, width / 2, h2) if along == "y" else (width / 2, t2, h2))
         UsdGeom.Xformable(geom.GetPrim()).AddScaleOp().Set(Gf.Vec3f(*half))
+        # CUSHIONED STOP FACE (visual): dark rubber strip on the upstream
+        # face — the industrial answer to 'can a stop blade bruise freight':
+        # an item pressing the stop at 1 m/s with the belt slipping under it
+        # decelerates at ~2.5 g over the cushion (gentle-handling budget in
+        # docs/report/calculations_vs_simulation.md).
+        pad = UsdGeom.Cube.Define(self.stage, f"{body_path}/cushion")
+        pad.CreateSizeAttr(2.0)
+        pxfc = UsdGeom.Xformable(pad.GetPrim())
+        if along == "y":
+            pxfc.AddTranslateOp().Set(Gf.Vec3d(-(t2 + 0.004), 0, 0.01))
+            pxfc.AddScaleOp().Set(Gf.Vec3f(0.004, width / 2 * 0.96, h2 * 0.7))
+        else:
+            pxfc.AddTranslateOp().Set(Gf.Vec3d(0, -(t2 + 0.004), 0.01))
+            pxfc.AddScaleOp().Set(Gf.Vec3f(width / 2 * 0.96, 0.004, h2 * 0.7))
+        pad.CreateDisplayColorAttr([Gf.Vec3f(0.09, 0.09, 0.10)])
+        self._bind_vis(pad.GetPrim(), (0.09, 0.09, 0.10), roughness=0.9)
         geom.CreateDisplayColorAttr([Gf.Vec3f(0.16, 0.17, 0.20)])
         strip = UsdGeom.Cube.Define(self.stage, f"{body_path}/strip")
         strip.CreateSizeAttr(2.0)

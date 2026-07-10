@@ -215,6 +215,26 @@ Cross-check (measured): `reads_log.json` per read (`head: "macro"`,
 `guards_mm`), the `edge_small` matrix run, and the `cube11_proof` field of
 `matrix_summary.json`.
 
+## 8.1 Gentle-handling budget (damage risk per touch point)
+
+Every place the cell touches freight, with the worst-case deceleration —
+the number a fragile item actually experiences:
+
+| Touch point | Mechanism | Worst case | Load |
+|---|---|---|---|
+| Escapement / pre-gate stop | item presses a RUBBER-FACED stop at 1 m/s, belt slips underneath (accumulation-conveyor practice) | 20 mm cushion travel: a = v²/2s | **~2.5 g** |
+| Induction landing | 60 mm knife-nose drop onto the tray dish | v = √(2g·0.06) = 1.08 m/s onto 24 mm compliant dish contact | **~2.5 g** |
+| Discharge | gravity slide off a 28.5–38° tray (small freight gets the reduced angle) | exit ≤ 1.4 m/s onto a co-inclined chute | grazing contact |
+| Chute + brake pad | 32° polished slide into a soft rubber pad | pad absorbs ≤ 2.3 m/s over ~80 mm | **~3.4 g** |
+| Cage landing | drop through the aperture onto the high-friction mat / freight stack | ≤ 0.3 m equivalent drop | **≤ 3 g** spike |
+
+Context: parcels in ordinary manual + conveyor handling routinely see
+20–50 g events (ISTA drop tests certify packaging for 0.5–1 m free falls ≈
+100 g+ peaks). The cell's worst touch point is ~30× gentler than what
+shipping packaging is designed to survive. `unsafe_errors = 0` and
+`floor_drops = 0` across both validation matrices mean no item ever takes
+an uncontrolled fall.
+
 ## 9. What is physical and what is modelled (honesty)
 
 * **Physical (PhysX contact/actuation):** belt transport (surface-velocity

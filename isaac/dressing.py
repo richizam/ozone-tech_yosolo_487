@@ -717,31 +717,8 @@ class Dressing:
                 self.box((b["cx"] + (0.05 if j else -0.05), float(y),
                           b["top"] + 0.0005), (0.075, 0.012, 0.0004), wht,
                          tag="dirB", euler_deg=(0, 0, sw))
-        # chevrons on the incline connector surface (rotated with the slope)
-        ang = math.degrees(math.atan2(bc["z_top1"] - bc["z_top0"],
-                                      bc["y1"] - bc["y0"]))
-        for yy in np.arange(bc["y0"] + 0.15, bc["y1"] - 0.1, 0.4):
-            frac = (float(yy) - bc["y0"]) / (bc["y1"] - bc["y0"])
-            zz = bc["z_top0"] + frac * (bc["z_top1"] - bc["z_top0"]) + 0.0008
-            for j, sw in ((0, 50.0), (1, 130.0)):
-                self.box((bc["cx"] + (0.05 if j else -0.05), float(yy), zz),
-                         (0.07, 0.012, 0.0004), wht, tag="dirCn",
-                         euler_deg=(-ang, 0, sw))
-
-    # -------------------------------------------------- B transfer continuity
-    def b_transfer(self):
-        """C. The tray -> incline handoff reads as engineered hardware:
-        a transition nose apron under the incline mouth, a side-mounted
-        drive motor + gearbox at the head drum, and support legs under the
-        span. All NON-COLLIDING, all positioned from P.B_CONNECT, all beside
-        or UNDER the belt surface plane (never above it, where items slide)
-        and clear of the tray-sweep corridor (nothing above z 0.36 south of
-        y 3.42; the sweep bottoms at z 0.62 over y 3.31). The end drums both
-        ends already come from rollers()."""
-        bc = P.B_CONNECT
-        ang = math.degrees(math.atan2(bc["z_top1"] - bc["z_top0"],
-                                      bc["y1"] - bc["y0"]))
-        slope = (bc["z_top1"] - bc["z_top0"]) / (bc["y1"] - bc["y0"])
+        # (incline chevrons removed: on the narrow slope they read as
+        # loose strips on camera — wide fixed belts keep painted chevrons)
         # transition nose apron: steep deflector plate under the mouth,
         # closing the visual void between the tray lip line and the belt
         self.box((bc["cx"], 3.285, 0.315), (bc["width"] / 2 - 0.01, 0.045,

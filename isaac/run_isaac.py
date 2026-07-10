@@ -603,7 +603,8 @@ def main():
                            mode="oracle_lookahead")
                     st["t_route_cmd"] = t
                     tint(slug, st["zone"])
-                    route_viz.make_flag(slug, st["zone"])
+                    # per-item route flags removed: on the narrow incline they read
+                    # as loose debris on camera (signage + HMI carry the route)
                 # ---- induction: offer the head item to the sorter
                 if (args.drive == "surface" and "zone" in st
                         and "t_released" not in st and slug not in frozen
