@@ -313,11 +313,16 @@ ARM_BASE = {
     # into their cages. It never reaches over the running train (grasp points
     # are clamped south of the tray sweep) and no link path crosses any
     # chute, cage or train structure at any commanded pose.
-    "sorter": (8.10, 2.10),
+    # base sits in the INTER-CHUTE service aisle (between chute C's east
+    # rail at x 7.80 and chute D's west rail at x 8.40, north of the cage
+    # wall plane y 2.265) — the pedestal footprint overlaps nothing and no
+    # link path ever crosses a cage wall: grasp (y <= 2.64), lift, transfer
+    # and release all happen north of the wall plane.
+    "sorter": (8.10, 2.42),
 }
-ARM_BASE_ISAAC = {"sorter": (8.10, 2.10)}
+ARM_BASE_ISAAC = {"sorter": (8.10, 2.42)}
 ARM = {
-    "base": (8.10, 2.10),
+    "base": (8.10, 2.42),
     "pedestal_h": 0.65,
     "yaw_col_h": 0.25,                 # shoulder pivot z = pedestal_h + yaw_col_h
     "L1": 0.7, "L2": 0.6,              # upper arm / forearm
@@ -339,11 +344,16 @@ SHOULDER_Z = ARM["pedestal_h"] + ARM["yaw_col_h"]  # 0.90
 # the tray sweep (y > 2.62) is not a chute snag — it rides out safely.
 ARM_GRASP_Y_MAX = 2.64
 PLACE_BY_MODE = {
+    # release onto the CHUTE LINE north of the cage wall plane (y 2.42 >
+    # wall 2.265): the freight slides the last stretch through the aperture
+    # like any routed item — the chute IS the cage's door, and the arm
+    # never reaches over or through a wall. surface_z is the release height
+    # above the local chute surface (z ~0.19 at y 2.42).
     "sorter": {
-        "C": {"xy": (STATIONS["C"]["x"], 2.15), "mode": "drop", "z_clear": 0.05,
-              "surface_z": 0.83},
-        "D": {"xy": (STATIONS["D"]["x"], 2.15), "mode": "drop", "z_clear": 0.05,
-              "surface_z": 0.83},
+        "C": {"xy": (STATIONS["C"]["x"], 2.42), "mode": "drop", "z_clear": 0.05,
+              "surface_z": 0.40},
+        "D": {"xy": (STATIONS["D"]["x"], 2.42), "mode": "drop", "z_clear": 0.05,
+              "surface_z": 0.40},
     },
 }
 LIFT_Z = 1.25                          # safe TCP transfer height
