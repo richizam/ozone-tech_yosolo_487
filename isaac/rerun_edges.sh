@@ -56,7 +56,7 @@ EOF
 run_one edge_items_all --seed 42 --manifest-extra --max-sim-s 700
 run_one edge_small     --seed 42 --manifest-extra \
   --items edge_cube11,edge_cube10,edge_rod9,edge_card2,pen,bl_rod_b \
-  --max-sim-s 260
+  --max-sim-s 320
 
 echo "=== EDGES DONE ==="
 touch "$OUT_ROOT/EDGES_DONE"
