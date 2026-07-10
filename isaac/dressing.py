@@ -166,7 +166,22 @@ class Dressing:
         return self._quad_with_texture(tex, center, width, yaw_deg, tilt_deg)
 
     def _quad_with_texture(self, tex, center, width, yaw_deg=0.0,
-                           tilt_deg=90.0):
+                           tilt_deg=90.0, _pair=True):
+        # SIGN ORIENTATION RULE: a doubleSided single quad mirrors its text
+        # when viewed from behind (the showcase hero read "RETROS B").
+        # Every upright sign is therefore a back-to-back PAIR of
+        # single-sided quads, each reading correctly from its own side.
+        if _pair and abs(tilt_deg) > 30.0:
+            nx = math.sin(math.radians(yaw_deg))
+            ny = -math.cos(math.radians(yaw_deg))
+            off = 0.004
+            front = (center[0] + nx * off, center[1] + ny * off, center[2])
+            back = (center[0] - nx * off, center[1] - ny * off, center[2])
+            p = self._quad_with_texture(tex, front, width, yaw_deg,
+                                        tilt_deg, _pair=False)
+            self._quad_with_texture(tex, back, width, yaw_deg + 180.0,
+                                    tilt_deg, _pair=False)
+            return p
         path = self._path("label")
         mesh = UsdGeom.Mesh.Define(self.stage, path)
         w2, h2 = width / 2, width / 8               # 4:1 board
@@ -174,7 +189,7 @@ class Dressing:
         mesh.CreatePointsAttr(Vt.Vec3fArray([Gf.Vec3f(*p) for p in pts]))
         mesh.CreateFaceVertexIndicesAttr(Vt.IntArray([0, 1, 2, 3]))
         mesh.CreateFaceVertexCountsAttr(Vt.IntArray([4]))
-        mesh.CreateDoubleSidedAttr(True)
+        mesh.CreateDoubleSidedAttr(False)
         st = UsdGeom.PrimvarsAPI(mesh.GetPrim()).CreatePrimvar(
             "st", Sdf.ValueTypeNames.TexCoord2fArray,
             UsdGeom.Tokens.faceVarying)

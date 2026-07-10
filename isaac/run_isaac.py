@@ -351,10 +351,12 @@ def main():
             rp.set_angular_velocity(w)
 
     def tint(slug, zone):
-        mesh = stage.GetPrimAtPath(f"{info['items'][slug]['path']}/geom")
-        UsdGeom.Gprim(mesh).GetDisplayColorAttr().Set(
-            [Gf.Vec3f(*[0.50 * v + 0.05 for v in
-                        P.ROUTE_RGBA.get(zone, (0.6, 0.6, 0.6))])])
+        # PRESENTATION RULE: freight keeps its product material — a full-body
+        # route tint made every parcel read as a pastel LEGO brick on camera.
+        # Route identity is told by the floating route FLAG (route_viz) and
+        # the destination signage; classification runs on depth, so the
+        # tint never had a functional role.
+        return
 
     def which_dest(pos):
         for zone, cage in watch_zones.items():

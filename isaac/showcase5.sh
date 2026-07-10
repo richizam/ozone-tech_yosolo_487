@@ -38,8 +38,14 @@ run() {
 }
 
 # ---- hero + item-follow FIRST (early visual check of the new machine)
-run perfect_hero  --seed "$CLEAN_SEED" --camera hero_sw --depth-stills 0 --max-sim-s 400
+# hero_ne: low north-east 3/4 view along the train — cages on the FAR side,
+# arm in profile, nothing blocking the sorter line (brief: the old high
+# hero was blocked by cages and the robot)
+run perfect_hero  --seed "$CLEAN_SEED" --camera hero_ne --depth-stills 0 --max-sim-s 400
 run item_follow_perception_to_bin --seed "$CLEAN_SEED" --follow-slug pouf --camera overview --depth-stills 0 --max-sim-s 400
+# ---- MECHANISM close-ups (brief: make the machine readable)
+run mech_tilt_C   --seed 42 --items box_l,pen --camera mech_c_side --depth-stills 0 --max-sim-s 200
+run b_transfer    --seed 42 --items box_s,lunchbox --camera b_transfer --depth-stills 0 --max-sim-s 200
 # ---- remaining PERFECT nominal static angles
 run perfect_iso       --seed "$CLEAN_SEED" --camera cell_iso   --depth-stills 0 --max-sim-s 400
 run perfect_deckfront --seed "$CLEAN_SEED" --camera deck_front --depth-stills 0 --max-sim-s 400
