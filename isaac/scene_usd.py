@@ -23,13 +23,19 @@ from pxr import (Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics,
 
 from cell import params as P
 
+from isaac.materials import preset as _mat_preset
+
 STEEL = (0.55, 0.57, 0.62)
 DARK = (0.22, 0.24, 0.28)
-BELT_COL = (0.085, 0.088, 0.095)       # dark rubber belt surface
-TRAY_COL = (0.16, 0.17, 0.19)          # smooth ABS/steel tray
+# named presentation finishes (isaac.materials.PRESETS) — visual only
+BELT_COL, BELT_R, _BELT_M = _mat_preset("belt_rubber")     # matte belt rubber
+RAIL_COL, RAIL_R, RAIL_M = _mat_preset("safety_yellow_worn")   # guards
+CHUTE_COL, CHUTE_R, CHUTE_M = _mat_preset("brushed_steel")     # chute shells
+POWDER_COL, POWDER_R, POWDER_M = _mat_preset("powder_steel_dark")
+GALV_COL, GALV_R, GALV_M = _mat_preset("galvanized")
+TRAY_COL = (0.32, 0.33, 0.36)          # powder-coated steel tray plate
+LIP_COL = (0.21, 0.22, 0.25)           # darker steel tray lips (were gold)
 SHUTTLE_COL = (0.10, 0.11, 0.13)       # carrier chassis
-RAIL_COL = (0.58, 0.48, 0.13)          # worn industrial safety yellow
-CHUTE_COL = (0.50, 0.51, 0.55)         # brushed steel chute
 FRAME_COL = (0.17, 0.18, 0.21)         # sorter chassis frame
 ITEM_COL = (0.75, 0.72, 0.65)
 
@@ -184,8 +190,10 @@ class SceneBuilder:
 
     # ------------------------------------------------------------------- solids
     def add_box(self, name, center, half, euler_rad=(0, 0, 0), color=STEEL,
-                opacity=1.0, collide=True, mat=None, parent="statics"):
-        """Static box collider."""
+                opacity=1.0, collide=True, mat=None, parent="statics",
+                roughness=0.82, metallic=0.05):
+        """Static box collider. roughness/metallic feed the VISUAL binding
+        only (physics comes from `mat`)."""
         path = f"{ROOT}/{parent}/{_sanitize(name)}"
         cube = UsdGeom.Cube.Define(self.stage, path)
         cube.CreateSizeAttr(2.0)                       # +-1 * scale = half
@@ -198,7 +206,8 @@ class SceneBuilder:
         cube.CreateDisplayColorAttr([Gf.Vec3f(*color)])
         if opacity < 1.0:
             cube.CreateDisplayOpacityAttr([float(opacity)])
-        self._bind_vis(cube.GetPrim(), color, opacity)
+        self._bind_vis(cube.GetPrim(), color, opacity, roughness=roughness,
+                       metallic=metallic)
         if collide:
             UsdPhysics.CollisionAPI.Apply(cube.GetPrim())
             # MuJoCo runs margin=0; PhysX's default ~2-4 cm contactOffset makes
@@ -236,7 +245,8 @@ class SceneBuilder:
         sv.CreateSurfaceVelocityAttr(Gf.Vec3f(*[float(v) / float(h)
                                                 for v, h in zip(velocity, half)]))
         self._bind_phys(prim, mat)
-        self._bind_vis(prim, color)      # matte visual (noses stay visible)
+        # matte belt-rubber visual (noses stay visible)
+        self._bind_vis(prim, color, roughness=BELT_R, metallic=0.0)
         return path
 
     def build_blade(self, name, x, y, width, along="y", filter_paths=()):
@@ -305,7 +315,8 @@ class SceneBuilder:
         return joint.GetPrim().GetPath().pathString
 
     def add_cylinder(self, name, center, radius, half_h, color=STEEL,
-                     axis="Z", parent="statics"):
+                     axis="Z", parent="statics", roughness=0.82,
+                     metallic=0.05):
         """Visual-only cylinder (frame posts etc.)."""
         path = f"{ROOT}/{parent}/{_sanitize(name)}"
         cyl = UsdGeom.Cylinder.Define(self.stage, path)
@@ -315,7 +326,8 @@ class SceneBuilder:
         xf = UsdGeom.Xformable(cyl.GetPrim())
         xf.AddTranslateOp().Set(Gf.Vec3d(*[float(c) for c in center]))
         cyl.CreateDisplayColorAttr([Gf.Vec3f(*color)])
-        self._bind_vis(cyl.GetPrim(), color)
+        self._bind_vis(cyl.GetPrim(), color, roughness=roughness,
+                       metallic=metallic)
         return cyl.GetPrim()
 
     # -------------------------------------------------------------------- cages
@@ -324,15 +336,22 @@ class SceneBuilder:
         (skirt), two flanks and (if the aperture stops below the wall top) a
         header. The discharge chute crosses the wall plane INSIDE the
         aperture, so a routed item can roll or bounce inside the cage but
-        cannot leave it again."""
+        cannot leave it again.
+
+        PRESENTATION: the collider walls keep their exact geometry but
+        render as NEAR-INVISIBLE dark glass (displayColor dark + low
+        opacity) — the visible cage is the non-colliding galvanized
+        roll-cage shell from dressing.cages_detail(), so the destinations
+        read as wire-mesh roll containers instead of solid plastic boxes."""
         tag = tag or f"cage{zone}"
         cx, cy = cage["center"]
         ix, iy = cage["inner"]
         t, h = cage["wall_t"], cage["wall_h"]
         hx, hy, hh = ix / 2, iy / 2, h / 2
-        col = soft(P.ROUTE_RGBA.get(zone, (0.6, 0.6, 0.6)))
+        col = (0.09, 0.10, 0.12)         # ghost wall tint (was route colour)
+        ghost = 0.10                     # near-invisible collider walls
         self.add_box(f"{tag}_floor", (cx, cy, t / 2), (hx + t, hy + t, t / 2),
-                     color=tuple(c * 0.55 for c in col), mat=mat_wall)
+                     color=(0.13, 0.14, 0.16), mat=mat_wall)
         walls = {"+y": (0, hy + t / 2, hx + t, t / 2), "-y": (0, -(hy + t / 2), hx + t, t / 2),
                  "+x": (hx + t / 2, 0, t / 2, hy), "-x": (-(hx + t / 2), 0, t / 2, hy)}
         open_side = cage.get("open_side")
@@ -350,34 +369,42 @@ class SceneBuilder:
                         fl = (sy - aw2) / 2
                         self.add_box(f"{tag}_fl{nm}",
                                      (cx + dx, cy + sgn * (aw2 + fl), t + hh),
-                                     (sx, fl, hh), color=col, mat=mat_wall)
+                                     (sx, fl, hh), color=col, mat=mat_wall,
+                                     opacity=ghost)
                     if hdr_h > 0.005:
                         self.add_box(f"{tag}_hdr", (cx + dx, cy, top + hdr_h),
-                                     (sx, aw2, hdr_h), color=col, mat=mat_wall)
+                                     (sx, aw2, hdr_h), color=col,
+                                     mat=mat_wall, opacity=ghost)
                     self.add_box(f"{tag}_skirt", (cx + dx, cy, skirt_zc),
-                                 (sx, aw2, skirt_h2), color=col, mat=mat_wall)
+                                 (sx, aw2, skirt_h2), color=col,
+                                 mat=mat_wall, opacity=ghost)
                 else:
                     for sgn, nm in ((1, "a"), (-1, "b")):
                         fl = (sx - aw2) / 2
                         self.add_box(f"{tag}_fl{nm}",
                                      (cx + sgn * (aw2 + fl), cy + dy, t + hh),
-                                     (fl, sy, hh), color=col, mat=mat_wall)
+                                     (fl, sy, hh), color=col, mat=mat_wall,
+                                     opacity=ghost)
                     if hdr_h > 0.005:
                         self.add_box(f"{tag}_hdr", (cx, cy + dy, top + hdr_h),
-                                     (aw2, sy, hdr_h), color=col, mat=mat_wall)
+                                     (aw2, sy, hdr_h), color=col,
+                                     mat=mat_wall, opacity=ghost)
                     self.add_box(f"{tag}_skirt", (cx, cy + dy, skirt_zc),
-                                 (aw2, sy, skirt_h2), color=col, mat=mat_wall)
+                                 (aw2, sy, skirt_h2), color=col,
+                                 mat=mat_wall, opacity=ghost)
             else:
                 self.add_box(f"{tag}_w{sname}", (cx + dx, cy + dy, t + hh),
-                             (sx, sy, hh), color=col, mat=mat_wall)
+                             (sx, sy, hh), color=col, mat=mat_wall,
+                             opacity=ghost)
         if open_side:
             self.add_box(f"{tag}_mat", (cx, cy, t + 0.004), (hx, hy, 0.004),
                          color=(0.15, 0.15, 0.17), mat=mat_mat)
-        for sx_ in (-1, 1):                       # visual frame posts
+        for sx_ in (-1, 1):     # visual corner posts — galvanized tube frame
             for sy_ in (-1, 1):
                 self.add_cylinder(f"{tag}_p{sx_}{sy_}",
                                   (cx + sx_ * (hx + t), cy + sy_ * (hy + t), (t + h) / 2),
-                                  0.022, (t + h) / 2, color=col)
+                                  0.022, (t + h) / 2, color=GALV_COL,
+                                  roughness=GALV_R, metallic=GALV_M)
 
     # -------------------------------------------------------------------- chute
     def build_chute(self, zone, cc, wall_at, mat_chute, mat_pad, mat_hood):
@@ -397,7 +424,7 @@ class SceneBuilder:
         mid, zmid = (y0 + y1) / 2, (z0 + z1) / 2 - 0.015
         self.add_box(f"chute{zone}", (cx, mid, zmid),
                      (cc["width"] / 2, length / 2, 0.015), euler, CHUTE_COL,
-                     mat=mat_chute)
+                     mat=mat_chute, roughness=CHUTE_R, metallic=CHUTE_M)
         # MOUTH CHAMFER: steep infill strip at the mouth edge (see
         # params.CHUTE) — thin flat freight lands FLAT instead of tipping
         # onto its rim over the 50 mm deep-drop, and the ballistic under-fly
@@ -411,7 +438,8 @@ class SceneBuilder:
                      (cx, (ch_top_y + ch_base_y) / 2,
                       z0 + (ch_rise - 0.003) / 2),
                      (cc["width"] / 2, ch_len / 2, 0.002),
-                     (ch_ang, 0, 0), CHUTE_COL, mat=mat_chute)
+                     (ch_ang, 0, 0), CHUTE_COL, mat=mat_chute,
+                     roughness=CHUTE_R, metallic=CHUTE_M)
         # solid filler under the thin working face (twin parity: an item
         # edge that penetrates the shell meets backing, not a wedge cavity)
         fill_y0 = ch_top_y + d * 0.004
@@ -419,7 +447,8 @@ class SceneBuilder:
         self.add_box(f"chute{zone}_chamfill",
                      (cx, (fill_y0 + fill_y1) / 2, z0 - 0.017),
                      (cc["width"] / 2, abs(fill_y1 - fill_y0) / 2, 0.014),
-                     color=CHUTE_COL, mat=mat_chute)
+                     color=CHUTE_COL, mat=mat_chute, roughness=CHUTE_R,
+                     metallic=CHUTE_M)
         # MOUTH CHEEKS: side wings over the throat gap (see params.CHUTE) —
         # a hot small roller with +x drift crossed the open gap sides before
         # touching any chute surface. Top capped by the plate-edge arc.
@@ -504,7 +533,8 @@ class SceneBuilder:
             self.add_box(f"bconnect_rail_{nm}",
                          (bc["cx"] + sgn * (bc["width"] / 2 + rail_t), r_cy,
                           r_cz + 0.09), (rail_t, r_len / 2, 0.06),
-                         (ang, 0, 0), color=RAIL_COL, mat=mat_wall)
+                         (ang, 0, 0), color=RAIL_COL, mat=mat_wall,
+                         roughness=RAIL_R, metallic=RAIL_M)
         return path
 
     # --------------------------------------------------------- tilt-tray train
@@ -545,6 +575,57 @@ class SceneBuilder:
         link.CreateDisplayColorAttr([Gf.Vec3f(0.30, 0.31, 0.34)])
         # ---- tray — dynamic body on revolute joint (tilt axis along travel)
         pivot_dz = S["pivot_z"] - (S["shuttle_top"] - 0.025)  # pivot above shuttle
+
+        # ---- carrier readability (VISUAL ONLY, non-colliding children of
+        # the kinematic shuttle — same discipline as the chain-link block):
+        # dark inset end bands reveal the carrier-to-carrier gap, top-edge
+        # bevel strips, the tilt PIVOT SHAFT with bearing blocks at the
+        # pivot line, and the tilt-actuator housing on the south flank.
+        def _chassis_box(nm, tr, half, col, euler=None, rough=0.70, met=0.10):
+            c = UsdGeom.Cube.Define(self.stage, f"{base}/{nm}")
+            c.CreateSizeAttr(2.0)
+            cxf = UsdGeom.Xformable(c.GetPrim())
+            cxf.AddTranslateOp().Set(Gf.Vec3d(*[float(v) for v in tr]))
+            if euler is not None:
+                cxf.AddRotateXYZOp().Set(Gf.Vec3f(*[float(e) for e in euler]))
+            cxf.AddScaleOp().Set(Gf.Vec3f(*[float(h) for h in half]))
+            c.CreateDisplayColorAttr([Gf.Vec3f(*col)])
+            self._bind_vis(c.GetPrim(), col, roughness=rough, metallic=met)
+            return c
+
+        for sgn, enm in ((1, "e"), (-1, "w")):
+            _chassis_box(f"band_{enm}", (sgn * 0.258, 0, 0),
+                         (0.012, 0.272, 0.027), (0.030, 0.032, 0.036))
+            _chassis_box(f"bevel_{enm}", (sgn * 0.27, 0, 0.025),
+                         (0.006, 0.27, 0.006), POWDER_COL, euler=(0, 45, 0),
+                         rough=POWDER_R, met=POWDER_M)
+        # pivot shaft (brushed) just under the dished plates: r 14 mm keeps
+        # the full ±38-deg plate sweep clear (plate bottom passes z -0.013
+        # rel pivot at |y| 0.028; the shaft top stays at 0.000)
+        shaft = UsdGeom.Cylinder.Define(self.stage, f"{base}/pivot_shaft")
+        shaft.CreateRadiusAttr(0.014)
+        shaft.CreateHeightAttr(float(S["tray_l"] - 0.06))
+        shaft.CreateAxisAttr("X")
+        shxf = UsdGeom.Xformable(shaft.GetPrim())
+        shxf.AddTranslateOp().Set(Gf.Vec3d(0, 0, float(pivot_dz) - 0.014))
+        shaft.CreateDisplayColorAttr([Gf.Vec3f(*CHUTE_COL)])
+        self._bind_vis(shaft.GetPrim(), CHUTE_COL, roughness=CHUTE_R,
+                       metallic=CHUTE_M)
+        for sgn, enm in ((1, "e"), (-1, "w")):   # bearing blocks, shaft ends
+            _chassis_box(f"bearing_{enm}",
+                         (sgn * 0.250, 0, pivot_dz - 0.030),
+                         (0.020, 0.028, 0.012), POWDER_COL,
+                         rough=POWDER_R, met=POWDER_M)
+        # tilt-actuator housing + rod, SOUTH flank: the tilted lip trace
+        # bottoms at y -0.244 / z 0.426 world — the housing (y -0.27..-0.31,
+        # bottom z 0.532 on the top run) stays >= 0.10 m above/behind the
+        # discharge fall line and outside the tilted-plate envelope.
+        _chassis_box("actuator", (0, -0.29, 0.010), (0.055, 0.020, 0.035),
+                     POWDER_COL, rough=POWDER_R, met=POWDER_M)
+        _chassis_box("actuator_rod", (0, -0.270, 0.030),
+                     (0.008, 0.008, 0.020), CHUTE_COL, euler=(30, 0, 0),
+                     rough=CHUTE_R, met=CHUTE_M)
+
         tray = f"{ROOT}/sorter/tray{i}"
         txform = UsdGeom.Xform.Define(self.stage, tray)
         UsdGeom.Xformable(txform.GetPrim()).AddTranslateOp().Set(
@@ -568,7 +649,9 @@ class SceneBuilder:
             pxf.AddRotateXYZOp().Set(Gf.Vec3f(sgn * S["dish_deg"], 0, 0))
             pxf.AddScaleOp().Set(Gf.Vec3f(S["tray_l"] / 2, hy, hz))
             plate.CreateDisplayColorAttr([Gf.Vec3f(*TRAY_COL)])
-            self._bind_vis(plate.GetPrim(), TRAY_COL, roughness=0.55)
+            # powder-coated steel plate (mid-grey, roughness ~0.5)
+            self._bind_vis(plate.GetPrim(), TRAY_COL, roughness=0.50,
+                           metallic=0.20)
             UsdPhysics.CollisionAPI.Apply(plate.GetPrim())
             pxc = PhysxSchema.PhysxCollisionAPI.Apply(plate.GetPrim())
             pxc.CreateContactOffsetAttr(0.004)
@@ -586,12 +669,29 @@ class SceneBuilder:
             lxf2.AddScaleOp().Set(Gf.Vec3f(S["lip_t"] / 2,
                                            S.get("lip_w", S["tray_w"]) / 2,
                                            S["lip_h"] / 2))
-            lip.CreateDisplayColorAttr([Gf.Vec3f(0.42, 0.30, 0.10)])
+            # darker steel lips — part of the tray, not gold trim
+            lip.CreateDisplayColorAttr([Gf.Vec3f(*LIP_COL)])
+            self._bind_vis(lip.GetPrim(), LIP_COL, roughness=0.50,
+                           metallic=0.30)
             UsdPhysics.CollisionAPI.Apply(lip.GetPrim())
             pxc = PhysxSchema.PhysxCollisionAPI.Apply(lip.GetPrim())
             pxc.CreateContactOffsetAttr(0.004)
             pxc.CreateRestOffsetAttr(0.0)
             self._bind_phys(lip.GetPrim(), mat_tray)
+            # thin visual 45-deg chamfer strip along the lip top (no
+            # CollisionAPI — pure render geometry riding with the tray)
+            chf = UsdGeom.Cube.Define(self.stage, f"{tray}/lipch_{nm}")
+            chf.CreateSizeAttr(2.0)
+            cxf3 = UsdGeom.Xformable(chf.GetPrim())
+            cxf3.AddTranslateOp().Set(Gf.Vec3d(
+                sgn * (S["tray_l"] / 2 - S["lip_t"] / 2), 0,
+                z_in + S["lip_h"]))
+            cxf3.AddRotateXYZOp().Set(Gf.Vec3f(0, 45, 0))
+            cxf3.AddScaleOp().Set(Gf.Vec3f(
+                0.005, S.get("lip_w", S["tray_w"]) / 2 - 0.004, 0.005))
+            chf.CreateDisplayColorAttr([Gf.Vec3f(0.30, 0.31, 0.34)])
+            self._bind_vis(chf.GetPrim(), (0.30, 0.31, 0.34), roughness=0.45,
+                           metallic=0.40)
         # revolute tilt joint shuttle -> tray, axis X, angular position drive
         rj = UsdPhysics.RevoluteJoint.Define(self.stage, f"{tray}_tilt")
         rj.CreateAxisAttr("X")
@@ -669,6 +769,38 @@ class SceneBuilder:
                     self.add_box(f"train_leg_{nm}{k}_{lx:.2f}",
                                  (lx, by, 0.26), (0.025, 0.025, 0.26),
                                  color=FRAME_COL, collide=False)
+        # UNDER-DECK RETURN ENCLOSURE (visual only, collide=False): long side
+        # skirt panels close the black void where the return leg runs, so
+        # the under-sorter volume reads as machine enclosure. Panels sit
+        # OUTSIDE y 2.62..3.38 (never inside the tray sweep or a discharge
+        # fall corridor), span z 0.10..0.38, and are SEGMENTED around every
+        # station discharge cutout (C/D south, B/REVIEW north) exactly like
+        # the chassis beams above. Access-panel seams + vent grilles give
+        # the long runs service detail.
+        enc_x0, enc_x1 = S["x_west"] + 0.2, S["x_east"] - 0.2
+        enc_zc, enc_zh = 0.24, 0.14                     # z 0.10..0.38
+        for sgn, nm, cuts in ((-1, "s", cuts_s), (1, "n", cuts_n)):
+            ey = y + sgn * 0.415
+            for k, (a, b) in enumerate(segments(enc_x0, enc_x1, cuts)):
+                self.add_box(f"train_enc_{nm}{k}", ((a + b) / 2, ey, enc_zc),
+                             ((b - a) / 2, 0.012, enc_zh),
+                             color=(0.14, 0.15, 0.18), collide=False,
+                             roughness=POWDER_R, metallic=POWDER_M)
+                if b - a > 0.35:        # recessed access-panel seams
+                    for fx in (0.25, 0.50, 0.75):
+                        self.add_box(f"train_encseam_{nm}{k}_{int(fx * 100)}",
+                                     (a + fx * (b - a), ey + sgn * 0.0125,
+                                      enc_zc),
+                                     (0.0015, 0.0015, enc_zh - 0.015),
+                                     color=(0.05, 0.055, 0.06), collide=False)
+                if b - a > 0.5:         # small vent grille (3 louvre slots)
+                    gx_ = (a + b) / 2 - 0.10
+                    for gz in (0.185, 0.215, 0.245):
+                        self.add_box(
+                            f"train_encvent_{nm}{k}_{int(gz * 1000)}",
+                            (gx_, ey + sgn * 0.012, gz),
+                            (0.075, 0.002, 0.006),
+                            color=(0.06, 0.065, 0.07), collide=False)
         # debris CATCH PAN under the top run: anything that slips through an
         # inter-tray gap (sub-3 mm freight arrives unmetered under the
         # escapement blade) lands here and the watchdog raises an operator
@@ -700,6 +832,20 @@ class SceneBuilder:
                          (0.02, 0.02, 0.50), color=FRAME_COL, collide=False)
         self.add_box(f"st{zone}_beam", (x, by, 1.02), (0.32, 0.02, 0.02),
                      color=FRAME_COL, collide=False)
+        # route beacon HOUSED in a dark bezel channel (a bare colour block
+        # sitting on the beam read as a floating fragment on video): bottom
+        # tray + end caps + top visor, lamp face recessed 5 mm inside
+        self.add_box(f"st{zone}_lampbez_b", (x, by, 1.048),
+                     (0.115, 0.030, 0.008), color=(0.05, 0.055, 0.065),
+                     collide=False)
+        self.add_box(f"st{zone}_lampbez_t", (x, by, 1.112),
+                     (0.115, 0.030, 0.006), color=(0.05, 0.055, 0.065),
+                     collide=False)
+        for sgn2 in (-1, 1):
+            self.add_box(f"st{zone}_lampbez_{'ew'[sgn2 > 0]}",
+                         (x + sgn2 * 0.108, by, 1.08),
+                         (0.008, 0.030, 0.030), color=(0.05, 0.055, 0.065),
+                         collide=False)
         self.add_box(f"st{zone}_lamp", (x, by, 1.08), (0.10, 0.025, 0.025),
                      color=col, collide=False)
 
@@ -940,6 +1086,20 @@ class SceneBuilder:
             "deck_top": self.build_camera_lookat(
                 "deck_top", (8.05, 3.0, 2.85), (8.05, 3.0, 0.64),
                 fovy_deg=52.0),
+            # presentation brief: LOW north-east 3/4 hero along the train —
+            # cages on the FAR side, arm in profile, sorter line unblocked
+            "hero_ne": self.build_camera_lookat(
+                "hero_ne", (9.8, 5.3, 1.55), (7.0, 2.85, 0.62), fovy_deg=50.0),
+            # mechanism close-up: C-station tilt + chute + cage aperture in
+            # one technical side view (from over cage C's SE corner, above
+            # the arm pedestal sightline)
+            "mech_c_side": self.build_camera_lookat(
+                "mech_c_side", (8.5, 1.45, 1.10), (7.42, 2.70, 0.50),
+                fovy_deg=38.0),
+            # B-transfer close-up: tray lip -> powered incline -> belt B
+            "b_transfer": self.build_camera_lookat(
+                "b_transfer", (9.35, 3.85, 1.05), (8.40, 3.55, 0.58),
+                fovy_deg=40.0),
         }
         # DWS side profiler heads
         off, zh = vs["side_head_offset_m"], vs["side_head_z_m"]

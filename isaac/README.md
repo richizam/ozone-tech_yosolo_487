@@ -197,10 +197,16 @@ success.
   toppled over it, but the 9 mm pen rolled along its face and dribbled off
   the chute's east edge to the floor, deterministically, in every perturbed
   run. Small rolling freight is the sharpest probe of discharge geometry.
-* **Deep-drop discharge**: the chutes start 50 mm under the tilted tray lip,
-  so a sliding long box can never bridge tray→chute and yaw-wedge; trays
-  carry central-strip end fences (rounds stay contained in the dish centre,
-  a 0.4 m box's corners clear the fence ends).
+* **Deep-drop discharge with a chamfered mouth**: the chutes start 50 mm
+  under the tilted tray lip, so a sliding long box can never bridge
+  tray→chute and yaw-wedge; a 59° mouth chamfer strip catches freight 30 mm
+  below the lip — thin flat freight lands FLAT instead of tipping onto its
+  rim over the drop (a rim-rolling Ø200 plate once cleared the stub rails),
+  while ≥ 25 mm of free fall keeps the bridging cure. The 32° run is a
+  polished slide sheet (μ 0.28, μ/tan32 = 0.45): even a 9 mm rod with
+  convex-hull faceting slides decisively. Trays carry central-strip end
+  fences (rounds stay contained in the dish centre, a 0.4 m box's corners
+  clear the fence ends).
 * **Every failure mode has a designed safe terminal**: misclassified → guard
   bands / safe-side D; unverifiable → REVIEW pen; wedged discharge →
   stuck-tilt flatten → next-station / REVIEW fallback; dead tilt actuator →

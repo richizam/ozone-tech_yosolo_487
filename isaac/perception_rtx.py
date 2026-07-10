@@ -136,26 +136,35 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
             dims_hi = np.array([m[3] for m in merged])
         macro_note = (f" [macro head: {len(macro_reads)} reads, floor "
                       f"{LIMIT_MIN_MM + guard_macro:.1f} mm]")
-    # shape features: median over the 3 most TYPICAL surviving reads (span
-    # closest to the surviving median — neither a residual sliver nor a
-    # double-exposure smear tail)
-    med_span = float(np.median([float(r.get("x_hi", 0.0))
-                                - float(r.get("x_lo", 0.0)) for r in reads]))
-    top = sorted(reads, key=lambda r: abs(
-        (float(r.get("x_hi", 0.0)) - float(r.get("x_lo", 0.0))) - med_span))[:3]
+    # shape features across ALL accepted frames (the completeness gate above
+    # already rejected degenerate reads). CIRCLE EVIDENCE aggregates at the
+    # 75th percentile — the SAFE direction: roundness seen clearly in several
+    # frames counts as evidence even when motion smear erases it in others
+    # (the helmet's per-frame circularity swings 0.13..0.75 with the frame
+    # phase). The B-blocking gates are immune: a box's dome is ~0 and the
+    # jug's aspect is 0.79 in EVERY frame.
+    top = reads
 
     def med(key):
         return float(np.median([r[key] for r in top]))
 
-    circ, sect, dome = (med("footprint_circularity"), med("section_ratio"),
-                        med("dome_score"))
+    def hi(key):
+        return float(np.percentile([r[key] for r in top], 75))
+
+    circ, sect, dome = (hi("footprint_circularity"), hi("section_ratio"),
+                        hi("dome_score"))
     elong = med("elongation")
     aspect = med("aspect_hw")
     flanks = [float(r["flank_mm"]) for r in top if float(r["flank_mm"]) >= 0.0]
     flank = float(np.median(flanks)) if flanks else None
     d_votes = sum(1 for r in reads if r["zone"] == "D")
     under = bool(np.any(dims_lo < LIMIT_MIN_MM + guards))
-    over = bool(np.any(np.sort(dims_hi)[::-1] > LIMIT_MAX_MM - guard_mm))
+    # oversize also certifies on the LOW (de-smeared) bound: after the
+    # completeness gate, motion mixing can only INFLATE an extent — the low
+    # bound is the honest estimate, and a genuinely too-big item exceeds the
+    # limit in its cleanest frames too (445 mm at a 444 mm guard line stays
+    # honest borderline; 460 mm is caught in every frame)
+    over = bool(np.any(np.sort(dims_lo)[::-1] > LIMIT_MAX_MM - guard_mm))
     flank_s = "n/a" if flank is None else f"{flank:.1f}mm"
     feats = (f"circ={circ:.2f} sect={sect:.2f} dome={dome:.2f} "
              f"flank={flank_s} elong={elong:.1f} h/w={aspect:.2f}")
@@ -167,9 +176,9 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
                              + macro_note)
     elif over:
         zone, reason = "C", f"oversize (guard band {guard_mm:.0f} mm)"
-    elif (circ >= circle_ratio or sect >= circle_ratio or dome >= dome_tau
+    elif (circ >= circle_ratio or sect >= circle_ratio
+          or (dome >= dome_tau and aspect >= 0.85)
           or (circ >= 0.78 and dome >= 0.40)
-          or (flank is not None and elong >= 1.8 and flank >= flank_tau_mm)
           or (circ >= 0.60 and dome >= 0.35 and aspect >= 0.85)):
         # last clause: TALL ROUND DOME, triple-gated — near-circular
         # footprint AND curved top AND as tall as it is wide (helmet:
@@ -178,11 +187,15 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
         # detergent by aspect (0.79), box_s/lunchbox by dome (0.0/0.15),
         # the 11 mm cube (square, circ 0.71) by dome (~0), bottle by circ
         zone, reason = "D", f"circle evidence: {feats}"
-    elif elong >= 2.5 and flank is None and sect < circle_ratio:
-        # SAFE-SIDE: an elongated prism whose section could not be verified
-        # by the side heads must never take the permissive branch (a lying
-        # cylinder with too few side returns went to the sorter otherwise)
-        zone, reason = "D", f"section unverifiable on elongated item: {feats}"
+    elif elong >= 2.2 and (flank is None or sect >= 0.38):
+        # SAFE-SIDE: an elongated prism goes to the sorter ONLY with an
+        # affirmatively rectangular section (sect < 0.38). The mirror-closure
+        # section of the hex-prism trap reads 0.38-0.62 at DWS fidelity —
+        # inside the sensor's uncertainty of the 0.8 circle criterion — and a
+        # designed 0.78 squircle / 16x12 mm rod cannot be certified non-round
+        # either: all of them divert to repack review, never to the sorter.
+        zone, reason = "D", ("ambiguous prism section on elongated item "
+                             f"(safe side): {feats}")
     elif d_votes >= 2 and 2 * d_votes >= len(reads):
         zone, reason = "D", f"persistent D evidence: {d_votes}/{len(reads)} reads"
     else:
@@ -498,7 +511,16 @@ class RTXPerception:
         pts = self._head_points(self.macro, edge_filter=True)
         if pts is None or not len(pts):
             return None
-        obj = self._segment(pts, exclude_x)
+        # the macro head's OWN z floor: 1.5 mm above the calibrated belt
+        # plane (RTX depth is noise-free at 0.4 mm GSD) — a 2 mm card is a
+        # measurable item here, not a sensor miss like on the overhead head
+        m = ((pts[:, 2] > self.belt_z + 0.0015)
+             & (pts[:, 2] < self.belt_z + 0.56)
+             & (np.abs(pts[:, 1] - self.belt_y) < self.belt_half_w)
+             & (pts[:, 0] > self.window_x[0]) & (pts[:, 0] < self.window_x[1]))
+        for x0, x1 in exclude_x:
+            m &= ~((pts[:, 0] > x0) & (pts[:, 0] < x1))
+        obj = pts[m]
         obj = self._identity_gate(obj, x_hint)
         if len(obj) < 25:
             return None
@@ -649,10 +671,10 @@ class RTXPerception:
             # near-circular footprint with a substantially curved top: dome
             # class (helmet) whose silhouette flickers at the 0.8 line
             zone, reason = "D", f"near-circular dome: circ={circ:.2f} dome={dome:.2f}"
-        elif elong >= self.elong_min and flank_mm >= 6.0:
-            # side heads: an elongated prism's flank is not a vertical plane
-            # — a rolled cylinder/hex, never a lying box
-            zone, reason = "D", f"curved flank: {flank_mm:.1f} mm over height"
+        elif elong >= 2.2 and sect >= 0.38:
+            # elongated prism with an ambiguous (non-rectangular) section:
+            # per-read safe-side vote (the fused rule mirrors this)
+            zone, reason = "D", f"ambiguous prism section: {sect:.2f}"
         else:
             zone, reason = "B", (f"box: circ={circ:.2f} sect={sect:.2f} "
                                  f"dome={dome:.2f}")

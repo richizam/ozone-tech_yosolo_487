@@ -7,7 +7,7 @@
 # may divert to the safe review lane (never to the sorter).
 seed: 42
 perception: camera
-executive: table
+executive: sorter
 allow_conservative: true
 items:
   box_s: 1

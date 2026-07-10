@@ -19,7 +19,7 @@
 # conservative outcomes do not fail the run.
 seed: 42
 perception: camera
-executive: table
+executive: sorter
 allow_conservative: true
 items:
   cylinder: 1

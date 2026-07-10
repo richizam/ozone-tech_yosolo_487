@@ -6,17 +6,24 @@ behind every sensor's near plane: physics, classification and the jam-camera
 background are bit-identical with this layer on or off (the MuJoCo twin's
 contype-0 discipline).
 
-What it adds (user spec):
-  * the DRIVE is visible: transport rollers under belt A/B and the connector,
-    end drums, an omni-puck field on the ARB routing zone, dark rubber belt
-    surfaces, metallic rollers;
-  * industrial materials: safety-yellow guards, steel frames, dark floor with
-    yellow walkway markings, dark backdrop walls (no white void);
-  * real roll cages: vertical tubes, top rails, base frame with casters, and
-    printed labels («C OVERSIZE», «D REPACK») in Ozon blue;
-  * visible sensor hardware: gantry + black camera boxes with lenses for the
-    overhead head, the two side profilers and the jam camera;
-  * warehouse lighting: dimmer dome, high-bay fixtures with soft shadows.
+What it adds (user spec + presentation overhaul):
+  * the DRIVE is visible: transport rollers/end drums under belt A/B and the
+    incline connector, dark rubber belt surfaces, metallic rollers;
+  * industrial materials (isaac.materials.PRESETS): brushed steel chute
+    shells, powder-coated dark frames, galvanized cage tube, worn
+    safety-yellow guards, matte belt rubber;
+  * real roll cages: galvanized tube frame + wire-mesh panels + casters +
+    framed chute aperture; route colour ONLY on the label plate and a thin
+    top-rail accent stripe;
+  * B-transfer continuity (nose apron, drive motor/gearbox, legs) and
+    brushed under-shells + signage on every chute;
+  * visible sensor hardware: rigid gantry mounts, connector boxes and
+    conduit runs for the overhead head, the two side profilers, the macro
+    head and the jam camera;
+  * housed HMI/andon: recessed route lamps, stack light, e-stops, pinch
+    labels, floor conduit;
+  * warehouse lighting: dimmer dome, high-bay area fixtures, two soft aisle
+    lights — no local spotlight on the arm, no hot cage speculars.
 """
 import math
 from pathlib import Path
@@ -26,12 +33,19 @@ from pxr import Gf, Sdf, UsdGeom, UsdLux, UsdShade, Vt
 
 from cell import params as P
 
+from isaac.materials import preset as mat_preset
+
 RUBBER = (0.085, 0.088, 0.095)
 STEEL = (0.62, 0.64, 0.68)
 FRAME = (0.30, 0.33, 0.38)
-YELLOW = (0.58, 0.48, 0.13)   # worn industrial yellow
 BLACK = (0.045, 0.045, 0.05)
 OZON_BLUE = (0.0, 0.357, 1.0)                      # #005BFF
+# named industrial finishes (materials.PRESETS): (color, rough, metallic)
+BRUSHED, BRUSHED_R, BRUSHED_M = mat_preset("brushed_steel")
+POWDER_DK, POWDER_DK_R, POWDER_DK_M = mat_preset("powder_steel_dark")
+GALV, GALV_R, GALV_M = mat_preset("galvanized")
+BELT_RUB, BELT_RUB_R, BELT_RUB_M = mat_preset("belt_rubber")
+YELLOW, YELLOW_R, YELLOW_M = mat_preset("safety_yellow_worn")
 SIGN_DIR = Path("/tmp/sortmaster_signs")
 
 ROOT = "/World/dressing"
@@ -99,7 +113,8 @@ class Dressing:
         UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat)
 
     def box(self, center, half, color, tag="box", euler_deg=(0, 0, 0),
-            opacity=None, bind=True, textured=True):
+            opacity=None, bind=True, textured=True, roughness=0.80,
+            metallic=0.05):
         cube = UsdGeom.Cube.Define(self.stage, self._path(tag))
         cube.CreateSizeAttr(2.0)
         xf = UsdGeom.Xformable(cube.GetPrim())
@@ -111,11 +126,12 @@ class Dressing:
         if opacity is not None:
             cube.CreateDisplayOpacityAttr([float(opacity)])
         elif bind:
-            self._vis(cube.GetPrim(), color, textured=textured)
+            self._vis(cube.GetPrim(), color, roughness=roughness,
+                      metallic=metallic, textured=textured)
         return cube.GetPrim()
 
     def cyl(self, center, radius, half_h, color, axis="Z", tag="cyl",
-            bind=True):
+            bind=True, roughness=0.80, metallic=0.05):
         c = UsdGeom.Cylinder.Define(self.stage, self._path(tag))
         c.CreateRadiusAttr(float(radius))
         c.CreateHeightAttr(float(2 * half_h))
@@ -124,7 +140,8 @@ class Dressing:
             Gf.Vec3d(*[float(v) for v in center]))
         c.CreateDisplayColorAttr([Gf.Vec3f(*color)])
         if bind:
-            self._vis(c.GetPrim(), color)
+            self._vis(c.GetPrim(), color, roughness=roughness,
+                      metallic=metallic)
         return c.GetPrim()
 
     # ------------------------------------------------------------ label signs
@@ -160,9 +177,9 @@ class Dressing:
         return self._quad_with_texture(tex, center, width, yaw_deg, tilt_deg)
 
     def label(self, text, fname, center, width, yaw_deg=0.0, bg=OZON_BLUE,
-              tilt_deg=90.0):
+              tilt_deg=90.0, fg=(255, 255, 255)):
         """Textured label quad (UsdPreviewSurface + UsdUVTexture)."""
-        tex = self._label_texture(text, fname, bg=bg)
+        tex = self._label_texture(text, fname, bg=bg, fg=fg)
         return self._quad_with_texture(tex, center, width, yaw_deg, tilt_deg)
 
     def _quad_with_texture(self, tex, center, width, yaw_deg=0.0,
@@ -219,10 +236,15 @@ class Dressing:
         return mesh.GetPrim()
 
     # ---------------------------------------------------------------- camera
-    def camera_box(self, pos, yaw_deg=0.0, tag="cam", lens_down=True):
+    def camera_box(self, pos, yaw_deg=0.0, tag="cam", lens_down=True,
+                   connector=True):
         """Black sensor housing with a lens ring, mounted ABOVE/BEHIND the
         actual camera origin so the rendered view is never occluded (near
-        clip 0.05 m)."""
+        clip 0.05 m). Carries its own connector box on the top face (the
+        conduit run down the mount is added by the caller — mount routes
+        differ per head). connector=False for heads whose top face lies
+        inside the perception corridor (macro): their connector moves onto
+        the mount above the corridor ceiling."""
         x, y, z = pos
         self.box((x, y, z + 0.075), (0.075, 0.055, 0.045), BLACK, tag=tag,
                  euler_deg=(0, 0, yaw_deg))
@@ -231,6 +253,23 @@ class Dressing:
                      tag=f"{tag}_lens")
         self.box((x, y, z + 0.135), (0.012, 0.012, 0.015), FRAME,
                  tag=f"{tag}_mnt")
+        if connector:   # connector box on the housing top rear (M12 look)
+            self.box((x - 0.045, y, z + 0.128), (0.016, 0.014, 0.010),
+                     (0.10, 0.11, 0.13), tag=f"{tag}_conn")
+
+    def _conduit(self, pts, tag="conduit", half=0.010):
+        """Rigid cable conduit as 2-3 elongated box segments between bend
+        points (replaces thin hanging-line prims, which read as debris)."""
+        col = (0.34, 0.36, 0.40)
+        for (x0, y0, z0), (x1, y1, z1) in zip(pts[:-1], pts[1:]):
+            dx, dy, dz = x1 - x0, y1 - y0, z1 - z0
+            c = ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+            if abs(dz) >= max(abs(dx), abs(dy)):        # vertical run
+                self.box(c, (half, half, abs(dz) / 2 + half), col, tag=tag)
+            elif abs(dx) >= abs(dy):                    # run along x
+                self.box(c, (abs(dx) / 2 + half, half, half), col, tag=tag)
+            else:                                       # run along y
+                self.box(c, (half, abs(dy) / 2 + half, half), col, tag=tag)
 
     # ============================================================== sections
     def rollers(self):
@@ -289,32 +328,104 @@ class Dressing:
                      (0.5, 0.52, 0.55), axis="X", tag="drumCn")
 
     def cages_detail(self):
+        """A. ROLL-CAGE SHELLS. The collider walls stay exactly where they
+        are but render nearly invisible (scene_usd.build_cage); the
+        industrial read comes from this NON-COLLIDING shell on each cage's
+        exact footprint: galvanized tubular edge frame (~22 mm), wire-mesh
+        wall panels (translucent panel + wire grid), base frame with four
+        casters, and a framed aperture where the chute crosses the wall.
+        Route colour appears ONLY as the label plate + a thin top-rail
+        accent stripe."""
         cages = dict(P.cages_for())
         cages["REVIEW"] = P.REVIEW_PEN
         for zone, cage in cages.items():
             cx, cy = cage["center"]
             ix, iy = cage["inner"]
             t, h = cage["wall_t"], cage["wall_h"]
-            hx, hy = ix / 2 + t, iy / 2 + t
-            col = tuple(0.60 * v + 0.14
-                        for v in P.ROUTE_RGBA.get(zone, (0.5, 0.5, 0.5)))
-            # vertical tubes along the walls
-            for sgn_x in (-1, 1):
-                for y in np.arange(-hy + 0.10, hy - 0.05, 0.20):
-                    self.cyl((cx + sgn_x * hx, cy + float(y), h / 2 + t),
-                             0.012, h / 2, col, tag=f"tube{zone}")
-            for sgn_y in (-1, 1):
-                for x in np.arange(-hx + 0.10, hx - 0.05, 0.20):
-                    self.cyl((cx + float(x), cy + sgn_y * hy, h / 2 + t),
-                             0.012, h / 2, col, tag=f"tube{zone}")
-            # base frame + casters
-            self.box((cx, cy, 0.045), (hx + 0.02, hy + 0.02, 0.014),
-                     (0.25, 0.26, 0.30), tag=f"base{zone}")
+            hx, hy = ix / 2 + t, iy / 2 + t      # collider outer half-extents
+            px_, py_ = hx + 0.010, hy + 0.010    # shell plane just outside
+            z_top = t + h
+            open_side = cage.get("open_side")
+            route = P.ROUTE_RGBA.get(zone, (0.5, 0.5, 0.5))
+            walls = {"+y": (0, 1), "-y": (0, -1), "+x": (1, 1), "-x": (1, -1)}
+            # tubular horizontal rails: top rail on EVERY wall (the cage's
+            # top edge), mid + bottom rails only on the closed walls (they
+            # would cross the chute aperture on the open one)
+            for side, (axis_x, sgn) in walls.items():
+                zs = ((z_top,) if side == open_side
+                      else (z_top, 0.10 + (z_top - 0.10) / 2, 0.10))
+                for zz in zs:
+                    if axis_x:           # wall normal +-x, rail runs along y
+                        self.cyl((cx + sgn * px_, cy, zz), 0.011, hy, GALV,
+                                 axis="Y", tag=f"cage{zone}_rail",
+                                 roughness=GALV_R, metallic=GALV_M)
+                    else:                # wall normal +-y, rail runs along x
+                        self.cyl((cx, cy + sgn * py_, zz), 0.011, hx, GALV,
+                                 axis="X", tag=f"cage{zone}_rail",
+                                 roughness=GALV_R, metallic=GALV_M)
+                if side == open_side:
+                    continue
+                # wire-mesh panel: translucent grey sheet + vertical wires
+                wz0, wz1 = 0.13, z_top - 0.03
+                wzc, wzh = (wz0 + wz1) / 2, (wz1 - wz0) / 2
+                if axis_x:
+                    self.box((cx + sgn * px_, cy, wzc), (0.0015, hy - 0.04,
+                             wzh), (0.60, 0.62, 0.64), opacity=0.22,
+                             tag=f"cage{zone}_mesh")
+                    for wy in np.arange(-hy + 0.10, hy - 0.05, 0.13):
+                        self.box((cx + sgn * px_, cy + float(wy), wzc),
+                                 (0.0028, 0.0028, wzh), GALV, bind=False,
+                                 tag=f"cage{zone}_wire")
+                else:
+                    self.box((cx, cy + sgn * py_, wzc), (hx - 0.04, 0.0015,
+                             wzh), (0.60, 0.62, 0.64), opacity=0.22,
+                             tag=f"cage{zone}_mesh")
+                    for wx in np.arange(-hx + 0.10, hx - 0.05, 0.13):
+                        self.box((cx + float(wx), cy + sgn * py_, wzc),
+                                 (0.0028, 0.0028, wzh), GALV, bind=False,
+                                 tag=f"cage{zone}_wire")
+            # aperture frame on the open wall (the chute crosses INSIDE it):
+            # two verticals just outside the chute rails + a sill tube that
+            # clears the chute underside (chute crosses the plane at z~0.24)
+            if open_side in ("+y", "-y"):
+                aw2 = cage["aperture_w"] / 2
+                ap_top = cage["aperture_top"]
+                sill = cage.get("sill_top", 0.20)
+                wy = cy + (py_ if open_side == "+y" else -py_)
+                vx = aw2 + (0.014 if zone != "REVIEW" else 0.045)
+                if vx < hx - 0.01:       # REVIEW's aperture spans the wall:
+                    for sgn in (-1, 1):  # its corner posts ARE the frame
+                        self.cyl((cx + sgn * vx, wy,
+                                  (sill + ap_top) / 2), 0.011,
+                                 (ap_top - sill) / 2, GALV, axis="Z",
+                                 tag=f"cage{zone}_apfrm", roughness=GALV_R,
+                                 metallic=GALV_M)
+                self.cyl((cx, wy, 0.185), 0.011, aw2 + 0.02, GALV, axis="X",
+                         tag=f"cage{zone}_apsill", roughness=GALV_R,
+                         metallic=GALV_M)
+            # base frame (four square-tube edges) + four casters with forks
+            for sgn in (-1, 1):
+                self.box((cx, cy + sgn * py_, 0.075), (hx, 0.016, 0.016),
+                         GALV, tag=f"cage{zone}_bframe", roughness=GALV_R,
+                         metallic=GALV_M)
+                self.box((cx + sgn * px_, cy, 0.075), (0.016, hy, 0.016),
+                         GALV, tag=f"cage{zone}_bframe", roughness=GALV_R,
+                         metallic=GALV_M)
             for sx in (-1, 1):
                 for sy in (-1, 1):
-                    self.cyl((cx + sx * (hx - 0.06), cy + sy * (hy - 0.06),
-                              0.028), 0.026, 0.014, BLACK, axis="Y",
+                    wx, wy2 = cx + sx * (hx - 0.07), cy + sy * (hy - 0.07)
+                    self.box((wx, wy2, 0.052), (0.020, 0.015, 0.012),
+                             POWDER_DK, tag=f"cage{zone}_fork",
+                             roughness=POWDER_DK_R, metallic=POWDER_DK_M)
+                    self.cyl((wx, wy2, 0.030), 0.028, 0.013, BLACK, axis="Y",
                              tag=f"caster{zone}")
+            # route colour: thin top-rail accent stripe on the label wall
+            if zone == "REVIEW":
+                self.box((cx - px_, cy, z_top + 0.018), (0.006, hy * 0.85,
+                         0.008), route, tag=f"cage{zone}_accent")
+            else:
+                self.box((cx, cy - py_, z_top + 0.018), (hx * 0.85, 0.006,
+                         0.008), route, tag=f"cage{zone}_accent")
             # printed label on the visible wall + a tall mast sign. Yaw
             # convention (rotateXYZ(90,0,yaw) on a +Z-facing quad): yaw 0 =
             # text front faces SOUTH (-y), yaw -90 = faces WEST (-x) — the
@@ -328,15 +439,32 @@ class Dressing:
             fn = f"cage_{zone.lower()}.png"
             if zone == "REVIEW":
                 # the pen's SOUTH face is its aperture: label the west face
-                self.label(txt, fn, (cx - hx - 0.02, cy, min(0.35, h - 0.05)),
-                           min(0.68, cage["inner"][1] + 0.1), yaw_deg=-90.0)
+                lw = min(0.68, cage["inner"][1] + 0.1)
+                lz = min(0.35, h - 0.05)
+                self.box((cx - px_ - 0.016, cy, lz), (0.005, lw / 2 + 0.02,
+                         lw / 8 + 0.02), POWDER_DK, tag=f"cage{zone}_plate",
+                         roughness=POWDER_DK_R, metallic=POWDER_DK_M)
+                self.label(txt, fn, (cx - hx - 0.02 - 0.012, cy, lz), lw,
+                           yaw_deg=-90.0)
             else:
-                self.label(txt, fn, (cx, cy - hy - 0.02, min(0.45, h - 0.05)),
-                           min(0.85, cage["inner"][0] + 0.15), yaw_deg=0.0)
-        # B lane label on the sorter infeed (west face)
+                lw = min(0.85, cage["inner"][0] + 0.15)
+                lz = min(0.45, h - 0.05)
+                self.box((cx, cy - py_ - 0.016, lz), (lw / 2 + 0.02, 0.005,
+                         lw / 8 + 0.02), POWDER_DK, tag=f"cage{zone}_plate",
+                         roughness=POWDER_DK_R, metallic=POWDER_DK_M)
+                self.label(txt, fn, (cx, cy - hy - 0.02 - 0.012, lz), lw,
+                           yaw_deg=0.0)
+        # B lane label on the sorter infeed (west face) — MOUNTED on a
+        # square-tube signpost off the belt-B west skirt (a free-floating
+        # board read as debris on the showcase footage)
         b = P.BELT_B
-        self.label("B SORTER", "lane_b.png",
-                   (b["cx"] - b["width"] / 2 - 0.06, 5.0, 1.35), 0.95,
+        sign_x = b["cx"] - b["width"] / 2 - 0.06
+        self.box((sign_x + 0.020, 5.0, 0.94), (0.018, 0.018, 0.94), FRAME,
+                 tag="lane_b_post")
+        self.box((sign_x + 0.014, 5.0, 1.35), (0.006, 0.30, 0.075),
+                 POWDER_DK, tag="lane_b_plate", roughness=POWDER_DK_R,
+                 metallic=POWDER_DK_M)
+        self.label("B SORTER", "lane_b.png", (sign_x, 5.0, 1.35), 0.95,
                    yaw_deg=-90.0)
         # brand board over the vision station gantry, facing the camera
         self.label("OZON  SORT CELL", "brand.png",
@@ -346,11 +474,20 @@ class Dressing:
     def sensors_hw(self):
         vs = P.VIRTUAL_SENSOR
         ox, oy, oz = vs["overhead_pos"]
-        # portal gantry across belt A
+        # portal gantry across belt A: square-tube posts + beam + knee braces
         for sgn in (-1, 1):
             self.box((ox, oy + sgn * 1.05, 1.25), (0.045, 0.045, 1.25),
                      FRAME, tag="gantry_post")
+            self.box((ox, oy + sgn * 1.05, 0.02), (0.09, 0.09, 0.02),
+                     POWDER_DK, tag="gantry_base", roughness=POWDER_DK_R,
+                     metallic=POWDER_DK_M)
+            self.box((ox, oy + sgn * 0.93, 2.40), (0.032, 0.11, 0.028),
+                     FRAME, tag="gantry_brace", euler_deg=(sgn * 40.0, 0, 0))
         self.box((ox, oy, 2.52), (0.05, 1.10, 0.05), FRAME, tag="gantry_beam")
+        # overhead head: rigid square-tube drop from the beam onto the
+        # housing (it hung from a 15 mm stub with an air gap below the beam)
+        self.box((ox, oy, 2.41), (0.022, 0.022, 0.062), FRAME,
+                 tag="cam_overhead_drop")
         self.camera_box((ox, oy, oz), tag="cam_overhead")
         # two side profiler heads on stalks, angled inward
         off, zc = vs["side_head_offset_m"], vs["side_head_z_m"]
@@ -358,6 +495,12 @@ class Dressing:
             py = oy + sgn * off
             self.box((ox, py, zc / 2 - 0.03), (0.022, 0.022, zc / 2 - 0.03),
                      FRAME, tag=f"profpost_{nm}")
+            self.box((ox, py, 0.02), (0.055, 0.055, 0.02), POWDER_DK,
+                     tag=f"profbase_{nm}", roughness=POWDER_DK_R,
+                     metallic=POWDER_DK_M)
+            # mount collar closing the post-top -> housing-bottom gap
+            self.box((ox, py, 1.028), (0.024, 0.024, 0.044), FRAME,
+                     tag=f"profcollar_{nm}")
             self.box((ox, py + sgn * 0.02, zc + 0.055), (0.055, 0.042, 0.038),
                      BLACK, tag=f"profiler_{nm}")
             self.cyl((ox, py - sgn * 0.028, zc + 0.04), 0.02, 0.006,
@@ -372,19 +515,34 @@ class Dressing:
                  (2.47 - mz - 0.06) / 2, FRAME, tag="macrodrop")
         self.box((mx + 0.045, my, mz + 0.055), (0.06, 0.025, 0.016),
                  FRAME, tag="macroarm")
-        self.camera_box((mx, my, mz), tag="cam_macro")
-        # jam camera hangs from a ceiling mast that stops ABOVE the lens
-        # plane (a pole through the frame centre blinds the jam locator)
+        self.camera_box((mx, my, mz), tag="cam_macro", connector=False)
+        # macro connector + conduit live at the TOP of the drop tube — every
+        # new part stays above the perception-corridor ceiling (z 2.3)
+        self.box((mx + 0.09, my, 2.44), (0.018, 0.016, 0.012),
+                 (0.10, 0.11, 0.13), tag="cam_macro_conn")
+        self._conduit([(mx + 0.112, my, 2.44), (mx + 0.112, my, 2.545),
+                       ((mx + ox) / 2, my, 2.545), (ox, my, 2.545)],
+                      tag="macro_conduit")
+        # jam camera: ceiling mast that stops ABOVE the lens plane (a pole
+        # through the frame centre blinds the jam locator), now tied into
+        # the roof deck with an upper mast leg + a horizontal truss arm
         self.box((8.15, 2.3, 4.35), (0.03, 0.03, 0.42), FRAME, tag="jammast")
+        self.box((8.15, 2.3, 5.24), (0.03, 0.03, 0.47), FRAME,
+                 tag="jammast_up")
+        self.box((8.15, 2.15, 5.35), (0.025, 0.155, 0.025), FRAME,
+                 tag="jammast_arm")
+        self._conduit([(8.19, 2.3, 3.95), (8.19, 2.3, 5.33),
+                       (8.19, 2.12, 5.33)], tag="jam_conduit")
         self.camera_box((8.15, 2.3, 3.8), tag="cam_jam")
         # industrial sensing detail (§6): cable tray along the gantry beam,
-        # cable drops to each head, small status LEDs on the housings
+        # rigid CONDUIT runs to each head (thin hanging cable lines read as
+        # floating debris on RTX footage), small status LEDs on the housings
         self.box((ox, oy, 2.585), (0.05, 1.10, 0.012), (0.42, 0.44, 0.47),
                  tag="cabletray")
         for hy, hz in ((oy, oz + 0.12), (oy - off, zc + 0.09),
                        (oy + off, zc + 0.09)):
-            self.cyl((ox + 0.04, hy, (2.57 + hz) / 2), 0.004,
-                     (2.57 - hz) / 2, (0.06, 0.06, 0.07), tag="camcable")
+            self._conduit([(ox + 0.04, hy, hz), (ox + 0.04, hy, 2.57)],
+                          tag="camconduit")
             self.box((ox + 0.055, hy, hz), (0.006, 0.006, 0.006),
                      (0.15, 0.75, 0.25), tag="camled")
 
@@ -442,9 +600,10 @@ class Dressing:
     def lighting_env(self):
         st = self.stage
         # soft neutral ambient FILL only (the area lights are the key light)
+        # — raised ~25% (presentation pass: shadows lift, no exposure change)
         dome = UsdLux.DomeLight(st.GetPrimAtPath("/World/lights/dome"))
         if dome:
-            dome.GetIntensityAttr().Set(150.0)
+            dome.GetIntensityAttr().Set(190.0)
             dome.GetPrim().CreateAttribute(
                 "inputs:color", Sdf.ValueTypeNames.Color3f).Set(
                 Gf.Vec3f(0.55, 0.58, 0.64))
@@ -464,15 +623,16 @@ class Dressing:
         # AREA-light grid on the truss: even overhead coverage of the whole
         # 10x6 cell — no local spotlight near the arm, no blown-out corner.
         # RectLights emit downward; normalize keeps brightness size-stable.
+        # Intensity +22% (presentation pass: broad fill up, exposure fixed).
         for (lx, ly, w, d) in ((1.6, 3.0, 2.4, 3.0), (4.2, 3.0, 2.6, 3.0),
                                (6.6, 3.0, 2.4, 3.2), (8.7, 2.6, 2.6, 3.4)):
-            self._highbay(lx, ly, w, d, 18000.0)
-        # KEY-ZONE ACCENT lights (soft extra punch where the demo reads):
-        # the vision/measurement station and the ARB routing deck. Lower and
-        # smaller than the high-bays, mounted just under the truss — lift the
-        # zone without a hot spot or a second shadow set.
-        for (lx, ly, w, d, inten) in ((6.0, 3.0, 1.1, 1.3, 7500.0),
-                                      (8.25, 3.0, 1.2, 1.6, 8500.0)):
+            self._highbay(lx, ly, w, d, 22000.0)
+        # ONE key-zone accent over the vision/measurement station only. The
+        # former routing-deck accent (8.25, 3.0) sat directly over the
+        # arm/cage corner and printed hot specular patches on the cage
+        # shells — removed; the deck is carried by the high-bays + the two
+        # aisle soft lights below.
+        for (lx, ly, w, d, inten) in ((6.0, 3.0, 1.1, 1.3, 6800.0),):
             self._i += 1
             lp = f"/World/lights/accent_{self._i}"
             r = UsdLux.RectLight.Define(st, lp)
@@ -486,6 +646,23 @@ class Dressing:
                 Gf.Vec3f(1.0, 0.97, 0.92))
             UsdGeom.Xformable(r.GetPrim()).AddTranslateOp().Set(
                 Gf.Vec3d(lx, ly, 4.75))             # unrotated -> emits down
+        # two LARGE SOFT area lights along the south presentation aisle at
+        # z 4.0, neutral colour: they wrap the machine faces the hero/routing
+        # cameras see, with soft normalized falloff (no hot cage speculars)
+        for lx in (3.0, 7.2):
+            self._i += 1
+            lp = f"/World/lights/aisle_{self._i}"
+            r = UsdLux.RectLight.Define(st, lp)
+            r.CreateWidthAttr(2.8)
+            r.CreateHeightAttr(1.4)
+            r.CreateIntensityAttr(9000.0)
+            r.GetPrim().CreateAttribute("inputs:normalize",
+                                        Sdf.ValueTypeNames.Bool).Set(True)
+            r.GetPrim().CreateAttribute("inputs:color",
+                                        Sdf.ValueTypeNames.Color3f).Set(
+                Gf.Vec3f(1.0, 1.0, 1.0))
+            UsdGeom.Xformable(r.GetPrim()).AddTranslateOp().Set(
+                Gf.Vec3d(lx, 0.9, 4.0))             # unrotated -> emits down
         # backdrop walls: kill the white void on the camera-facing sides —
         # plain matte concrete (a tiled detail map reads as wallpaper on a
         # big flat wall)
@@ -551,6 +728,100 @@ class Dressing:
                          (0.07, 0.012, 0.0004), wht, tag="dirCn",
                          euler_deg=(-ang, 0, sw))
 
+    # -------------------------------------------------- B transfer continuity
+    def b_transfer(self):
+        """C. The tray -> incline handoff reads as engineered hardware:
+        a transition nose apron under the incline mouth, a side-mounted
+        drive motor + gearbox at the head drum, and support legs under the
+        span. All NON-COLLIDING, all positioned from P.B_CONNECT, all beside
+        or UNDER the belt surface plane (never above it, where items slide)
+        and clear of the tray-sweep corridor (nothing above z 0.36 south of
+        y 3.42; the sweep bottoms at z 0.62 over y 3.31). The end drums both
+        ends already come from rollers()."""
+        bc = P.B_CONNECT
+        ang = math.degrees(math.atan2(bc["z_top1"] - bc["z_top0"],
+                                      bc["y1"] - bc["y0"]))
+        slope = (bc["z_top1"] - bc["z_top0"]) / (bc["y1"] - bc["y0"])
+        # transition nose apron: steep deflector plate under the mouth,
+        # closing the visual void between the tray lip line and the belt
+        self.box((bc["cx"], 3.285, 0.315), (bc["width"] / 2 - 0.01, 0.045,
+                 0.004), BRUSHED, tag="bnose_apron", euler_deg=(-50.0, 0, 0),
+                 roughness=BRUSHED_R, metallic=BRUSHED_M)
+        self.box((bc["cx"], 3.30, 0.245), (bc["width"] / 2 - 0.01, 0.032,
+                 0.004), POWDER_DK, tag="bnose_skirt",
+                 euler_deg=(-78.0, 0, 0), roughness=POWDER_DK_R,
+                 metallic=POWDER_DK_M)
+        # head-drum drive: gearbox block + motor cylinder + label, mounted
+        # beside the east edge at the top end (y 4.23 — far north of 3.42)
+        my_, mz_ = bc["y1"] + 0.03, bc["z_top1"] - 0.035
+        gx = bc["cx"] + bc["width"] / 2 + 0.10
+        self.box((gx, my_, mz_), (0.045, 0.050, 0.050), POWDER_DK,
+                 tag="bdrive_gearbox", roughness=POWDER_DK_R,
+                 metallic=POWDER_DK_M)
+        self.cyl((gx + 0.115, my_, mz_), 0.042, 0.070, POWDER_DK, axis="X",
+                 tag="bdrive_motor", roughness=POWDER_DK_R,
+                 metallic=POWDER_DK_M)
+        self.cyl((gx - 0.065, my_, mz_), 0.016, 0.055, BRUSHED, axis="X",
+                 tag="bdrive_shaft", roughness=BRUSHED_R, metallic=BRUSHED_M)
+        self.label("B-LIFT DRIVE", "bdrive.png", (gx + 0.19, my_, mz_), 0.15,
+                   yaw_deg=90.0)
+        # support legs + cross braces under the span (both > y 3.42)
+        for ly in (3.62, 4.06):
+            surf = bc["z_top0"] + (ly - bc["y0"]) * slope
+            hcz = (surf - 0.055) / 2
+            for sgn in (-1, 1):
+                self.box((bc["cx"] + sgn * (bc["width"] / 2 + 0.035), ly,
+                          hcz), (0.022, 0.022, hcz - 0.004), FRAME,
+                         tag="bconn_leg")
+            self.box((bc["cx"], ly, 0.14), (bc["width"] / 2 + 0.035, 0.018,
+                     0.018), FRAME, tag="bconn_brace")
+
+    # ------------------------------------------------------------ chute shells
+    def chute_shells(self):
+        """D. Brushed-steel under-shells + edge trim under each gravity
+        chute (C / D / REVIEW), following the exact 32-deg slope a few mm
+        BELOW the collider surface (items never touch them), a brake-pad end
+        trim inside the destination, and per-chute station signage yawed to
+        face the east camera line."""
+        tan32 = math.tan(math.radians(32.0))
+        signs = {"C": ("C OVERSIZE", 0.34), "D": ("D REPACK", 0.34),
+                 "REVIEW": ("REVIEW", 0.30)}
+        for zone, cc in (("C", P.CHUTE_C), ("D", P.CHUTE_D),
+                         ("REVIEW", P.CHUTE_REVIEW)):
+            d = float(cc["dir"])
+            y0, z0, z1 = cc["y0"], cc["z0"], cc["z1"]
+            y1, pad_end = P.chute_run(cc)
+            cx = cc["cx"]
+            length = float(np.hypot(y1 - y0, z0 - z1))
+            ang = -d * 32.0
+            mid, zmid = (y0 + y1) / 2, (z0 + z1) / 2 - 0.015
+            # under-shell panel: 10 mm below the collider underside
+            self.box((cx, mid, zmid - 0.031), (cc["width"] / 2 + 0.030,
+                     length / 2 + 0.015, 0.006), BRUSHED, tag=f"chsh{zone}",
+                     euler_deg=(ang, 0, 0), roughness=BRUSHED_R,
+                     metallic=BRUSHED_M)
+            # edge trim bands under both slope edges
+            for sgn in (-1, 1):
+                self.box((cx + sgn * (cc["width"] / 2 + 0.024), mid,
+                          zmid - 0.055), (0.006, length / 2 + 0.015, 0.020),
+                         BRUSHED, tag=f"chtrim{zone}", euler_deg=(ang, 0, 0),
+                         roughness=BRUSHED_R, metallic=BRUSHED_M)
+            # brake-pad end trim (below the pad's working surface)
+            self.box((cx, pad_end - d * 0.012, z1 - 0.033),
+                     (cc["width"] / 2 + 0.020, 0.010, 0.012), POWDER_DK,
+                     tag=f"chpadtrim{zone}", roughness=POWDER_DK_R,
+                     metallic=POWDER_DK_M)
+            # station signage beside the chute, text facing +x (the routing /
+            # deck_front camera line sits east); route colour background
+            txt, w = signs[zone]
+            sy = mid if zone != "REVIEW" else 3.38
+            self.label(txt, f"chute_sign_{zone.lower()}.png",
+                       (cx + cc["width"] / 2 + 0.065, sy, 0.38), w,
+                       yaw_deg=90.0,
+                       bg=tuple(0.62 * v for v in P.ROUTE_RGBA[zone]))
+            self.box((cx + cc["width"] / 2 + 0.072, sy, 0.20),
+                     (0.010, 0.010, 0.145), FRAME, tag=f"chsignpost{zone}")
+
     # ------------------------------------------------------- route visuals
     def _chevron(self, center, yaw_deg, color, size=0.075, z_thick=0.0005,
                  tag="chev", bind=True):
@@ -614,22 +885,86 @@ class Dressing:
         # ACTIVE ROUTE status as a LOW floor-standing HMI console (was a
         # 1.9 m mast that read as a vertical stick beside the deck) — the
         # requested HMI/status panel. Placed north-west of the table, out of
-        # the arm workspace and clear of the deck sightline.
+        # the arm workspace and clear of the deck sightline. Andon pass:
+        # enclosure door seam + handle, recessed lamp bezels, a 3-lens stack
+        # light on a short mast, and a floor conduit run toward the deck.
         px, py = 7.35, 4.75
         self.box((px, py, 0.44), (0.22, 0.13, 0.44), FRAME, tag="hmi_body")
+        # 45-deg bevel strip along the console's south top edge (H: bevels
+        # on the most visible shells) + door seam + handle on the south face
+        self.box((px, py - 0.125, 0.885), (0.22, 0.012, 0.012), POWDER_DK,
+                 tag="hmi_bevel", euler_deg=(45.0, 0, 0),
+                 roughness=POWDER_DK_R, metallic=POWDER_DK_M)
+        self.box((px, py - 0.132, 0.36), (0.155, 0.0015, 0.30),
+                 (0.055, 0.058, 0.066), tag="hmi_door_seam")
+        self.box((px + 0.125, py - 0.138, 0.42), (0.008, 0.007, 0.045),
+                 (0.10, 0.11, 0.13), tag="hmi_handle")
         self.box((px, py - 0.12, 0.82), (0.22, 0.02, 0.14), (0.04, 0.04, 0.05),
                  tag="hmi_screen_bezel")
         self.label("ACTIVE ROUTE", "active_route.png", (px, py - 0.135, 0.95),
                    0.44, yaw_deg=0.0)
         for i, z in enumerate(("B", "C", "D", "REVIEW")):
             cap = "R" if z == "REVIEW" else z
-            lp = self.box((px - 0.165 + 0.11 * i, py - 0.13, 0.80),
+            lx = px - 0.165 + 0.11 * i
+            # dark bezel FRAME proud of the lamp face: the lamp face sits
+            # recessed ~11 mm inside its own housing opening
+            self.box((lx, py - 0.145, 0.858), (0.050, 0.016, 0.008),
+                     (0.055, 0.058, 0.066), tag=f"lampbezel{z}")
+            self.box((lx, py - 0.145, 0.742), (0.050, 0.016, 0.008),
+                     (0.055, 0.058, 0.066), tag=f"lampbezel{z}")
+            for sgn in (-1, 1):
+                self.box((lx + sgn * 0.050, py - 0.145, 0.80),
+                         (0.008, 0.016, 0.066), (0.055, 0.058, 0.066),
+                         tag=f"lampbezel{z}")
+            lp = self.box((lx, py - 0.13, 0.80),
                           (0.042, 0.02, 0.05), dim[z], tag=f"lamp{z}",
                           bind=False)
             viz["lamps"][z] = lp.GetPath().pathString
             self.label(cap, f"lampcap_{cap}.png",
-                       (px - 0.165 + 0.11 * i, py - 0.135, 0.68), 0.085,
+                       (lx, py - 0.135, 0.68), 0.085,
                        yaw_deg=0.0, bg=tuple(0.55 * v for v in P.ROUTE_RGBA[z]))
+        # 3-lens stack light (red/amber/green translucent) on a short mast
+        self.cyl((px + 0.14, py, 0.925), 0.010, 0.045, POWDER_DK,
+                 tag="stack_mast", roughness=POWDER_DK_R,
+                 metallic=POWDER_DK_M)
+        for k, lens_col in enumerate(((0.80, 0.10, 0.08), (0.85, 0.55, 0.06),
+                                      (0.12, 0.68, 0.18))):
+            lens = self.cyl((px + 0.14, py, 0.995 + 0.046 * k), 0.026, 0.022,
+                            lens_col, tag="stack_lens", bind=False)
+            UsdGeom.Gprim(lens).CreateDisplayOpacityAttr([0.55])
+        self.cyl((px + 0.14, py, 1.135), 0.028, 0.006, BLACK,
+                 tag="stack_cap")
+        # floor cable conduit strip: console base -> deck north skirt line
+        self.box((px, (py - 0.14 + 3.44) / 2, 0.012),
+                 (0.045, (py - 0.14 - 3.44) / 2, 0.012), (0.34, 0.36, 0.40),
+                 tag="hmi_floorduct")
+        # E-STOPS (red mushroom on yellow plate): one on the console flank,
+        # one on the south chassis beam (mid C-D segment), one on the north
+        # beam west segment — all outside the tray-sweep corridor y 2.62-3.38
+        # and clear of every station discharge cutout.
+        # (south-beam unit lives on the short east segment x 9.11..9.22 —
+        # the C-D mid segment carries the TILT-TRAY SORTER label)
+        for (ex, ey, ez, nrm) in ((px + 0.22, py, 0.62, "+x"),
+                                  (9.165, 2.590, 0.55, "-y"),
+                                  (7.40, 3.410, 0.55, "+y")):
+            if nrm == "+x":
+                self.box((ex + 0.004, ey, ez), (0.004, 0.045, 0.045), YELLOW,
+                         tag="estop_plate", roughness=YELLOW_R,
+                         metallic=YELLOW_M)
+                self.cyl((ex + 0.016, ey, ez), 0.022, 0.011,
+                         (0.70, 0.06, 0.05), axis="X", tag="estop_btn")
+            else:
+                sgn = -1.0 if nrm == "-y" else 1.0
+                self.box((ex, ey + sgn * 0.004, ez), (0.045, 0.004, 0.045),
+                         YELLOW, tag="estop_plate", roughness=YELLOW_R,
+                         metallic=YELLOW_M)
+                self.cyl((ex, ey + sgn * 0.016, ez), 0.022, 0.011,
+                         (0.70, 0.06, 0.05), axis="Y", tag="estop_btn")
+        # pinch-point warning labels on the C / D station portal posts
+        # (restrained: 13 cm plates, black-on-safety-yellow)
+        for wx in (P.STATIONS["C"]["x"] - 0.30, P.STATIONS["D"]["x"] + 0.30):
+            self.label("! PINCH POINT", "pinch.png", (wx, 2.514, 0.78), 0.13,
+                       yaw_deg=0.0, bg=YELLOW, fg=(25, 25, 25))
         # floating per-item route flags: textures made here, quads at runtime
         flags = {
             "B": str(self._label_texture(">> B SORTER", "flag_b.png",
@@ -660,13 +995,15 @@ class Dressing:
             lg = logo.resize((lw, lh))
             panel.alpha_composite(lg, ((W - lw) // 2, (H - lh) // 2))
             panel.convert("RGB").save(str(SIGN_DIR / "ozon_wall.png"))
+            # flush against the wall face (y 6.29): the old y 6.27 board
+            # floated 20 mm proud and read as a hovering plate from the side
             self._textured_quad("ozon_wall", str(SIGN_DIR / "ozon_wall.png"),
-                                (5.0, 6.27, 3.4), 2.6, yaw_deg=0.0)
+                                (5.0, 6.286, 3.4), 2.6, yaw_deg=0.0)
         except Exception as exc:
             print(f"[dressing] logo board fallback ({exc})", flush=True)
-            self.label("ozon", "ozon_wall_txt.png", (5.0, 6.27, 3.4), 2.6,
+            self.label("ozon", "ozon_wall_txt.png", (5.0, 6.286, 3.4), 2.6,
                        yaw_deg=0.0)
-        self.box((5.0, 6.26, 2.94), (1.3, 0.012, 0.035), MAGENTA,
+        self.box((5.0, 6.284, 2.94), (1.3, 0.005, 0.035), MAGENTA,
                  tag="brand_accent")
         # blue band along the sorter-train south skirt + magenta kick strip
         S = P.SORTER
@@ -849,6 +1186,8 @@ class Dressing:
         self.rollers()
         self.conveyor_details()
         self.cages_detail()
+        self.b_transfer()
+        self.chute_shells()
         self.sensors_hw()
         self.sensor_assets()
         self.lighting_env()

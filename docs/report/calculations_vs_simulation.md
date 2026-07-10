@@ -120,15 +120,19 @@ Cross-check (measured): `command_margin_s.min` in every run must be > 0
 
 ## 5. Chute descent and cage entry
 
-The chutes start just under the tilted tray lip (z₀ 0.43 < lip 0.444) and
-keep the validated 32° brake-chute design: μ_chute 0.40 < tan 32° = 0.625,
-so nothing can rest statically on the slope; the high-friction brake pad
-(`combine="max"`) then kills the residual speed inside the cage:
+The chutes start 50 mm under the tilted tray lip (deep drop, z₀ 0.395 <
+lip 0.444) with a 59° MOUTH CHAMFER strip that catches freight 30 mm below
+the lip (thin flat freight lands flat instead of tipping onto its rim; the
+free fall stays ≥ 25 mm so a long box still cannot bridge tray→chute). The
+32° brake-chute run uses a POLISHED slide sheet: μ_chute 0.28, ratio
+μ/tan 32° = 0.45 — even a 9 mm rod with convex-hull faceting slides
+decisively (at 0.40 it stalled 4 cm past the mouth); the high-friction
+brake pad (`combine="max"`) then kills the speed inside the cage:
 
 ```
-slope accel:  a = g·(sin 32° − 0.40·cos 32°) ≈ 1.87 m/s²
-slope run:    0.51 m  → Δv² = 2·1.87·0.51 ≈ 1.9 m²/s²
-entry speed:  √(1.5² + 1.9) ≈ 2.0 m/s at the pad, braked before the far wall
+slope accel:  a = g·(sin 32° − 0.28·cos 32°) ≈ 2.87 m/s²
+slope run:    0.51 m  → Δv² = 2·2.87·0.51 ≈ 2.9 m²/s²
+entry speed:  √(1.5² + 2.9) ≈ 2.3 m/s at the pad, braked before the far wall
 ```
 
 The cage aperture is crossed at z ≈ 0.24 (sill 0.20, header 0.83): lower and

@@ -11,7 +11,7 @@
 # overflows) operator call-outs, never an unsafe route and never a deadlock.
 seed: 42
 perception: camera
-executive: table
+executive: sorter
 allow_conservative: true
 items:
   bottle: 1

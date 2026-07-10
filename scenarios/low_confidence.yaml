@@ -6,7 +6,7 @@
 # low_confidence_fallback_count typically > 0.
 seed: 42
 perception: camera
-executive: table
+executive: sorter
 allow_conservative: true
 sensor:
   depth_noise_mm: 3.0

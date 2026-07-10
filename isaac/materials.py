@@ -22,6 +22,31 @@ from pxr import Gf, Sdf, UsdShade
 GRUNGE_ALBEDO = "grunge_albedo.png"
 GRUNGE_ROUGH = "grunge_rough.png"
 
+# ---------------------------------------------------------------- presets
+# Named industrial finishes (visual only): color, roughness, metallic.
+# Consumed by dressing.py / scene_usd.py through their existing binding
+# helpers — one vocabulary for the whole cell so the same steel reads as the
+# same steel everywhere. The "anisotropic" look of brushed steel is faked by
+# the grunge roughness variation the PbrLibrary already applies.
+PRESETS = {
+    "brushed_steel":      {"color": (0.55, 0.57, 0.60), "roughness": 0.35,
+                           "metallic": 0.85},
+    "powder_steel_dark":  {"color": (0.28, 0.30, 0.33), "roughness": 0.55,
+                           "metallic": 0.20},
+    "galvanized":         {"color": (0.62, 0.64, 0.66), "roughness": 0.45,
+                           "metallic": 0.70},
+    "belt_rubber":        {"color": (0.10, 0.10, 0.11), "roughness": 0.85,
+                           "metallic": 0.0},
+    "safety_yellow_worn": {"color": (0.85, 0.70, 0.10), "roughness": 0.70,
+                           "metallic": 0.05},
+}
+
+
+def preset(name):
+    """(color, roughness, metallic) for a named finish."""
+    p = PRESETS[name]
+    return p["color"], p["roughness"], p["metallic"]
+
 
 def _tileable(shape, beta, seed):
     """Tileable 1/f^beta value noise via random-phase inverse FFT (periodic
