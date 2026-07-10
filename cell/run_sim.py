@@ -911,6 +911,12 @@ def main(argv=None):
                                   f"{sorter.tray_roll(c_):+.1f} "
                                   f"goal={c_['goal']:+.1f} "
                                   f"touch={sorted(set(parts))}", flush=True)
+                pp_ = items.item_pos_of("pen")
+                if (pp_ is not None and pp_[2] < 0.60
+                        and 6.9 < pp_[0] < 8.4 and pp_[1] < 3.0
+                        and int(t * 20) != int((t - dt_ctrl) * 20)):
+                    print(f"[pentrail] t={t:7.2f} pos=({pp_[0]:.3f},"
+                          f"{pp_[1]:.3f},{pp_[2]:.3f})", flush=True)
             belts.gate_open = not sorter.egate_up
             # snag pin: hold the injected jam's POSE until the arm grasps it
             carried = (ctrl.job["slug"] if (ctrl.job and ctrl.job.get("weld_on"))

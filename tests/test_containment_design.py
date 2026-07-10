@@ -128,6 +128,18 @@ def test_mouth_chamfer_clears_the_tilting_tray(zone, chute, cage):
             worst = min(worst, math.hypot(max(0.0, ch_top_dy - dy),
                                           max(0.0, z - ch_top_z)))
     assert worst > 0.007, f"{zone}: chamfer within {worst*1000:.1f} mm of sweep"
+    # mouth cheeks: top face clears both swept arcs across the cheek span
+    ck_top = chute["z0"] + chute["cheek_h"]
+    ck_dy0 = abs(chute["y0"] - S["y"]) + chute["cheek_inset"]
+    for i in range(200):
+        th = th_max * i / 199.0
+        for dy, z in ((r_e * math.cos(th),
+                       S["pivot_z"] - r_e * math.sin(th)),
+                      (r_e * math.cos(th) + lip * math.sin(th),
+                       S["pivot_z"] - r_e * math.sin(th) + lip * math.cos(th))):
+            if ck_dy0 <= dy <= ck_dy0 + chute["cheek_len"]:
+                assert z > ck_top + 0.008, \
+                    f"{zone}: cheek within {(z-ck_top)*1000:.1f} mm of sweep"
     # the chamfer face is too steep to rest on (steeper than repose for any mu)
     face = math.degrees(math.atan2(chute["chamfer_rise"] + 0.003,
                                    chute["chamfer_run"]))

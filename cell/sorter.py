@@ -300,14 +300,19 @@ class SorterControl:
 
     def item_discharged(self, t, c, item_pos):
         # gone = past the tray edge ON THE COMMANDED SIDE (0.33 > tray half
-        # 0.31 + sway) or below the tray plane. Side-aware: a wide box
+        # 0.31 + sway) or below the tray SWEEP. Side-aware: a wide box
         # resting correctly on the B connector keeps its CENTRE near
         # y 3.35-3.45 — a symmetric 0.38 line misread it as still aboard
         # and the stuck-tilt path threw it (twin stress drill).
+        # The z line sits UNDER the tilted tray's lowest point (0.425): at
+        # z < 0.50 a slow small item that fell back onto its own tilted
+        # tray edge read as "discharged" — the re-flatten then SCOOPED it
+        # over the mouth containment and dumped it outside the east rail
+        # (twin stress s99 pen).
         side = P.STATIONS.get(c.get("station") or "", {}).get("side", 0)
         dy = float(item_pos[1]) - self.S["y"]
         gone = ((side != 0 and side * dy > 0.33) or abs(dy) > 0.42
-                or float(item_pos[2]) < 0.50)
+                or float(item_pos[2]) < 0.42)
         if gone and c["t_cmd"] is not None:
             self.discharge_latencies.append(t - c["t_cmd"])
         return gone

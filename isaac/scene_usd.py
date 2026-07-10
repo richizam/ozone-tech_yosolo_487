@@ -412,6 +412,28 @@ class SceneBuilder:
                       z0 + (ch_rise - 0.003) / 2),
                      (cc["width"] / 2, ch_len / 2, 0.002),
                      (ch_ang, 0, 0), CHUTE_COL, mat=mat_chute)
+        # solid filler under the thin working face (twin parity: an item
+        # edge that penetrates the shell meets backing, not a wedge cavity)
+        fill_y0 = ch_top_y + d * 0.004
+        fill_y1 = ch_base_y - d * 0.002
+        self.add_box(f"chute{zone}_chamfill",
+                     (cx, (fill_y0 + fill_y1) / 2, z0 - 0.017),
+                     (cc["width"] / 2, abs(fill_y1 - fill_y0) / 2, 0.014),
+                     color=CHUTE_COL, mat=mat_chute)
+        # MOUTH CHEEKS: side wings over the throat gap (see params.CHUTE) —
+        # a hot small roller with +x drift crossed the open gap sides before
+        # touching any chute surface. Top capped by the plate-edge arc.
+        ck_t = 0.015
+        ck_y0 = y0 + d * cc["cheek_inset"]
+        ck_y1 = ck_y0 + d * cc["cheek_len"]
+        ck_cy = (ck_y0 + ck_y1) / 2
+        for sgn, nm in ((1, "l"), (-1, "r")):
+            off = sgn * (cc["width"] / 2 + ck_t)
+            self.add_box(f"chute{zone}_cheek_{nm}",
+                         (cx + off, ck_cy, z0 + cc["cheek_h"] - 0.034),
+                         (ck_t, cc["cheek_len"] / 2, 0.034),
+                         color=soft(P.ROUTE_RGBA.get(zone, (0.6, 0.6, 0.6))),
+                         mat=mat_chute)
         # side rails to the destination wall plane. SWEEP-CORRIDOR RULE: the
         # tilting tray edge sweeps y 2.69..3.31 down to z 0.44 — the rails
         # start 0.12 m down-slope so their upper tips stay >= 8 cm below the
