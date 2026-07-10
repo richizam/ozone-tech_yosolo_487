@@ -52,7 +52,8 @@ def parse_args():
     ap.add_argument("--record", action="store_true", help="capture MP4 frames")
     ap.add_argument("--camera", default="overview",
                     choices=["overview", "top_view", "routing", "lookahead",
-                             "hero_sw", "deck_front", "deck_top", "cell_iso"])
+                             "hero_sw", "deck_front", "deck_top", "cell_iso",
+                             "hero_ne", "mech_c_side", "b_transfer"])
     ap.add_argument("--camera-path", default="none",
                     choices=["none", "orbit", "dolly", "crane", "deck_push"],
                     help="cinematic moving camera for the defense reel")
