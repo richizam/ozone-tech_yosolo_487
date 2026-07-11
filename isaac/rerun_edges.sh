@@ -9,6 +9,7 @@ OUT_ROOT="${1:-/root/sortmaster_out/xbelt_matrix}"
 REPO=/root/sortmaster
 OUT_ROOT_IN="/workspace/sortmaster_out/$(basename "$OUT_ROOT")"
 mkdir -p "$OUT_ROOT" /tmp/sortmaster_signs
+chmod 777 "$OUT_ROOT" /tmp/sortmaster_signs
 
 run_one() {
   name="$1"; shift
