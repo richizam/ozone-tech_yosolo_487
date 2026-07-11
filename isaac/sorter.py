@@ -104,7 +104,8 @@ class SorterControl:
         self.debug_tilt = False         # per-tick roll trace (--probe runs)
         self.station_hold = set()       # stations out of service (arm active)
         self.mouth_hold = set()         # chute-mouth photo-eye occupancy
-        self.recirculations = 0         # held freight retried next lap
+        self.hold_at_blade = {}         # slug -> held at escapement (mouth)
+        self.release_holds = 0          # escapement holds (mouth occupied)
         self.stuck_flattens = 0
         self.purge_tilts = 0
 
@@ -170,6 +171,18 @@ class SorterControl:
         re-acceleration model. Returns True while the release is active."""
         if self.release is not None:
             return self.release["slug"] == slug
+        if zone in self.mouth_hold or zone in self.station_hold:
+            # destination mouth occupied / station out of service: hold the
+            # freight AT THE ESCAPEMENT (the accumulator is the buffer —
+            # this linear sorter cannot recirculate an occupied carrier
+            # through the end-module wrap). Released as soon as clear.
+            if not self.hold_at_blade.get(slug):
+                self.hold_at_blade[slug] = True
+                self.release_holds += 1
+                self.ev(t, "escapement_hold", slug, zone=zone)
+            return False
+        if self.hold_at_blade.pop(slug, None):
+            self.ev(t, "escapement_hold_released", slug, zone=zone)
         if not ready or self.egate_attr is None:
             return False
         a = P.BELT_A
@@ -414,15 +427,8 @@ class SorterControl:
                     and c["target"] == 0.0:
                 route = c["route"]
                 st = P.STATIONS.get(route)
-                # a hold-skipped carrier RECIRCULATES: the loop is the
-                # buffer — it wraps and retries its own station next lap
-                # (mouth photo-eye occupied / arm working the station)
-                if c.get("hold_recirc") and st is not None \
-                        and x < st["x"] - 0.5:
-                    c.pop("hold_recirc", None)
                 # review fallback: any still-occupied carrier fires at REVIEW
                 if st is not None and route != "REVIEW" \
-                        and not c.get("hold_recirc") \
                         and x > st["x"] + 0.45:
                     self.discharge_misses += 1
                     self.ev(t, "discharge_missed", c["slug"], carrier=c["i"],
@@ -443,12 +449,6 @@ class SorterControl:
                     # station out of service (exception arm working there):
                     # do not fire; the carrier rides on and the REVIEW
                     # fallback re-routes it (industrial out-of-service flow)
-                    if x >= st["x"] - st["trigger_lead_m"] - 0.35 \
-                            and not c.get("hold_recirc"):
-                        c["hold_recirc"] = True
-                        self.recirculations += 1
-                        self.ev(t, "hold_recirculate", c["slug"],
-                                carrier=c["i"], station=route)
                     st = None
                 if st is not None:
                     # long freight discharges earlier: its leading edge
@@ -638,7 +638,7 @@ class SorterControl:
             "discharge_misses_to_review": self.discharge_misses,
             "stuck_tilt_flattens": self.stuck_flattens,
             "suspect_purge_tilts": self.purge_tilts,
-            "hold_recirculations": self.recirculations,
+            "escapement_holds": self.release_holds,
             "end_line_callouts": self.end_callouts,
         }
 
