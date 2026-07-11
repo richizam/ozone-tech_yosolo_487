@@ -103,6 +103,8 @@ class SorterControl:
         self._t = 0.0
         self.debug_tilt = False         # per-tick roll trace (--probe runs)
         self.station_hold = set()       # stations out of service (arm active)
+        self.mouth_hold = set()         # chute-mouth photo-eye occupancy
+        self.recirculations = 0         # held freight retried next lap
         self.stuck_flattens = 0
         self.purge_tilts = 0
 
@@ -412,8 +414,15 @@ class SorterControl:
                     and c["target"] == 0.0:
                 route = c["route"]
                 st = P.STATIONS.get(route)
+                # a hold-skipped carrier RECIRCULATES: the loop is the
+                # buffer — it wraps and retries its own station next lap
+                # (mouth photo-eye occupied / arm working the station)
+                if c.get("hold_recirc") and st is not None \
+                        and x < st["x"] - 0.5:
+                    c.pop("hold_recirc", None)
                 # review fallback: any still-occupied carrier fires at REVIEW
                 if st is not None and route != "REVIEW" \
+                        and not c.get("hold_recirc") \
                         and x > st["x"] + 0.45:
                     self.discharge_misses += 1
                     self.ev(t, "discharge_missed", c["slug"], carrier=c["i"],
@@ -429,10 +438,17 @@ class SorterControl:
                     else:
                         c["route"] = "REVIEW"
                         route, st = "REVIEW", P.STATIONS["REVIEW"]
-                if st is not None and route in self.station_hold:
+                if st is not None and (route in self.station_hold
+                        or route in self.mouth_hold):
                     # station out of service (exception arm working there):
                     # do not fire; the carrier rides on and the REVIEW
                     # fallback re-routes it (industrial out-of-service flow)
+                    if x >= st["x"] - st["trigger_lead_m"] - 0.35 \
+                            and not c.get("hold_recirc"):
+                        c["hold_recirc"] = True
+                        self.recirculations += 1
+                        self.ev(t, "hold_recirculate", c["slug"],
+                                carrier=c["i"], station=route)
                     st = None
                 if st is not None:
                     # long freight discharges earlier: its leading edge
@@ -474,6 +490,7 @@ class SorterControl:
                     and c["cmd"] is None and c["flat_at"] is None
                     and c["target"] == 0.0
                     and "REVIEW" not in self.station_hold
+                    and "REVIEW" not in self.mouth_hold
                     and c["i"] not in self.dead_carriers):
                 stp = P.STATIONS["REVIEW"]
                 if x >= stp["x"] - stp["trigger_lead_m"] \
@@ -621,6 +638,7 @@ class SorterControl:
             "discharge_misses_to_review": self.discharge_misses,
             "stuck_tilt_flattens": self.stuck_flattens,
             "suspect_purge_tilts": self.purge_tilts,
+            "hold_recirculations": self.recirculations,
             "end_line_callouts": self.end_callouts,
         }
 

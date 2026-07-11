@@ -31,7 +31,15 @@ run_one() {
     --out "$OUT_ROOT_IN/$name" \
     --depth-stills 0 --perception rtx --drive surface "$@" \
     > "$OUT_ROOT/$name.log" 2>&1
-  echo "--- $name exit=$? ---"
+  rc=$?
+  if [ "$rc" = "125" ]; then
+    echo "--- $name docker 125, retrying after settle ---"
+    sleep 25
+    docker run --rm --name "isaacrun-$name" --gpus all --network=host       --entrypoint /isaac-sim/python.sh       -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y       -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all       -v $REPO:/workspace/sortmaster:ro       -v /root/sortmaster_out:/workspace/sortmaster_out       -v /tmp/sortmaster_signs:/tmp/sortmaster_signs       -v /root/.cache/ov/hub:/var/cache/hub       -v /root/docker/isaac-sim/cache/main:/isaac-sim/.cache       -v /root/docker/isaac-sim/cache/computecache:/isaac-sim/.nv/ComputeCache       -v /root/docker/isaac-sim/logs:/isaac-sim/.nvidia-omniverse/logs       -v /root/docker/isaac-sim/config:/isaac-sim/.nvidia-omniverse/config       -v /root/docker/isaac-sim/data:/isaac-sim/.local/share/ov/data       -v /root/docker/isaac-sim/pkg:/isaac-sim/.local/share/ov/pkg       nvcr.io/nvidia/isaac-sim:6.0.1       /workspace/sortmaster/isaac/run_isaac.py       --out "$OUT_ROOT_IN/$name"       --depth-stills 0 --perception rtx --drive surface "$@"       > "$OUT_ROOT/$name.log" 2>&1
+    rc=$?
+  fi
+  echo "--- $name exit=$rc ---"
+  sleep 12
   python3 - "$OUT_ROOT/$name/summary.json" <<'EOF'
 import json, sys
 try:

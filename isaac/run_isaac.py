@@ -768,6 +768,25 @@ def main():
                     if slug2 in items_rp and slug2 in active:
                         return pose(slug2)[0]
                     return None
+                # MOUTH PHOTO-EYE: while any freight occupies a chute mouth
+                # (a 9 mm rod dribbles down for many seconds), that station's
+                # discharges HOLD and the held carrier recirculates one lap —
+                # the loop is the buffer, like a real sorter's occupancy
+                # interlock (edge run: box_l discharged into the crawling
+                # rod's back and dragged past the mouth to the floor)
+                mouth = set()
+                for slug2 in list(active):
+                    p2 = item_pos_of(slug2)
+                    if p2 is None:
+                        continue
+                    for zn in ("C", "D", "REVIEW"):
+                        stn = P.STATIONS[zn]
+                        if (abs(float(p2[0]) - stn["x"]) < 0.36
+                                and 0.26 < float(p2[2]) < 0.52):
+                            dy2 = (float(p2[1]) - P.SORTER["y"]) * stn["side"]
+                            if 0.20 < dy2 < 0.50:
+                                mouth.add(zn)
+                sorter.mouth_hold = mouth
                 sorter.step(t, dt_ctrl, item_pos_of=item_pos_of)
                 blade_up_state["egate"] = sorter.egate_up
             else:

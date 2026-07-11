@@ -5,6 +5,7 @@ set -u
 OUT_ROOT="${1:-/root/sortmaster_out/stills_v17}"
 REPO=/root/sortmaster
 mkdir -p "$OUT_ROOT" /tmp/sortmaster_signs
+chmod 777 "$OUT_ROOT"
 OUT_ROOT_IN="/workspace/sortmaster_out/$(basename "$OUT_ROOT")"
 
 shot() {

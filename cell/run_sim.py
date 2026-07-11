@@ -908,6 +908,22 @@ def main(argv=None):
                                      items._adr(inject["slug"])[0] + 7].copy()
                     ev(t, "snag_injected", inject["slug"],
                        at_y=round(float(pp[1]), 3))
+            # ---- MOUTH PHOTO-EYE: freight occupying a chute mouth holds
+            # that station's discharges; held carriers recirculate one lap
+            # (occupancy interlock — see isaac/run_isaac.py)
+            mouth = set()
+            for slug2 in list(items.active):
+                p2 = items.item_pos_of(slug2)
+                if p2 is None:
+                    continue
+                for zn in ("C", "D", "REVIEW"):
+                    stn = P.STATIONS[zn]
+                    if (abs(float(p2[0]) - stn["x"]) < 0.36
+                            and 0.26 < float(p2[2]) < 0.52):
+                        dy2 = (float(p2[1]) - P.SORTER["y"]) * stn["side"]
+                        if 0.20 < dy2 < 0.50:
+                            mouth.add(zn)
+            sorter.mouth_hold = mouth
             # ---- sorter executive (tilt triggering, ramps, escapement blade)
             sorter.step(t, dt_ctrl, item_pos_of=items.item_pos_of)
             if os.environ.get("TWIN_TRACE"):
