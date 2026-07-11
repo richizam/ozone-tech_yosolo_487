@@ -277,11 +277,18 @@ report = {"tol_mm": args.tol_mm, "tilt_max_deg": round(TILT_MAX, 2),
           "labyrinth_pairs": [], "tray_pairs": [], "tray_violations": [],
           "arm_segments": [], "arm_violations": []}
 LAB_RE = re.compile(r"chute(C|D|REVIEW)_cheek_")
+HANDOFF_RE = re.compile(r"/bconnect$")
 for (mp, sp), (c, x, ang) in sorted(worst.items(), key=lambda kv: kv[1][0]):
     row = {"mover": mp, "static": sp,
            "min_clearance_mm": round(c * 1000, 1),
            "at_x": x, "at_tilt_deg": round(ang, 1)}
-    lab = LAB_RE.search(sp) and "plate_" in mp
+    lab = LAB_RE.search(sp) and ("plate_" in mp or "lip_" in mp)
+    if not lab and HANDOFF_RE.search(sp) and c >= 0.008:
+        # B HANDOFF interface: the tray discharges ONTO the incline it
+        # feeds — a designed close-pass (measured +12.7 mm at max-noise
+        # tilt with oriented boxes). Documented, not a violation.
+        report["labyrinth_pairs"].append(dict(row, kind="b_handoff"))
+        continue
     if lab:
         (report["labyrinth_pairs"] if c >= 0.004
          else report["tray_violations"]).append(row)

@@ -1,0 +1,799 @@
+{
+  "tol_mm": 15.0,
+  "tilt_max_deg": 38.76,
+  "labyrinth_note": "chute mouth cheeks run a DESIGNED tight labyrinth gap to the full-tilt tray plate (like a real sorter's 3-6 mm throat seal): non-structural wings, grazing contact non-catastrophic, gap measured at tilt*(1+2*noise). Their pair tolerance is 4 mm; every matrix run shows zero cheek contacts.",
+  "labyrinth_pairs": [
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC_cheek_l",
+      "min_clearance_mm": 5.4,
+      "at_x": 7.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC_cheek_r",
+      "min_clearance_mm": 5.4,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD_cheek_l",
+      "min_clearance_mm": 5.4,
+      "at_x": 8.95,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD_cheek_r",
+      "min_clearance_mm": 5.4,
+      "at_x": 8.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW_cheek_l",
+      "min_clearance_mm": 5.4,
+      "at_x": 9.1,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW_cheek_r",
+      "min_clearance_mm": 5.4,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteC_cheek_l",
+      "min_clearance_mm": 238.7,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteC_cheek_r",
+      "min_clearance_mm": 238.7,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteD_cheek_l",
+      "min_clearance_mm": 238.7,
+      "at_x": 8.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteD_cheek_r",
+      "min_clearance_mm": 238.7,
+      "at_x": 8.0,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteREVIEW_cheek_l",
+      "min_clearance_mm": 238.7,
+      "at_x": 8.95,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteREVIEW_cheek_r",
+      "min_clearance_mm": 238.7,
+      "at_x": 8.3,
+      "at_tilt_deg": -38.8
+    }
+  ],
+  "tray_pairs": [
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_cheek_l",
+      "min_clearance_mm": 12.6,
+      "at_x": 9.1,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_cheek_r",
+      "min_clearance_mm": 12.6,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/conveyors/bconnect",
+      "min_clearance_mm": 12.7,
+      "at_x": 8.3,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD_cheek_r",
+      "min_clearance_mm": 13.0,
+      "at_x": 8.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteC_cheek_r",
+      "min_clearance_mm": 13.0,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD_cheek_l",
+      "min_clearance_mm": 13.6,
+      "at_x": 8.8,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteC_cheek_l",
+      "min_clearance_mm": 13.6,
+      "at_x": 7.5,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC_chamfer",
+      "min_clearance_mm": 14.1,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD_chamfer",
+      "min_clearance_mm": 14.1,
+      "at_x": 8.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW_chamfer",
+      "min_clearance_mm": 14.1,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/conveyors/knife",
+      "min_clearance_mm": 15.0,
+      "at_x": 6.82,
+      "at_tilt_deg": 0.0
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/conveyors/bconnect",
+      "min_clearance_mm": 20.1,
+      "at_x": 8.3,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/conveyors/bconnect",
+      "min_clearance_mm": 20.1,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/train_pan",
+      "min_clearance_mm": 25.4,
+      "at_x": 8.3,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/train_pan",
+      "min_clearance_mm": 25.4,
+      "at_x": 7.8,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_chamfer",
+      "min_clearance_mm": 25.6,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteC_chamfer",
+      "min_clearance_mm": 25.6,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteC_chamfer",
+      "min_clearance_mm": 25.6,
+      "at_x": 7.5,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD_chamfer",
+      "min_clearance_mm": 25.6,
+      "at_x": 8.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD_chamfer",
+      "min_clearance_mm": 25.6,
+      "at_x": 8.8,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteREVIEW_chamfer",
+      "min_clearance_mm": 25.6,
+      "at_x": 9.1,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW_rail_l",
+      "min_clearance_mm": 35.1,
+      "at_x": 9.1,
+      "at_tilt_deg": -37.1
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW_rail_r",
+      "min_clearance_mm": 35.1,
+      "at_x": 8.45,
+      "at_tilt_deg": -37.1
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC_rail_l",
+      "min_clearance_mm": 35.1,
+      "at_x": 7.5,
+      "at_tilt_deg": 37.1
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC_rail_r",
+      "min_clearance_mm": 35.1,
+      "at_x": 7.35,
+      "at_tilt_deg": 37.1
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD_rail_l",
+      "min_clearance_mm": 35.1,
+      "at_x": 8.8,
+      "at_tilt_deg": 37.1
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD_rail_r",
+      "min_clearance_mm": 35.1,
+      "at_x": 8.65,
+      "at_tilt_deg": 37.1
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/train_pan",
+      "min_clearance_mm": 35.4,
+      "at_x": 7.35,
+      "at_tilt_deg": 35.5
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/train_pan",
+      "min_clearance_mm": 35.4,
+      "at_x": 7.35,
+      "at_tilt_deg": 35.5
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/conveyors/knife",
+      "min_clearance_mm": 36.2,
+      "at_x": 6.82,
+      "at_tilt_deg": 0.0
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/conveyors/knife",
+      "min_clearance_mm": 36.2,
+      "at_x": 6.82,
+      "at_tilt_deg": 0.0
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC",
+      "min_clearance_mm": 37.4,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD",
+      "min_clearance_mm": 37.4,
+      "at_x": 8.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW",
+      "min_clearance_mm": 37.4,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC_chamfill",
+      "min_clearance_mm": 38.1,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD_chamfill",
+      "min_clearance_mm": 38.1,
+      "at_x": 8.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW_chamfill",
+      "min_clearance_mm": 38.1,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC_guard_l",
+      "min_clearance_mm": 38.2,
+      "at_x": 7.5,
+      "at_tilt_deg": 32.3
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC_guard_r",
+      "min_clearance_mm": 38.2,
+      "at_x": 7.35,
+      "at_tilt_deg": 32.3
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD_guard_l",
+      "min_clearance_mm": 38.2,
+      "at_x": 8.8,
+      "at_tilt_deg": 32.3
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD_guard_r",
+      "min_clearance_mm": 38.2,
+      "at_x": 8.65,
+      "at_tilt_deg": 32.3
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW_guard_l",
+      "min_clearance_mm": 38.2,
+      "at_x": 9.1,
+      "at_tilt_deg": -32.3
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW_guard_r",
+      "min_clearance_mm": 38.2,
+      "at_x": 8.45,
+      "at_tilt_deg": -32.3
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_rail_l",
+      "min_clearance_mm": 38.9,
+      "at_x": 9.1,
+      "at_tilt_deg": 27.5
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD_rail_l",
+      "min_clearance_mm": 38.9,
+      "at_x": 9.4,
+      "at_tilt_deg": -27.5
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteC_guard_l",
+      "min_clearance_mm": 41.8,
+      "at_x": 7.5,
+      "at_tilt_deg": 33.9
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteC_guard_r",
+      "min_clearance_mm": 41.8,
+      "at_x": 7.35,
+      "at_tilt_deg": 33.9
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD_guard_l",
+      "min_clearance_mm": 41.8,
+      "at_x": 8.8,
+      "at_tilt_deg": 33.9
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD_guard_l",
+      "min_clearance_mm": 41.8,
+      "at_x": 9.4,
+      "at_tilt_deg": -33.9
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD_guard_r",
+      "min_clearance_mm": 41.8,
+      "at_x": 8.65,
+      "at_tilt_deg": 33.9
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_guard_l",
+      "min_clearance_mm": 41.8,
+      "at_x": 9.1,
+      "at_tilt_deg": 33.9
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_guard_r",
+      "min_clearance_mm": 41.8,
+      "at_x": 8.45,
+      "at_tilt_deg": -33.9
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/knife_guide_l",
+      "min_clearance_mm": 42.4,
+      "at_x": 6.82,
+      "at_tilt_deg": 0.0
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/knife_guide_r",
+      "min_clearance_mm": 42.4,
+      "at_x": 6.82,
+      "at_tilt_deg": 0.0
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_rail_r",
+      "min_clearance_mm": 42.6,
+      "at_x": 8.45,
+      "at_tilt_deg": -24.2
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteC_rail_l",
+      "min_clearance_mm": 42.6,
+      "at_x": 7.5,
+      "at_tilt_deg": 24.2
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteC_rail_r",
+      "min_clearance_mm": 42.6,
+      "at_x": 7.35,
+      "at_tilt_deg": 24.2
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD_rail_l",
+      "min_clearance_mm": 42.6,
+      "at_x": 8.8,
+      "at_tilt_deg": 24.2
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD_rail_r",
+      "min_clearance_mm": 42.6,
+      "at_x": 8.65,
+      "at_tilt_deg": 24.2
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD_cheek_l",
+      "min_clearance_mm": 42.6,
+      "at_x": 9.4,
+      "at_tilt_deg": -32.3
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteREVIEW_cheek_l",
+      "min_clearance_mm": 43.0,
+      "at_x": 9.6,
+      "at_tilt_deg": -32.3
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteREVIEW_rail_l",
+      "min_clearance_mm": 43.0,
+      "at_x": 9.6,
+      "at_tilt_deg": -24.2
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteREVIEW_guard_l",
+      "min_clearance_mm": 43.0,
+      "at_x": 9.6,
+      "at_tilt_deg": -33.9
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteREVIEW_cheek_r",
+      "min_clearance_mm": 43.0,
+      "at_x": 8.95,
+      "at_tilt_deg": -32.3
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteREVIEW_rail_r",
+      "min_clearance_mm": 43.0,
+      "at_x": 8.95,
+      "at_tilt_deg": -24.2
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteREVIEW_guard_r",
+      "min_clearance_mm": 43.0,
+      "at_x": 8.95,
+      "at_tilt_deg": -33.9
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteC",
+      "min_clearance_mm": 47.9,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteC",
+      "min_clearance_mm": 47.9,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD",
+      "min_clearance_mm": 47.9,
+      "at_x": 8.3,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD",
+      "min_clearance_mm": 47.9,
+      "at_x": 8.75,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW",
+      "min_clearance_mm": 47.9,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteREVIEW",
+      "min_clearance_mm": 47.9,
+      "at_x": 9.1,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteC_chamfill",
+      "min_clearance_mm": 48.6,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteC_chamfill",
+      "min_clearance_mm": 48.6,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD_chamfill",
+      "min_clearance_mm": 48.6,
+      "at_x": 8.3,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD_chamfill",
+      "min_clearance_mm": 48.6,
+      "at_x": 8.75,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_chamfill",
+      "min_clearance_mm": 48.6,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteREVIEW_chamfill",
+      "min_clearance_mm": 48.6,
+      "at_x": 9.1,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/knife_guide_l",
+      "min_clearance_mm": 49.2,
+      "at_x": 6.82,
+      "at_tilt_deg": 0.0
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/knife_guide_r",
+      "min_clearance_mm": 49.2,
+      "at_x": 6.82,
+      "at_tilt_deg": 0.0
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD_cheek_r",
+      "min_clearance_mm": 75.0,
+      "at_x": 8.0,
+      "at_tilt_deg": 25.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD_rail_r",
+      "min_clearance_mm": 75.0,
+      "at_x": 8.0,
+      "at_tilt_deg": 19.4
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD_guard_r",
+      "min_clearance_mm": 75.0,
+      "at_x": 8.0,
+      "at_tilt_deg": 27.5
+    }
+  ],
+  "tray_violations": [
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_cheek_l",
+      "min_clearance_mm": 12.6,
+      "at_x": 9.1,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteREVIEW_cheek_r",
+      "min_clearance_mm": 12.6,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/conveyors/bconnect",
+      "min_clearance_mm": 12.7,
+      "at_x": 8.3,
+      "at_tilt_deg": -38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteD_cheek_r",
+      "min_clearance_mm": 13.0,
+      "at_x": 8.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_w",
+      "static": "/World/statics/chuteC_cheek_r",
+      "min_clearance_mm": 13.0,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteD_cheek_l",
+      "min_clearance_mm": 13.6,
+      "at_x": 8.8,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/lip_e",
+      "static": "/World/statics/chuteC_cheek_l",
+      "min_clearance_mm": 13.6,
+      "at_x": 7.5,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteC_chamfer",
+      "min_clearance_mm": 14.1,
+      "at_x": 7.35,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_s",
+      "static": "/World/statics/chuteD_chamfer",
+      "min_clearance_mm": 14.1,
+      "at_x": 8.65,
+      "at_tilt_deg": 38.8
+    },
+    {
+      "mover": "/World/sorter/tray0/plate_n",
+      "static": "/World/statics/chuteREVIEW_chamfer",
+      "min_clearance_mm": 14.1,
+      "at_x": 8.45,
+      "at_tilt_deg": -38.8
+    }
+  ],
+  "arm_segments": [
+    {
+      "link": "tool",
+      "static": "/World/statics/cageC_fla",
+      "min_clearance_mm": 31.7,
+      "at_tcp": [
+        7.775,
+        2.52,
+        0.885
+      ]
+    },
+    {
+      "link": "tool",
+      "static": "/World/statics/cageD_flb",
+      "min_clearance_mm": 31.7,
+      "at_tcp": [
+        8.425,
+        2.52,
+        0.885
+      ]
+    },
+    {
+      "link": "tool",
+      "static": "/World/statics/cageC_wpx",
+      "min_clearance_mm": 43.0,
+      "at_tcp": [
+        7.775,
+        2.42,
+        0.885
+      ]
+    },
+    {
+      "link": "tool",
+      "static": "/World/statics/cageD_wmx",
+      "min_clearance_mm": 43.0,
+      "at_tcp": [
+        8.425,
+        2.42,
+        0.885
+      ]
+    },
+    {
+      "link": "upper",
+      "static": "/World/statics/cageC_wpx",
+      "min_clearance_mm": 50.0,
+      "at_tcp": [
+        8.1,
+        2.42,
+        1.22
+      ]
+    }
+  ],
+  "arm_violations": []
+}
