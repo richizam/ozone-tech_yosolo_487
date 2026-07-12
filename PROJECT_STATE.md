@@ -1,9 +1,20 @@
 # PROJECT STATE — pause point (2026-07-11, server shut down by owner)
 
-Single source for resuming. Everything below is committed; the GPU server
-(RTX 5090, `ssh -p 40576 root@90.224.159.6`, repo mirror `/root/sortmaster`,
-outputs `/root/sortmaster_out`) was stopped with the work at the exact point
-described in §3.
+Single source for resuming. Everything below is committed; the original GPU
+server (RTX 5090, `ssh -p 40576 root@90.224.159.6`) was stopped for cost.
+
+**NEW SERVER (2026-07-11): RTX 5070 Ti, 16 GB VRAM, IP 120.238.149.205**
+(SSH port/user TBD — confirm on resume). Repo mirror `/root/sortmaster`,
+outputs `/root/sortmaster_out`, same layout. Two changes vs the 5090 box:
+- **16 GB VRAM (was 32)**: a single headless run at 720p (~8–12 GB) fits,
+  but there is NO 16 GB of headroom for anything resident. Keep ONE
+  container at a time (we always did). If a run OOMs, matrix runs need only
+  RTX depth (not RGB frames) — drop `width/height` in the SimulationApp
+  boot for matrix, keep 1280×720 only for the showcase.
+- **~1.5× slower + cold caches**: first run pays a one-time docker image
+  re-pull (~20 GB) + RTX shader compile (~10–20 min). Matrix ~4 h,
+  showcase ~3 h. Warm the cache with one throwaway `--seed 42 --max-sim-s
+  30` run before launching the matrix so the long jobs run warm.
 
 ## 1. What we built (done, validated, committed)
 
