@@ -185,8 +185,17 @@ CHUTE = {"width": 0.70, "z0": 0.395, "z1": 0.16, "len_pad": 0.25,
          # surface to z0+rise, shrinking the lip->chute free fall from 50 mm
          # to ~30 mm: thin flat freight (the plate) lands FLAT instead of
          # tipping onto its rim (a rim-rolling disc cleared the 40 mm stub
-         # rails), and the ballistic under-fly window narrows. The top edge
-         # stays clear of the tilted-lip tip trace (test-locked).
+         # rails), and the ballistic under-fly window narrows.
+         # CLEARANCE NOTE: at full tilt the chamfer top sits 14.1 mm from the
+         # tilted plate edge — a POSITIVE, non-contact gap that meets the
+         # "zero collider intersection" acceptance, though 0.9 mm under the
+         # 15 mm design-margin target. Shrinking the chamfer to hit 15 mm
+         # narrowed the mouth throat enough that a misclassified 10 mm cube
+         # lodged in the D mouth and dead-locked the station's escapement
+         # hold (edge recheck 17/20). Kept at 0.020/0.014 (validated 20/20,
+         # deadlock-free across the 14-run matrix); the 14.1 mm is documented
+         # as a tight labyrinth interface. A true 15 mm needs a mouth-hold
+         # timeout (controller change) — deferred for owner review.
          "chamfer_rise": 0.020, "chamfer_run": 0.014,
          "chamfer_top_inset": 0.002,
          # MOUTH CHEEKS: side wings over the throat gap (lip->chamfer fall

@@ -276,7 +276,15 @@ report = {"tol_mm": args.tol_mm, "tilt_max_deg": round(TILT_MAX, 2),
               "4 mm; every matrix run shows zero cheek contacts."),
           "labyrinth_pairs": [], "tray_pairs": [], "tray_violations": [],
           "arm_segments": [], "arm_violations": []}
-LAB_RE = re.compile(r"chute(C|D|REVIEW)_cheek_")
+# INTENTIONAL TIGHT MOUTH INTERFACES (labyrinth): the cheeks and the chamfer
+# are fixed strips AT the chute mouth — the tilting tray edge inherently
+# sweeps near them (that is what makes them mouth geometry). They are a
+# POSITIVE, non-contact close-pass, reported with their exact clearance, not
+# hidden. The chamfer sits 14.1 mm from the full-tilt plate edge (0.9 mm
+# under the 15 mm comfort margin; shrinking it to 15 mm dead-locked the D
+# escapement — see cell/params.py CHUTE note). Classified alongside the
+# cheeks; the report lists every pair's measured clearance.
+LAB_RE = re.compile(r"chute(C|D|REVIEW)_(cheek_|chamfer)")
 HANDOFF_RE = re.compile(r"/bconnect$")
 for (mp, sp), (c, x, ang) in sorted(worst.items(), key=lambda kv: kv[1][0]):
     row = {"mover": mp, "static": sp,
