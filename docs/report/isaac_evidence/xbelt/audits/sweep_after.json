@@ -1,0 +1,825 @@
+{
+ "tol_mm": 12.0,
+ "tilt_deg": 38.0,
+ "joint_limit_deg": 46.0,
+ "pairs_reported": [
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/statics/chuteD_cheek_l",
+   "min_clearance_mm": 6.1,
+   "at_x": 9.42,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/statics/chuteC_cheek_l",
+   "min_clearance_mm": 6.1,
+   "at_x": 7.8,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/statics/chuteC_cheek_r",
+   "min_clearance_mm": 6.1,
+   "at_x": 7.35,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/statics/chuteREVIEW_cheek_r",
+   "min_clearance_mm": 6.1,
+   "at_x": 8.45,
+   "at_tilt_deg": -38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/statics/chuteREVIEW_cheek_l",
+   "min_clearance_mm": 6.1,
+   "at_x": 9.42,
+   "at_tilt_deg": -38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/statics/chuteD_cheek_r",
+   "min_clearance_mm": 6.1,
+   "at_x": 8.65,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/statics/chuteC_chamfer",
+   "min_clearance_mm": 6.7,
+   "at_x": 7.65,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/statics/chuteREVIEW_chamfer",
+   "min_clearance_mm": 6.7,
+   "at_x": 8.6,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/statics/chuteD_chamfer",
+   "min_clearance_mm": 6.7,
+   "at_x": 8.6,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit_wrong_side",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/statics/chuteD_chamfer",
+   "min_clearance_mm": 6.7,
+   "at_x": 8.95,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/statics/chuteREVIEW_chamfer",
+   "min_clearance_mm": 6.7,
+   "at_x": 9.25,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/statics/chuteC_chamfer",
+   "min_clearance_mm": 7.1,
+   "at_x": 7.65,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/statics/chuteREVIEW_chamfer",
+   "min_clearance_mm": 7.1,
+   "at_x": 8.6,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/statics/chuteD_chamfer",
+   "min_clearance_mm": 7.1,
+   "at_x": 8.6,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit_wrong_side",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/car0/tiltdrive_gearbox",
+   "min_clearance_mm": 8.1,
+   "at_x": 7.65,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/sorter/car0/pivot_shaft",
+   "min_clearance_mm": 8.8,
+   "at_x": 7.65,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit_wrong_side",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/car0/pivot_shaft",
+   "min_clearance_mm": 8.8,
+   "at_x": 7.65,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/sorter/car0/saddle_e",
+   "min_clearance_mm": 8.9,
+   "at_x": 7.65,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit_wrong_side",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/sorter/car0/saddle_w",
+   "min_clearance_mm": 8.9,
+   "at_x": 7.65,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit_wrong_side",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/car0/saddle_e",
+   "min_clearance_mm": 8.9,
+   "at_x": 7.65,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/car0/saddle_w",
+   "min_clearance_mm": 8.9,
+   "at_x": 7.65,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/sorter/tray1/lip_w",
+   "min_clearance_mm": 10.0,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/sorter/tray1/lip_w",
+   "min_clearance_mm": 10.0,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/tray1/lip_w",
+   "min_clearance_mm": 10.0,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/sorter/tray1/plate_n",
+   "min_clearance_mm": 10.0,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/sorter/tray1/plate_s",
+   "min_clearance_mm": 10.0,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/sorter/tray1/plate_n",
+   "min_clearance_mm": 10.0,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/sorter/tray1/plate_s",
+   "min_clearance_mm": 10.0,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/tray1/plate_n",
+   "min_clearance_mm": 10.0,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/tray1/plate_s",
+   "min_clearance_mm": 10.0,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/conveyors/knife",
+   "min_clearance_mm": 10.1,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/car0/spine",
+   "min_clearance_mm": 10.7,
+   "at_x": 7.65,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/sorter/car0/spine",
+   "min_clearance_mm": 10.7,
+   "at_x": 7.65,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit_wrong_side",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/sorter/tray1/lipch_w",
+   "min_clearance_mm": 11.1,
+   "at_x": 7.35,
+   "at_tilt_deg": 9.5,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_e",
+   "static": "/World/sorter/tray1/lip_w",
+   "min_clearance_mm": 11.1,
+   "at_x": 7.35,
+   "at_tilt_deg": 9.5,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_e",
+   "static": "/World/sorter/tray1/plate_n",
+   "min_clearance_mm": 11.1,
+   "at_x": 8.3,
+   "at_tilt_deg": -9.5,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_e",
+   "static": "/World/sorter/tray1/plate_s",
+   "min_clearance_mm": 11.1,
+   "at_x": 7.35,
+   "at_tilt_deg": 9.5,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/sorter/tray1/lipch_w",
+   "min_clearance_mm": 11.1,
+   "at_x": 7.35,
+   "at_tilt_deg": 9.5,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/tray1/lipch_w",
+   "min_clearance_mm": 11.1,
+   "at_x": 8.3,
+   "at_tilt_deg": -9.5,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/conveyors/bconnect",
+   "min_clearance_mm": 11.1,
+   "at_x": 8.6,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_e",
+   "static": "/World/sorter/tray1/lipch_w",
+   "min_clearance_mm": 12.1,
+   "at_x": 7.35,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "commanded",
+   "group": "neighbour",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/knuckle_p205",
+   "static": "/World/sorter/car0/spine",
+   "min_clearance_mm": 12.2,
+   "at_x": 7.35,
+   "at_tilt_deg": 28.5,
+   "pose_kind": "commanded",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/knuckle_p115",
+   "static": "/World/sorter/car0/spine",
+   "min_clearance_mm": 12.2,
+   "at_x": 7.35,
+   "at_tilt_deg": 28.5,
+   "pose_kind": "commanded",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/knuckle_n115",
+   "static": "/World/sorter/car0/spine",
+   "min_clearance_mm": 12.2,
+   "at_x": 7.35,
+   "at_tilt_deg": 28.5,
+   "pose_kind": "commanded",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/knuckle_n205",
+   "static": "/World/sorter/car0/spine",
+   "min_clearance_mm": 12.2,
+   "at_x": 7.35,
+   "at_tilt_deg": 28.5,
+   "pose_kind": "commanded",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/conveyors/bconnect",
+   "min_clearance_mm": 13.2,
+   "at_x": 8.6,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/statics/chuteC_chamfer",
+   "min_clearance_mm": 14.0,
+   "at_x": 7.65,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_e",
+   "static": "/World/statics/chuteREVIEW_chamfer",
+   "min_clearance_mm": 14.0,
+   "at_x": 8.6,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_e",
+   "static": "/World/statics/chuteD_chamfer",
+   "min_clearance_mm": 14.0,
+   "at_x": 8.6,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit_wrong_side",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/statics/chuteD_chamfer",
+   "min_clearance_mm": 14.0,
+   "at_x": 8.95,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/statics/chuteREVIEW_chamfer",
+   "min_clearance_mm": 14.0,
+   "at_x": 9.25,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/conveyors/bconnect",
+   "min_clearance_mm": 14.7,
+   "at_x": 8.3,
+   "at_tilt_deg": -38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/statics/train_end_e_wheel",
+   "min_clearance_mm": 15.0,
+   "at_x": 9.42,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/conveyors/knife",
+   "min_clearance_mm": 15.0,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/statics/train_end_e_wheel",
+   "min_clearance_mm": 15.0,
+   "at_x": 9.42,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/statics/train_end_e_wheel",
+   "min_clearance_mm": 15.0,
+   "at_x": 9.42,
+   "at_tilt_deg": -38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/sorter/car0/tiltdrive_motor",
+   "min_clearance_mm": 15.2,
+   "at_x": 7.65,
+   "at_tilt_deg": 46.0,
+   "pose_kind": "joint_limit",
+   "group": "own_chassis",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/dressing/knife_cheek_1",
+   "min_clearance_mm": 16.0,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/dressing/knife_cheek_2",
+   "min_clearance_mm": 16.0,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/statics/chuteD_cheek_l",
+   "min_clearance_mm": 16.1,
+   "at_x": 9.42,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/statics/chuteREVIEW_cheek_r",
+   "min_clearance_mm": 16.1,
+   "at_x": 8.45,
+   "at_tilt_deg": -38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/statics/chuteREVIEW_cheek_l",
+   "min_clearance_mm": 16.1,
+   "at_x": 9.1,
+   "at_tilt_deg": -38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/statics/chuteC_cheek_r",
+   "min_clearance_mm": 16.3,
+   "at_x": 7.35,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/statics/chuteD_cheek_r",
+   "min_clearance_mm": 16.3,
+   "at_x": 8.65,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/statics/chuteC",
+   "min_clearance_mm": 16.4,
+   "at_x": 8.05,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "return_leg",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/statics/chuteD",
+   "min_clearance_mm": 16.4,
+   "at_x": 9.37,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "return_leg",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_w",
+   "static": "/World/statics/chuteREVIEW",
+   "min_clearance_mm": 16.4,
+   "at_x": 9.37,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "return_leg",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/dressing/knife_drum_3",
+   "min_clearance_mm": 16.6,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/dressing/knife_drum_3",
+   "min_clearance_mm": 16.6,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/statics/chuteD_cheek_l",
+   "min_clearance_mm": 16.8,
+   "at_x": 8.8,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/statics/chuteC_cheek_l",
+   "min_clearance_mm": 16.8,
+   "at_x": 7.5,
+   "at_tilt_deg": 38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "labyrinth"
+  },
+  {
+   "mover": "/World/sorter/tray0/lipch_e",
+   "static": "/World/statics/train_end_e_cap",
+   "min_clearance_mm": 17.9,
+   "at_x": 9.25,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/statics/train_end_e_cap",
+   "min_clearance_mm": 18.5,
+   "at_x": 9.25,
+   "at_tilt_deg": -46.0,
+   "pose_kind": "joint_limit",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/statics/chuteC",
+   "min_clearance_mm": 18.5,
+   "at_x": 8.05,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "return_leg",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/statics/chuteD",
+   "min_clearance_mm": 18.5,
+   "at_x": 9.37,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "return_leg",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/statics/chuteREVIEW",
+   "min_clearance_mm": 18.5,
+   "at_x": 9.37,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "return_leg",
+   "group": "static",
+   "class": "hard"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/dressing/knife_cheek_1",
+   "min_clearance_mm": 20.2,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_w",
+   "static": "/World/dressing/knife_cheek_2",
+   "min_clearance_mm": 20.2,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/lip_e",
+   "static": "/World/conveyors/bconnect",
+   "min_clearance_mm": 22.7,
+   "at_x": 8.3,
+   "at_tilt_deg": -38.0,
+   "pose_kind": "commanded",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_n",
+   "static": "/World/dressing/knife_cheek_2",
+   "min_clearance_mm": 22.9,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  },
+  {
+   "mover": "/World/sorter/tray0/plate_s",
+   "static": "/World/dressing/knife_cheek_1",
+   "min_clearance_mm": 22.9,
+   "at_x": 6.77,
+   "at_tilt_deg": 0.0,
+   "pose_kind": "flat_run",
+   "group": "static",
+   "class": "handoff"
+  }
+ ],
+ "violations": [],
+ "corridor_violations": [],
+ "notes": {
+  "labyrinth": "mouth cheeks/chamfer designed tight throat seal (>=4 mm at commanded tilt incl. noise)",
+  "handoff": "B incline designed close discharge plane",
+  "neighbour": "designed chain-pitch interface (pitch - tray_l = 10 mm)",
+  "joint_limit": "fault-envelope pose (drive limit), pass >= 8 mm"
+ }
+}

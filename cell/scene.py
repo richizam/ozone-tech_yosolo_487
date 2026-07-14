@@ -51,6 +51,9 @@ def load_manifest():
     extra = ASSETS / "manifest_extra.json"       # synthetic borderline items
     if extra.exists():                           # (tools/make_borderline_items.py)
         manifest += json.loads(extra.read_text(encoding="utf-8"))
+    custom = ASSETS / "manifest_custom.json"     # expert-provided STLs
+    if custom.exists():                          # (tools/expert_check.py)
+        manifest += json.loads(custom.read_text(encoding="utf-8"))
     return manifest
 
 

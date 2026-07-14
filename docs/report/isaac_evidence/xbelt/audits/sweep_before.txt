@@ -1,0 +1,233 @@
+visual sweep audit  tol=12.0mm  tilt=38.0 limit=46.0
+VIOLATIONS: 64  CORRIDOR: 15
+  VIOL    -25.8mm  /World/sorter/tray0/plate_n  ~  /World/dressing/drumCn_6  @x=8.6 tilt=-46.0 (joint_limit,hard)
+  VIOL    -20.0mm  /World/sorter/tray0/lipch_e  ~  /World/statics/train_end_e_cap  @x=9.3 tilt=19.0 (commanded,hard)
+  VIOL    -16.3mm  /World/sorter/tray0/lip_w  ~  /World/dressing/drumCn_6  @x=8.6 tilt=-46.0 (joint_limit,hard)
+  VIOL    -15.0mm  /World/sorter/tray0/plate_n  ~  /World/dressing/cheekCn_4  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL    -14.6mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/body  @x=7.35 tilt=28.5 (commanded,hard)
+  VIOL    -14.6mm  /World/sorter/tray0/plate_n  ~  /World/sorter/car0/body  @x=8.3 tilt=-28.5 (commanded,hard)
+  VIOL    -13.8mm  /World/sorter/tray0/lip_e  ~  /World/statics/train_end_e_cap  @x=9.1 tilt=19.0 (commanded,hard)
+  VIOL    -11.8mm  /World/sorter/tray0/plate_s  ~  /World/statics/train_pan  @x=9.25 tilt=46.0 (joint_limit_wrong_side,hard)
+  VIOL    -11.8mm  /World/sorter/tray0/plate_n  ~  /World/statics/train_pan  @x=9.25 tilt=-46.0 (joint_limit,hard)
+  VIOL    -11.5mm  /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_spoke1  @x=9.3 tilt=38.0 (commanded,hard)
+  VIOL    -11.5mm  /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_spoke1  @x=9.25 tilt=-38.0 (commanded,hard)
+  VIOL    -11.5mm  /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_spoke2  @x=9.4 tilt=-38.0 (commanded,hard)
+  VIOL    -11.4mm  /World/sorter/tray0/plate_n  ~  /World/dressing/cheekCn_5  @x=8.6 tilt=-46.0 (joint_limit,hard)
+  VIOL    -10.1mm  /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_wheel  @x=9.25 tilt=-19.0 (commanded,hard)
+  VIOL    -10.1mm  /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_wheel  @x=9.3 tilt=19.0 (commanded,hard)
+  VIOL    -10.0mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/bevel_e  @x=7.35 tilt=9.5 (commanded,hard)
+  VIOL    -10.0mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/bevel_w  @x=7.35 tilt=9.5 (commanded,hard)
+  VIOL    -10.0mm  /World/sorter/tray0/plate_n  ~  /World/sorter/car0/bevel_e  @x=8.3 tilt=-9.5 (commanded,hard)
+  VIOL    -10.0mm  /World/sorter/tray0/plate_n  ~  /World/sorter/car0/bevel_w  @x=8.3 tilt=-9.5 (commanded,hard)
+  VIOL     -9.7mm  /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_cap  @x=9.1 tilt=19.0 (commanded,hard)
+  VIOL     -9.7mm  /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_cap  @x=9.1 tilt=-19.0 (commanded,hard)
+  VIOL     -9.7mm  /World/sorter/tray0/plate_n  ~  /World/sorter/car0/pivot_shaft  @x=7.65 tilt=-46.0 (joint_limit_wrong_side,hard)
+  VIOL     -9.7mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/pivot_shaft  @x=7.65 tilt=46.0 (joint_limit,hard)
+  VIOL     -9.6mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/actuator_rod  @x=7.35 tilt=9.5 (commanded,hard)
+  VIOL     -7.0mm  /World/sorter/tray0/plate_n  ~  /World/dressing/label_226  @x=9.25 tilt=-46.0 (joint_limit,hard)
+  VIOL     -7.0mm  /World/sorter/tray0/plate_n  ~  /World/dressing/label_227  @x=9.25 tilt=-46.0 (joint_limit,hard)
+  VIOL     -6.5mm  /World/sorter/tray0/plate_n  ~  /World/sorter/car0/bearing_e  @x=7.65 tilt=-46.0 (joint_limit_wrong_side,hard)
+  VIOL     -6.5mm  /World/sorter/tray0/plate_n  ~  /World/sorter/car0/bearing_w  @x=7.65 tilt=-46.0 (joint_limit_wrong_side,hard)
+  VIOL     -6.5mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/bearing_e  @x=7.65 tilt=46.0 (joint_limit,hard)
+  VIOL     -6.5mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/bearing_w  @x=7.65 tilt=46.0 (joint_limit,hard)
+  VIOL     -5.9mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/actuator  @x=7.35 tilt=19.0 (commanded,hard)
+  VIOL     -4.4mm  /World/sorter/tray0/lipch_w  ~  /World/dressing/chshC_208  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL     -3.8mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/band_e  @x=7.35 tilt=9.5 (commanded,hard)
+  VIOL     -3.8mm  /World/sorter/tray0/plate_s  ~  /World/sorter/car0/band_w  @x=7.35 tilt=9.5 (commanded,hard)
+  VIOL     -3.8mm  /World/sorter/tray0/plate_n  ~  /World/sorter/car0/band_e  @x=8.3 tilt=-9.5 (commanded,hard)
+  VIOL     -3.8mm  /World/sorter/tray0/plate_n  ~  /World/sorter/car0/band_w  @x=8.3 tilt=-9.5 (commanded,hard)
+  VIOL     -3.0mm  /World/sorter/tray0/lip_w  ~  /World/dressing/chshC_208  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL     -2.3mm  /World/sorter/tray0/lipch_w  ~  /World/statics/chuteC  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL     -1.9mm  /World/sorter/tray0/lip_e  ~  /World/statics/train_end_e_axle  @x=9.3 tilt=38.0 (commanded,hard)
+  VIOL     -1.0mm  /World/sorter/car0/body  ~  /World/dressing/cheekCn_4  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL     -0.9mm  /World/sorter/tray0/plate_n  ~  /World/dressing/bnose_apron_195  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL     -0.2mm  /World/sorter/tray0/lip_e  ~  /World/dressing/cheekCn_5  @x=8.45 tilt=-38.0 (commanded,hard)
+  VIOL      0.7mm  /World/sorter/tray0/plate_s  ~  /World/dressing/chshC_208  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL      1.0mm  /World/sorter/tray0/lip_e  ~  /World/dressing/bnose_apron_195  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL      1.5mm  /World/sorter/tray0/lip_w  ~  /World/statics/chuteC  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL      2.2mm  /World/sorter/tray0/plate_n  ~  /World/dressing/bnose_skirt_196  @x=8.05 tilt=0.0 (return_leg,hard)
+  VIOL      2.5mm  /World/sorter/tray0/lipch_w  ~  /World/dressing/drumCn_6  @x=8.6 tilt=-46.0 (joint_limit,hard)
+  VIOL      3.9mm  /World/sorter/tray0/lipch_e  ~  /World/sorter/car0/bevel_e  @x=7.35 tilt=19.0 (commanded,hard)
+  VIOL      3.9mm  /World/sorter/tray0/lipch_w  ~  /World/sorter/car0/bevel_w  @x=7.35 tilt=19.0 (commanded,hard)
+  VIOL      4.8mm  /World/sorter/tray0/lip_e  ~  /World/sorter/car0/bevel_e  @x=7.35 tilt=19.0 (commanded,hard)
+  VIOL      4.8mm  /World/sorter/tray0/lip_w  ~  /World/sorter/car0/bevel_w  @x=7.35 tilt=19.0 (commanded,hard)
+  VIOL      5.0mm  /World/sorter/tray0/lip_e  ~  /World/statics/train_end_e_wheel  @x=9.1 tilt=-28.5 (commanded,hard)
+  VIOL      6.0mm  /World/sorter/tray0/plate_n  ~  /World/statics/train_end_w_cap  @x=6.77 tilt=0.0 (flat_run,hard)
+  VIOL      6.0mm  /World/sorter/tray0/plate_s  ~  /World/statics/train_end_w_cap  @x=6.77 tilt=0.0 (flat_run,hard)
+  VIOL      6.3mm  /World/sorter/tray0/lipch_e  ~  /World/statics/train_end_e_wheel  @x=9.1 tilt=-38.0 (commanded,hard)
+  VIOL      7.9mm  /World/sorter/tray0/lipch_e  ~  /World/sorter/tray1/lipch_w  @x=7.35 tilt=0.0 (commanded,hard)
+  VIOL      7.9mm  /World/sorter/tray0/lipch_e  ~  /World/statics/train_end_e_axle  @x=9.25 tilt=-46.0 (joint_limit,hard)
+  VIOL      7.9mm  /World/sorter/tray0/lipch_w  ~  /World/conveyors/knife  @x=6.77 tilt=0.0 (flat_run,hard)
+  VIOL      9.0mm  /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_axle  @x=9.3 tilt=38.0 (commanded,hard)
+  VIOL      9.0mm  /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_axle  @x=9.25 tilt=-38.0 (commanded,hard)
+  VIOL     11.9mm  /World/sorter/tray0/lipch_w  ~  /World/sorter/car0/band_w  @x=8.45 tilt=-28.5 (commanded,hard)
+  VIOL     11.9mm  /World/sorter/tray0/lipch_e  ~  /World/sorter/car0/band_e  @x=8.45 tilt=-28.5 (commanded,hard)
+  VIOL     12.0mm  /World/sorter/tray0/lipch_w  ~  /World/sorter/car0/body  @x=7.35 tilt=28.5 (commanded,hard)
+  VIOL     12.0mm  /World/sorter/tray0/lipch_e  ~  /World/sorter/car0/body  @x=7.35 tilt=28.5 (commanded,hard)
+  CORR      2.8mm INSIDE corridor C: /World/statics/train_pan
+  CORR     58.0mm INSIDE corridor C: /World/statics/stC_post_1
+  CORR     58.0mm INSIDE corridor C: /World/statics/stC_post1
+  CORR      6.6mm INSIDE corridor C: /World/dressing/chshC_208
+  CORR     98.0mm INSIDE corridor C: /World/dressing/label_382
+  CORR     98.0mm INSIDE corridor C: /World/dressing/label_383
+  CORR      2.8mm INSIDE corridor D: /World/statics/train_pan
+  CORR     58.0mm INSIDE corridor D: /World/statics/stD_post_1
+  CORR     58.0mm INSIDE corridor D: /World/statics/stD_post1
+  CORR      6.6mm INSIDE corridor D: /World/dressing/chshD_215
+  CORR     44.9mm INSIDE corridor REVIEW: /World/statics/train_pan
+  CORR     13.0mm INSIDE corridor REVIEW: /World/dressing/cheekCn_5
+  CORR     15.0mm INSIDE corridor REVIEW: /World/dressing/bconn_leg_203
+  CORR     18.0mm INSIDE corridor B: /World/statics/stB_post_1
+  CORR     18.0mm INSIDE corridor B: /World/statics/stB_post1
+
+all close pairs (<= report window):
+     -25.8mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/dressing/drumCn_6 @tilt -46.0
+     -20.0mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/statics/train_end_e_cap @tilt 19.0
+     -16.3mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/dressing/drumCn_6 @tilt -46.0
+     -15.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/dressing/cheekCn_4 @tilt 0.0
+     -14.6mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/body @tilt 28.5
+     -14.6mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/car0/body @tilt -28.5
+     -13.8mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/statics/train_end_e_cap @tilt 19.0
+     -11.8mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/train_pan @tilt 46.0
+     -11.8mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/statics/train_pan @tilt -46.0
+     -11.5mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_spoke1 @tilt 38.0
+     -11.5mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_spoke1 @tilt -38.0
+     -11.5mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_spoke2 @tilt -38.0
+     -11.4mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/dressing/cheekCn_5 @tilt -46.0
+     -10.1mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_wheel @tilt -19.0
+     -10.1mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_wheel @tilt 19.0
+     -10.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/bevel_e @tilt 9.5
+     -10.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/bevel_w @tilt 9.5
+     -10.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/car0/bevel_e @tilt -9.5
+     -10.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/car0/bevel_w @tilt -9.5
+      -9.7mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_cap @tilt 19.0
+      -9.7mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_cap @tilt -19.0
+      -9.7mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/car0/pivot_shaft @tilt -46.0
+      -9.7mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/pivot_shaft @tilt 46.0
+      -9.6mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/actuator_rod @tilt 9.5
+      -7.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/dressing/label_226 @tilt -46.0
+      -7.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/dressing/label_227 @tilt -46.0
+      -6.5mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/car0/bearing_e @tilt -46.0
+      -6.5mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/car0/bearing_w @tilt -46.0
+      -6.5mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/bearing_e @tilt 46.0
+      -6.5mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/bearing_w @tilt 46.0
+      -5.9mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/actuator @tilt 19.0
+      -4.4mm  [hard     ] /World/sorter/tray0/lipch_w  ~  /World/dressing/chshC_208 @tilt 0.0
+      -3.8mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/band_e @tilt 9.5
+      -3.8mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/band_w @tilt 9.5
+      -3.8mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/car0/band_e @tilt -9.5
+      -3.8mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/car0/band_w @tilt -9.5
+      -3.0mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/dressing/chshC_208 @tilt 0.0
+      -2.3mm  [hard     ] /World/sorter/tray0/lipch_w  ~  /World/statics/chuteC @tilt 0.0
+      -1.9mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/statics/train_end_e_axle @tilt 38.0
+      -1.0mm  [hard     ] /World/sorter/car0/body  ~  /World/dressing/cheekCn_4 @tilt 0.0
+      -0.9mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/dressing/bnose_apron_195 @tilt 0.0
+      -0.2mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/dressing/cheekCn_5 @tilt -38.0
+       0.7mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/dressing/chshC_208 @tilt 0.0
+       1.0mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/dressing/bnose_apron_195 @tilt 0.0
+       1.5mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/statics/chuteC @tilt 0.0
+       2.2mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/dressing/bnose_skirt_196 @tilt 0.0
+       2.5mm  [hard     ] /World/sorter/tray0/lipch_w  ~  /World/dressing/drumCn_6 @tilt -46.0
+       3.9mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/sorter/car0/bevel_e @tilt 19.0
+       3.9mm  [hard     ] /World/sorter/tray0/lipch_w  ~  /World/sorter/car0/bevel_w @tilt 19.0
+       4.8mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/sorter/car0/bevel_e @tilt 19.0
+       4.8mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/sorter/car0/bevel_w @tilt 19.0
+       5.0mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/statics/train_end_e_wheel @tilt -28.5
+       6.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/statics/train_end_w_cap @tilt 0.0
+       6.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/train_end_w_cap @tilt 0.0
+       6.1mm  [labyrinth] /World/sorter/tray0/plate_s  ~  /World/statics/chuteC_cheek_l @tilt 38.0
+       6.1mm  [labyrinth] /World/sorter/tray0/plate_s  ~  /World/statics/chuteD_cheek_l @tilt 38.0
+       6.1mm  [labyrinth] /World/sorter/tray0/plate_s  ~  /World/statics/chuteC_cheek_r @tilt 38.0
+       6.1mm  [labyrinth] /World/sorter/tray0/plate_n  ~  /World/statics/chuteREVIEW_cheek_r @tilt -38.0
+       6.1mm  [labyrinth] /World/sorter/tray0/plate_s  ~  /World/statics/chuteD_cheek_r @tilt 38.0
+       6.1mm  [labyrinth] /World/sorter/tray0/plate_n  ~  /World/statics/chuteREVIEW_cheek_l @tilt -38.0
+       6.3mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/statics/train_end_e_wheel @tilt -38.0
+       6.7mm  [labyrinth] /World/sorter/tray0/lip_w  ~  /World/statics/chuteC_chamfer @tilt 46.0
+       6.7mm  [labyrinth] /World/sorter/tray0/lip_e  ~  /World/statics/chuteREVIEW_chamfer @tilt -46.0
+       6.7mm  [labyrinth] /World/sorter/tray0/lip_e  ~  /World/statics/chuteD_chamfer @tilt 46.0
+       6.7mm  [labyrinth] /World/sorter/tray0/lip_w  ~  /World/statics/chuteD_chamfer @tilt 46.0
+       6.7mm  [labyrinth] /World/sorter/tray0/lip_w  ~  /World/statics/chuteREVIEW_chamfer @tilt -46.0
+       7.1mm  [labyrinth] /World/sorter/tray0/plate_s  ~  /World/statics/chuteC_chamfer @tilt 46.0
+       7.1mm  [labyrinth] /World/sorter/tray0/plate_n  ~  /World/statics/chuteREVIEW_chamfer @tilt -46.0
+       7.1mm  [labyrinth] /World/sorter/tray0/plate_s  ~  /World/statics/chuteD_chamfer @tilt 46.0
+       7.9mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/sorter/tray1/lipch_w @tilt 0.0
+       7.9mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/statics/train_end_e_axle @tilt -46.0
+       7.9mm  [hard     ] /World/sorter/tray0/lipch_w  ~  /World/conveyors/knife @tilt 0.0
+       8.9mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/sorter/tray1/lipch_w @tilt 9.5
+       8.9mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/sorter/tray1/lip_w @tilt 9.5
+       8.9mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/sorter/tray1/plate_n @tilt -9.5
+       8.9mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/sorter/tray1/plate_s @tilt 9.5
+       8.9mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/tray1/lipch_w @tilt 9.5
+       8.9mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/tray1/lipch_w @tilt -9.5
+       9.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_hub @tilt -46.0
+       9.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_hub @tilt 46.0
+       9.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_axle @tilt 38.0
+       9.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/statics/train_end_e_axle @tilt -38.0
+      10.0mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/sorter/tray1/lip_w @tilt 0.0
+      10.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/tray1/lip_w @tilt 0.0
+      10.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/tray1/lip_w @tilt 0.0
+      10.0mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/sorter/tray1/plate_n @tilt 0.0
+      10.0mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/sorter/tray1/plate_s @tilt 0.0
+      10.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/tray1/plate_n @tilt 0.0
+      10.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/tray1/plate_s @tilt 0.0
+      10.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/tray1/plate_n @tilt 0.0
+      10.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/tray1/plate_s @tilt 0.0
+      11.1mm  [handoff  ] /World/sorter/tray0/lip_w  ~  /World/conveyors/bconnect @tilt -46.0
+      11.9mm  [hard     ] /World/sorter/tray0/lipch_w  ~  /World/sorter/car0/band_w @tilt -28.5
+      11.9mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/sorter/car0/band_e @tilt -28.5
+      12.0mm  [hard     ] /World/sorter/tray0/lipch_w  ~  /World/sorter/car0/body @tilt 28.5
+      12.0mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/sorter/car0/body @tilt 28.5
+      12.6mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/statics/train_pan @tilt 46.0
+      12.6mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/statics/train_pan @tilt 46.0
+      12.7mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/dressing/bnose_apron_195 @tilt 0.0
+      12.9mm  [labyrinth] /World/sorter/tray0/lipch_w  ~  /World/statics/chuteC_chamfer @tilt 46.0
+      12.9mm  [labyrinth] /World/sorter/tray0/lipch_e  ~  /World/statics/chuteREVIEW_chamfer @tilt -46.0
+      12.9mm  [labyrinth] /World/sorter/tray0/lipch_e  ~  /World/statics/chuteD_chamfer @tilt 46.0
+      12.9mm  [labyrinth] /World/sorter/tray0/lipch_w  ~  /World/statics/chuteD_chamfer @tilt 46.0
+      12.9mm  [labyrinth] /World/sorter/tray0/lipch_w  ~  /World/statics/chuteREVIEW_chamfer @tilt -46.0
+      13.0mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/sorter/car0/body @tilt 19.0
+      13.0mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/sorter/car0/body @tilt 19.0
+      13.0mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/sorter/car0/band_e @tilt -19.0
+      13.0mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/sorter/car0/band_w @tilt -19.0
+      13.1mm  [handoff  ] /World/sorter/tray0/lipch_w  ~  /World/conveyors/bconnect @tilt -46.0
+      13.8mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/train_end_e_spoke2 @tilt 38.0
+      14.7mm  [handoff  ] /World/sorter/tray0/plate_n  ~  /World/conveyors/bconnect @tilt -38.0
+      15.0mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/conveyors/knife @tilt 0.0
+      15.1mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/dressing/chtrimC_210 @tilt 0.0
+      15.1mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/sorter/car0/link @tilt 46.0
+      15.1mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/sorter/car0/link @tilt -46.0
+      16.0mm  [hard     ] /World/sorter/tray0/lipch_w  ~  /World/dressing/knife_cheek_1 @tilt 0.0
+      16.0mm  [hard     ] /World/sorter/tray0/lipch_w  ~  /World/dressing/knife_cheek_2 @tilt 0.0
+      16.0mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/statics/train_end_w_wheel @tilt 0.0
+      16.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/train_end_w_wheel @tilt 0.0
+      16.1mm  [labyrinth] /World/sorter/tray0/lip_e  ~  /World/statics/chuteREVIEW_cheek_r @tilt -38.0
+      16.1mm  [labyrinth] /World/sorter/tray0/lip_e  ~  /World/statics/chuteREVIEW_cheek_l @tilt -38.0
+      16.3mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/dressing/cheekCn_5 @tilt -38.0
+      16.3mm  [labyrinth] /World/sorter/tray0/lip_w  ~  /World/statics/chuteC_cheek_r @tilt 38.0
+      16.3mm  [labyrinth] /World/sorter/tray0/lip_w  ~  /World/statics/chuteD_cheek_r @tilt 38.0
+      16.6mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/dressing/knife_drum_3 @tilt 0.0
+      16.6mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/dressing/knife_drum_3 @tilt 0.0
+      16.8mm  [labyrinth] /World/sorter/tray0/lip_e  ~  /World/statics/chuteD_cheek_l @tilt 38.0
+      16.8mm  [labyrinth] /World/sorter/tray0/lip_e  ~  /World/statics/chuteC_cheek_l @tilt 38.0
+      18.0mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/dressing/cheekCn_4 @tilt -38.0
+      18.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/statics/chuteC @tilt 0.0
+      18.1mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/dressing/drumCn_6 @tilt -38.0
+      20.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/dressing/label_212 @tilt 38.0
+      20.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/dressing/label_213 @tilt 38.0
+      20.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/dressing/label_219 @tilt 38.0
+      20.0mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/dressing/label_220 @tilt 38.0
+      20.2mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/dressing/knife_cheek_1 @tilt 0.0
+      20.2mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/dressing/knife_cheek_2 @tilt 0.0
+      20.3mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/dressing/bnose_skirt_196 @tilt 0.0
+      20.9mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/sorter/car0/bearing_e @tilt 46.0
+      20.9mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/sorter/car0/bearing_w @tilt 46.0
+      21.3mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/statics/train_end_e_spoke1 @tilt -38.0
+      21.3mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/statics/train_end_e_spoke1 @tilt -46.0
+      22.7mm  [handoff  ] /World/sorter/tray0/lip_e  ~  /World/conveyors/bconnect @tilt -38.0
+      22.8mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/sorter/car0/pivot_shaft @tilt 46.0
+      22.8mm  [hard     ] /World/sorter/tray0/lip_w  ~  /World/sorter/car0/pivot_shaft @tilt 46.0
+      22.9mm  [hard     ] /World/sorter/tray0/plate_n  ~  /World/dressing/knife_cheek_2 @tilt 0.0
+      22.9mm  [hard     ] /World/sorter/tray0/plate_s  ~  /World/dressing/knife_cheek_1 @tilt 0.0
+      24.0mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/dressing/chshD_215 @tilt 0.0
+      24.9mm  [hard     ] /World/sorter/tray0/lipch_e  ~  /World/dressing/chtrimD_216 @tilt 0.0
+      25.0mm  [hard     ] /World/sorter/tray0/lip_e  ~  /World/dressing/chtrimD_216 @tilt 0.0

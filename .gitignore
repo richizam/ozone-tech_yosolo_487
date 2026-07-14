@@ -20,3 +20,7 @@ datasets/
 # STEP originals and the source zips go to cloud storage per the submission rules
 extracted/**/Step/
 doc-*.zip
+
+# expert-provided items (generated locally by tools/expert_check.py)
+cell/assets/manifest_custom.json
+cell/assets/meshes/custom_*.stl

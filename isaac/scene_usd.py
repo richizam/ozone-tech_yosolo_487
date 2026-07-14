@@ -1300,7 +1300,11 @@ class SceneBuilder:
 
 def load_manifest(repo_root, extra=False):
     """Official 11-item ground truth; extra=True merges the synthetic
-    borderline/edge sets (manifest_extra.json + manifest_edge.json)."""
+    borderline/edge sets (manifest_extra.json + manifest_edge.json).
+    manifest_custom.json (expert-provided STLs registered via
+    tools/expert_check.py --register) is merged whenever it exists — it is
+    generated locally by the expert and never ships in the repo, so
+    validated runs are unaffected."""
     root = Path(repo_root) / "cell" / "assets"
     entries = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
     if extra:
@@ -1308,4 +1312,7 @@ def load_manifest(repo_root, extra=False):
             p = root / name
             if p.exists():
                 entries += json.loads(p.read_text(encoding="utf-8"))
+    custom = root / "manifest_custom.json"
+    if custom.exists():
+        entries += json.loads(custom.read_text(encoding="utf-8"))
     return entries
