@@ -18,7 +18,7 @@ run_one() {
   rm -rf "$OUT_ROOT/$name"
   docker run --rm --name "isaacrun-$name" --gpus all --network=host \
     --entrypoint /isaac-sim/python.sh \
-    -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
+    -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y -e SM_LEAN="${SM_LEAN:-}" \
     -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all \
     -v $REPO:/workspace/sortmaster:ro \
     -v /root/sortmaster_out:/workspace/sortmaster_out \

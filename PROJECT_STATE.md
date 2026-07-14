@@ -1,3 +1,38 @@
+# AUTONOMOUS RUN (2026-07-14) — RTX 4090 box, owner away, OK granted
+
+**Server:** `ssh -p 35206 root@85.218.235.6` (RTX 4090, 24 GB). Docker +
+nvidia runtime present, isaac-sim:6.0.1 pulled, v25 repo deployed, shader
+cache warm. HTTP served on 8080; local tunnel open.
+
+**VRAM FIX = LEAN MODE (validated):** the 24 GB card OOMs on the full-
+dressing 20-item scene (fit the 5090's 32 GB). `SM_LEAN=1` skips the
+`dress_scene()` cosmetic layer (all collide=False) for VALIDATION runs —
+physics/perception/containment identical. PROVEN: lean seed42 == full
+seed42 (11/11, unsafe 0, floor 0, cls 1.0, contain 1.0, setv 0), byte-for-
+byte on the gate metrics. Showcase renders WITH dressing (short, few items,
+fits). `SM_LEAN` threaded through run_matrix.sh / rerun_edges.sh /
+master_pipeline.sh (exports it); scene_usd.py gates on it (needs `import os`).
+
+**Owner authorization (this session):** run to completion autonomously.
+Take stills, verify visuals myself vs the 5 defect screenshots, and if I
+judge them good, launch the showcase, pull evidence, stamp numbers, COMMIT
+LOCAL. Guardrails: **no git push**, no destructive ops, only my own
+containers, stop-and-flag on any severe visual defect.
+
+**Live state:** master_pipeline.sh running lean matrix → consolidate →
+audit → (lean) stills → touch MATRIX_PHASE_DONE. Nominals 6/6 clean,
+edge_items_all 20/20 floor=0 (box_l fixed by v25 mouth interlock + no OOM).
+Next: on MATRIX_PHASE_DONE → run `isaac/verify_stills.sh` (FULL dressing,
+curated 5-item set) → Read the PNGs → judge vs defects → if good launch
+`isaac/showcase5.sh <out> 7` (NO SM_LEAN) → fetch_evidence → panels/endcard
+→ stamp README/report_ru/deck/calculations → local commit.
+
+Restart deploy set if session breaks: scp isaac/{scene_usd,run_matrix.sh,
+rerun_edges.sh,master_pipeline.sh,verify_stills.sh,sorter.py,run_isaac.py,
+audit_clearance.py} + cell/{params,sorter,run_sim}.py to /root/sortmaster/.
+
+---
+
 # PROJECT STATE — pause point (2026-07-11, server shut down by owner)
 
 Single source for resuming. Everything below is committed; the original GPU

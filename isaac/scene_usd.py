@@ -15,6 +15,7 @@ binary STLs are parsed with numpy directly into UsdGeom.Mesh vertex soup.
 """
 import json
 import math
+import os
 from pathlib import Path
 
 import numpy as np
@@ -1191,13 +1192,23 @@ class SceneBuilder:
         cams["jamcam"] = self.build_camera("jamcam", (8.15, 2.3, 3.8),
                                            (1, 0, 0), (0, 1, 0))
 
-        # industrial presentation layer (visuals only — physics/sensor-safe)
+        # industrial presentation layer (visuals only — physics/sensor-safe).
+        # VRAM GUARD: the cosmetic dressing adds hundreds of RTX-accelerated
+        # visual prims that push scene-DB memory past 24 GB on the heaviest
+        # runs (20-item edge set). It is purely collide=False presentation —
+        # perception rides the sensor rig + item meshes, containment rides
+        # the collision cages — so validation runs skip it (SM_LEAN=1) and
+        # only the showcase renders it. Physics/perception are identical.
         viz = None
-        try:
-            from isaac.dressing import dress_scene
-            viz = dress_scene(st)
-        except Exception as exc:
-            print(f"[dressing] SKIPPED ({exc})", flush=True)
+        if os.environ.get("SM_LEAN") == "1":
+            print("[dressing] LEAN mode — cosmetic layer skipped (VRAM guard)",
+                  flush=True)
+        else:
+            try:
+                from isaac.dressing import dress_scene
+                viz = dress_scene(st)
+            except Exception as exc:
+                print(f"[dressing] SKIPPED ({exc})", flush=True)
         return {"items": item_info, "cams": cams, "conveyors": conveyors,
                 "blades": blades, "carriers": carriers, "viz": viz}
 
