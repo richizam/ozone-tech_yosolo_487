@@ -2,9 +2,11 @@
 # Pull the tilt-tray build's evidence set from the render server into the
 # repo's report tree. Run from the repo root (Git Bash):
 #   bash tools/fetch_evidence.sh [matrix_dir_name] [showcase_dir_name]
+# Server is overridable for a new box, e.g.:
+#   SM_HOST=root@85.218.235.6 SM_PORT=35206 bash tools/fetch_evidence.sh xbelt_matrix_final showcase5
 set -u
-HOST="root@90.224.159.6"
-PORT=40576
+HOST="${SM_HOST:-root@90.224.159.6}"
+PORT="${SM_PORT:-40576}"
 MATRIX="${1:-xbelt_matrix}"
 SHOW="${2:-showcase5}"
 DEST="docs/report/isaac_evidence/xbelt"

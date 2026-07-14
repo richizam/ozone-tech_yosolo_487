@@ -286,11 +286,14 @@ class Dressing:
         clen = float(np.hypot(bc["y1"] - bc["y0"], bc["z_top1"] - bc["z_top0"]))
         if not getattr(self, "shells", False):
             # belt A: side skirts + end drums peeking beyond the band ends
+            # (skirts end at x 6.10 — the extended west end-module wall at
+            # x 6.118 would otherwise interpenetrate them; the module and
+            # knife cheeks carry the enclosure from there)
             for sgn in (-1, 1):
-                self.box((a["knife_x0"] / 2,
+                self.box((3.04,
                           a["y"] + sgn * (a["width"] / 2 + 0.035),
                           a["top"] - 0.09),
-                         (a["knife_x0"] / 2 + 0.02, 0.02, 0.115),
+                         (3.06, 0.02, 0.115),
                          FRAME, tag="cheekA")
             self.cyl((-0.045, a["y"], a["top"] - r), r + 0.008,
                      a["width"] / 2 + 0.01, (0.5, 0.52, 0.55), axis="Y",
@@ -317,12 +320,26 @@ class Dressing:
         self.cyl((a["nose_x"] - 0.008, a["y"], a["top"] - a["knife_t"] - 0.009),
                  0.011, a["width"] / 2 - 0.01, (0.5, 0.52, 0.55), axis="Y",
                  tag="knife_drum")
-        # incline connector: sloped side skirts + head/tail drums
-        for sgn in (-1, 1):
-            self.box((bc["cx"] + sgn * (bc["width"] / 2 + 0.035), cy_c,
-                      cz_c - 0.085), (0.02, clen / 2 + 0.02, 0.105), FRAME,
-                     tag="cheekCn", euler_deg=(math.degrees(ang), 0, 0))
-        for y, z in ((bc["y0"] - 0.03, bc["z_top0"] - r),
+        # incline connector: sloped side skirt + head/tail drums.
+        # SWEEP-AUDIT FIXES: (1) the skirts started at the tray line — the
+        # B-station tray at joint-limit tilt clipped them by 11-26 mm and
+        # the RETURN-leg trays grazed their south tips; skirts now start at
+        # y 3.45 (the same sweep-corridor rule the rails follow). (2) the
+        # EAST skirt stood 13 mm inside the parallel REVIEW slide corridor
+        # (freight on REVIEW reaches x 8.71) — deleted entirely; the east
+        # flank is carried by the belt edge + head drum. (3) the tail drum
+        # sat across the tray's fault envelope (-25.8 mm at the joint
+        # limit) — moved down-slope under the mouth apron, out of the sweep.
+        sk_y0 = 3.45
+        sk_cy = (sk_y0 + bc["y1"]) / 2
+        sk_len = float(np.hypot(bc["y1"] - sk_y0,
+                                (bc["y1"] - sk_y0) * math.tan(ang)))
+        sk_frac = (sk_cy - bc["y0"]) / (bc["y1"] - bc["y0"])
+        sk_cz = bc["z_top0"] + sk_frac * (bc["z_top1"] - bc["z_top0"])
+        self.box((bc["cx"] - (bc["width"] / 2 + 0.035), sk_cy,
+                  sk_cz - 0.085), (0.02, sk_len / 2, 0.105), FRAME,
+                 tag="cheekCn", euler_deg=(math.degrees(ang), 0, 0))
+        for y, z in ((bc["y0"] + 0.065, bc["z_top0"] - r - 0.010),
                      (bc["y1"] + 0.03, bc["z_top1"] - r)):
             self.cyl((bc["cx"], y, z), r + 0.006, bc["width"] / 2 + 0.01,
                      (0.5, 0.52, 0.55), axis="X", tag="drumCn")
@@ -744,14 +761,15 @@ class Dressing:
         bc = P.B_CONNECT
         slope = (bc["z_top1"] - bc["z_top0"]) / (bc["y1"] - bc["y0"])
         # transition nose apron: steep deflector plate under the mouth,
-        # closing the visual void between the tray lip line and the belt
-        self.box((bc["cx"], 3.285, 0.315), (bc["width"] / 2 - 0.01, 0.045,
+        # closing the visual void between the tray lip line and the belt.
+        # SWEEP-AUDIT FIX: the old apron reached z 0.28 and its under-skirt
+        # z 0.21 — both inside the RETURN-leg tray band (top 0.30 at
+        # return_z 0.24). Apron shortened + raised (bottom 0.352, 23 mm
+        # above the return lip chamfers); the skirt is deleted — the moved
+        # tail drum now covers that view line.
+        self.box((bc["cx"], 3.298, 0.375), (bc["width"] / 2 - 0.01, 0.030,
                  0.004), BRUSHED, tag="bnose_apron", euler_deg=(-50.0, 0, 0),
                  roughness=BRUSHED_R, metallic=BRUSHED_M)
-        self.box((bc["cx"], 3.30, 0.245), (bc["width"] / 2 - 0.01, 0.032,
-                 0.004), POWDER_DK, tag="bnose_skirt",
-                 euler_deg=(-78.0, 0, 0), roughness=POWDER_DK_R,
-                 metallic=POWDER_DK_M)
         # head-drum drive: gearbox block + motor cylinder + label, mounted
         # beside the east edge at the top end (y 4.23 — far north of 3.42)
         my_, mz_ = bc["y1"] + 0.03, bc["z_top1"] - 0.035
@@ -766,15 +784,19 @@ class Dressing:
                  tag="bdrive_shaft", roughness=BRUSHED_R, metallic=BRUSHED_M)
         self.label("B-LIFT DRIVE", "bdrive.png", (gx + 0.19, my_, mz_), 0.15,
                    yaw_deg=90.0)
-        # support legs + cross braces under the span (both > y 3.42)
+        # support legs + cross braces under the span. SWEEP-AUDIT FIX: the
+        # flank legs at +-0.345 stood 15 mm inside the parallel REVIEW slide
+        # corridor (wide freight on REVIEW reaches x 8.71); legs moved to
+        # +-0.27 — centre supports fully under the belt, clear of both the
+        # REVIEW corridor (west edge 8.712) and the D corridor.
         for ly in (3.62, 4.06):
             surf = bc["z_top0"] + (ly - bc["y0"]) * slope
             hcz = (surf - 0.055) / 2
             for sgn in (-1, 1):
-                self.box((bc["cx"] + sgn * (bc["width"] / 2 + 0.035), ly,
+                self.box((bc["cx"] + sgn * 0.27, ly,
                           hcz), (0.022, 0.022, hcz - 0.004), FRAME,
                          tag="bconn_leg")
-            self.box((bc["cx"], ly, 0.14), (bc["width"] / 2 + 0.035, 0.018,
+            self.box((bc["cx"], ly, 0.14), (0.27 + 0.011, 0.018,
                      0.018), FRAME, tag="bconn_brace")
 
     # ------------------------------------------------------------ chute shells
@@ -784,8 +806,6 @@ class Dressing:
         BELOW the collider surface (items never touch them), a brake-pad end
         trim inside the destination, and per-chute station signage yawed to
         face the east camera line."""
-        signs = {"C": ("C OVERSIZE", 0.34), "D": ("D REPACK", 0.34),
-                 "REVIEW": ("REVIEW", 0.30)}
         for zone, cc in (("C", P.CHUTE_C), ("D", P.CHUTE_D),
                          ("REVIEW", P.CHUTE_REVIEW)):
             d = float(cc["dir"])
@@ -795,15 +815,26 @@ class Dressing:
             length = float(np.hypot(y1 - y0, z0 - z1))
             ang = -d * 32.0
             mid, zmid = (y0 + y1) / 2, (z0 + z1) / 2 - 0.015
-            # under-shell panel: 10 mm below the collider underside
-            self.box((cx, mid, zmid - 0.031), (cc["width"] / 2 + 0.030,
-                     length / 2 + 0.015, 0.006), BRUSHED, tag=f"chsh{zone}",
+            # under-shell panel: 10 mm below the collider underside.
+            # SWEEP-AUDIT FIX: the shell's up-slope overhang (+15 mm past
+            # the mouth) poked through the slide plane into the item
+            # corridor AND grazed the RETURN-leg tray lips passing under
+            # the mouth — the shell now starts 75 mm DOWN-slope of the
+            # mouth (y-band fully clear of the return trays' +-0.31 reach).
+            in_y = 0.150                       # down-slope inset at the mouth
+            sh_mid_y = mid + d * (in_y / 2) * math.cos(math.radians(32.0))
+            sh_mid_z = zmid - 0.031 - (in_y / 2) * math.sin(math.radians(32.0))
+            sh_len = length - in_y
+            self.box((cx, sh_mid_y, sh_mid_z), (cc["width"] / 2 + 0.030,
+                     sh_len / 2, 0.006), BRUSHED, tag=f"chsh{zone}",
                      euler_deg=(ang, 0, 0), roughness=BRUSHED_R,
                      metallic=BRUSHED_M)
-            # edge trim bands under both slope edges
+            # edge trim bands under both slope edges — FLUSH against the
+            # shell underside (the old 20 mm-deep hanging bands dipped into
+            # the return-leg tray band)
             for sgn in (-1, 1):
-                self.box((cx + sgn * (cc["width"] / 2 + 0.024), mid,
-                          zmid - 0.055), (0.006, length / 2 + 0.015, 0.020),
+                self.box((cx + sgn * (cc["width"] / 2 + 0.024), sh_mid_y,
+                          sh_mid_z - 0.002), (0.006, sh_len / 2, 0.008),
                          BRUSHED, tag=f"chtrim{zone}", euler_deg=(ang, 0, 0),
                          roughness=BRUSHED_R, metallic=BRUSHED_M)
             # brake-pad end trim (below the pad's working surface)
@@ -811,16 +842,11 @@ class Dressing:
                      (cc["width"] / 2 + 0.020, 0.010, 0.012), POWDER_DK,
                      tag=f"chpadtrim{zone}", roughness=POWDER_DK_R,
                      metallic=POWDER_DK_M)
-            # station signage beside the chute, text facing +x (the routing /
-            # deck_front camera line sits east); route colour background
-            txt, w = signs[zone]
-            sy = mid if zone != "REVIEW" else 3.38
-            self.label(txt, f"chute_sign_{zone.lower()}.png",
-                       (cx + cc["width"] / 2 + 0.065, sy, 0.38), w,
-                       yaw_deg=90.0,
-                       bg=tuple(0.62 * v for v in P.ROUTE_RGBA[zone]))
-            self.box((cx + cc["width"] / 2 + 0.072, sy, 0.20),
-                     (0.010, 0.010, 0.145), FRAME, tag=f"chsignpost{zone}")
+            # (chute-side signs REMOVED — sweep-audit fix: the coloured quad
+            # pairs on 10 mm sticks stood in the inter-chute aisle where the
+            # exception arm operates and read as floating coloured slats
+            # from the cage angles; route identification is carried by the
+            # cage label plates and the station portal beacons.)
 
     # ------------------------------------------------------- route visuals
     def route_viz(self):
@@ -834,9 +860,12 @@ class Dressing:
         brightness."""
         S = P.SORTER
         viz = {"lamps": {}}
-        # name the mechanism on the hardware (south skirt of the train)
+        # name the mechanism on the hardware — centred on the SOLID skirt
+        # segment between the C and D station cutouts (7.81..8.39): the old
+        # 0.72-wide board at x 8.05 overhung BOTH cutouts and floated over
+        # the discharge openings (sweep-audit fix)
         self.label("TILT-TRAY SORTER", "sorter_deck.png",
-                   (8.05, S["y"] - 0.395, 0.55), 0.72, yaw_deg=0.0)
+                   (8.10, S["y"] - 0.395, 0.55), 0.52, yaw_deg=0.0)
         dim = {z: tuple(0.35 * v for v in P.ROUTE_RGBA[z])
                for z in P.ROUTE_RGBA}
         # ACTIVE ROUTE status as a LOW floor-standing HMI console (was a
@@ -917,9 +946,10 @@ class Dressing:
                          metallic=YELLOW_M)
                 self.cyl((ex, ey + sgn * 0.016, ez), 0.022, 0.011,
                          (0.70, 0.06, 0.05), axis="Y", tag="estop_btn")
-        # pinch-point warning labels on the C / D station portal posts
-        # (restrained: 13 cm plates, black-on-safety-yellow)
-        for wx in (P.STATIONS["C"]["x"] - 0.30, P.STATIONS["D"]["x"] + 0.30):
+        # pinch-point warning labels on the C / D station portal posts —
+        # posts moved to +-0.44 (they used to stand INSIDE the chute width;
+        # these labels hung 98 mm inside the item corridor with them)
+        for wx in (P.STATIONS["C"]["x"] - 0.44, P.STATIONS["D"]["x"] + 0.44):
             self.label("! PINCH POINT", "pinch.png", (wx, 2.514, 0.78), 0.13,
                        yaw_deg=0.0, bg=YELLOW, fg=(25, 25, 25))
         # (floating per-item route flags fully retired — no textures, no
@@ -954,14 +984,32 @@ class Dressing:
                        yaw_deg=0.0)
         self.box((5.0, 6.284, 2.94), (1.3, 0.005, 0.035), MAGENTA,
                  tag="brand_accent")
-        # blue band along the sorter-train south skirt + magenta kick strip
+        # blue band + magenta kick strip along the sorter-train south skirt.
+        # SEGMENTED to the actual skirt panels (sweep-audit fix): the old
+        # continuous strips crossed the C and D station discharge cutouts
+        # where there is no skirt behind them — free-floating coloured bars
+        # across the openings, visible through the cage apertures. Brand
+        # colour belongs ON panels, so the strips now exist only where the
+        # panel exists.
         S = P.SORTER
-        scx = (S["x_west"] + S["x_east"]) / 2
-        shx = (S["x_east"] - S["x_west"]) / 2 - 0.05
-        self.box((scx, S["y"] - 0.394, 0.435), (shx, 0.005, 0.028),
-                 OZON_BLUE, tag="ozon_band")
-        self.box((scx, S["y"] - 0.394, 0.385), (shx, 0.005, 0.011),
-                 MAGENTA, tag="ozon_kick")
+        cuts = sorted((P.STATIONS[k]["x"] - 0.36, P.STATIONS[k]["x"] + 0.36)
+                      for k in ("C", "D"))
+        segs, cur = [], S["x_west"] + 0.05
+        for c0, c1 in cuts:
+            if c0 > cur:
+                segs.append((cur, c0))
+            cur = max(cur, c1)
+        if cur < S["x_east"] - 0.05:
+            segs.append((cur, S["x_east"] - 0.05))
+        for a_, b_ in segs:
+            if b_ - a_ < 0.08:
+                continue
+            self.box(((a_ + b_) / 2, S["y"] - 0.394, 0.435),
+                     ((b_ - a_) / 2, 0.005, 0.028), OZON_BLUE,
+                     tag="ozon_band")
+            self.box(((a_ + b_) / 2, S["y"] - 0.394, 0.385),
+                     ((b_ - a_) / 2, 0.005, 0.011), MAGENTA,
+                     tag="ozon_kick")
         # blue crossbeam accent on the vision gantry
         vs = P.VIRTUAL_SENSOR
         self.box((vs["overhead_pos"][0], vs["overhead_pos"][1], 2.46),
@@ -1035,13 +1083,17 @@ class Dressing:
                           float(zz)), (0.012, 0.012, 0.006), (0.75, 0.10, 0.10),
                          tag="lc_led")
 
-        # --- floor zone signage (flat printed decal, sensor-safe). The
-        # former hazard-hatch strips around the arm base were DELETED:
-        # seven short angled colour strips on open floor read exactly as
-        # the "scattered plastic litter" the jury flagged. The long yellow
-        # walkway lines (lighting_env) stay: continuous aisle paint.
-        self.label("SORT CELL — AUTOMATED", "floor_zone.png", (4.8, 4.9, 0.004),
-                   1.1, yaw_deg=0.0, tilt_deg=0.0)
+        # --- floor zone signage: REMOVED. A flat text decal on the ground
+        # reads correctly from only ONE side; the hero/showcase cameras orbit
+        # the cell from the NE/E, so the label rendered mirrored (letters
+        # reversed) from the beauty angles and would read backwards from some
+        # frames of the moving showcase no matter which yaw we pick. It is the
+        # same "floor litter" class the jury flagged (the hazard-hatch strips
+        # were deleted for the same reason). Cell labeling is carried by the
+        # upright wall/gantry signs (B SORTER, OZON SORT CELL, ACTIVE ROUTE),
+        # which are back-to-back quad pairs and read correctly from every side.
+        # The long yellow walkway/aisle lines (lighting_env) stay: continuous
+        # directional aisle paint is orientation-agnostic and reads clean.
 
     # ------------------------------------------------- real sensor assets
     def sensor_assets(self):

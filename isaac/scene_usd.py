@@ -473,13 +473,16 @@ class SceneBuilder:
         ck_y0 = y0 + d * cc["cheek_inset"]
         ck_y1 = ck_y0 + d * cc["cheek_len"]
         ck_cy = (ck_y0 + ck_y1) / 2
+        # neutral steel: route colour lives ONLY on signage plates and lamp
+        # housings (sweep-audit fix — coloured functional strips beside the
+        # freight path read as unexplained plastic bars through the cages)
         for sgn, nm in ((1, "l"), (-1, "r")):
             off = sgn * (cc["width"] / 2 + ck_t)
             self.add_box(f"chute{zone}_cheek_{nm}",
                          (cx + off, ck_cy, z0 + cc["cheek_h"] - 0.034),
                          (ck_t, cc["cheek_len"] / 2, 0.034),
-                         color=soft(P.ROUTE_RGBA.get(zone, (0.6, 0.6, 0.6))),
-                         mat=mat_chute)
+                         color=RAIL_COL, mat=mat_chute,
+                         roughness=RAIL_R, metallic=RAIL_M)
         # side rails to the destination wall plane. SWEEP-CORRIDOR RULE: the
         # tilting tray edge sweeps y 2.69..3.31 down to z 0.44 — the rails
         # start 0.12 m down-slope so their upper tips stay >= 8 cm below the
@@ -493,7 +496,7 @@ class SceneBuilder:
         # the fully-tilted plate (-3.5 mm AABB at 38.8 deg); their lateral-
         # containment job at the throat belongs to the mouth CHEEKS now.
         setback = 0.09
-        col = soft(P.ROUTE_RGBA.get(zone, (0.6, 0.6, 0.6)))
+        col = RAIL_COL          # neutral galvanized (route colour on signage)
         r0 = y0 + d * setback
         rmid = (r0 + wall_at) / 2
         rlen = float(np.hypot(wall_at - r0, (abs(wall_at - r0)) *
@@ -588,27 +591,22 @@ class SceneBuilder:
         UsdPhysics.MassAPI.Apply(xform.GetPrim()).CreateMassAttr(14.0)
         pxrb = PhysxSchema.PhysxRigidBodyAPI.Apply(xform.GetPrim())
         pxrb.CreateSleepThresholdAttr(0.0)
-        body = UsdGeom.Cube.Define(self.stage, f"{base}/body")
-        body.CreateSizeAttr(2.0)
-        UsdGeom.Xformable(body.GetPrim()).AddScaleOp().Set(
-            Gf.Vec3f(0.27, 0.27, 0.025))
-        body.CreateDisplayColorAttr([Gf.Vec3f(*SHUTTLE_COL)])
-        self._bind_vis(body.GetPrim(), SHUTTLE_COL)
-        # visual chain link block under the body
-        link = UsdGeom.Cube.Define(self.stage, f"{base}/link")
-        link.CreateSizeAttr(2.0)
-        lxf = UsdGeom.Xformable(link.GetPrim())
-        lxf.AddTranslateOp().Set(Gf.Vec3d(0, 0, -0.05))
-        lxf.AddScaleOp().Set(Gf.Vec3f(0.10, 0.06, 0.03))
-        link.CreateDisplayColorAttr([Gf.Vec3f(0.30, 0.31, 0.34)])
         # ---- tray — dynamic body on revolute joint (tilt axis along travel)
         pivot_dz = S["pivot_z"] - (S["shuttle_top"] - 0.025)  # pivot above shuttle
 
-        # ---- carrier readability (VISUAL ONLY, non-colliding children of
-        # the kinematic shuttle — same discipline as the chain-link block):
-        # dark inset end bands reveal the carrier-to-carrier gap, top-edge
-        # bevel strips, the tilt PIVOT SHAFT with bearing blocks at the
-        # pivot line, and the tilt-actuator housing on the south flank.
+        # ---- OPEN-FRAME TRUNNION CHASSIS (visual only, non-colliding
+        # children of the kinematic shuttle). REBUILT after the visual sweep
+        # audit (audit_visual_sweep.py): the old full-width body slab, end
+        # bands, top bevels, wide bearing blocks and the south-flank actuator
+        # housing ALL intersected the tilting tray (a rotation about a pivot
+        # only 34 mm above the slab sweeps the plate bottom through anything
+        # wider than +-43 mm in y). A jointed pair never self-collides in
+        # PhysX, so no contact event ever exposed it. The rebuilt chassis is
+        # a real trunnion arrangement in which EVERY part is placed from the
+        # swept-envelope math (plate/lip orbit about the axis, taken to the
+        # +-46 deg JOINT LIMIT, +10 mm margin) and the load path is
+        # continuous: chain link -> stem -> spine -> saddle cradles -> shaft
+        # -> tray knuckles (knuckles are built with the tray, below).
         def _chassis_box(nm, tr, half, col, euler=None, rough=0.70, met=0.10):
             c = UsdGeom.Cube.Define(self.stage, f"{base}/{nm}")
             c.CreateSizeAttr(2.0)
@@ -621,38 +619,54 @@ class SceneBuilder:
             self._bind_vis(c.GetPrim(), col, roughness=rough, metallic=met)
             return c
 
-        for sgn, enm in ((1, "e"), (-1, "w")):
-            _chassis_box(f"band_{enm}", (sgn * 0.258, 0, 0),
-                         (0.012, 0.272, 0.027), (0.030, 0.032, 0.036))
-            _chassis_box(f"bevel_{enm}", (sgn * 0.27, 0, 0.025),
-                         (0.006, 0.27, 0.006), POWDER_COL, euler=(0, 45, 0),
-                         rough=POWDER_R, met=POWDER_M)
-        # pivot shaft (brushed) just under the dished plates: r 14 mm keeps
-        # the full ±38-deg plate sweep clear (plate bottom passes z -0.013
-        # rel pivot at |y| 0.028; the shaft top stays at 0.000)
+        # trunnion spine: narrow beam along travel under the pivot line
+        # (|y| <= 26 mm: the near-axis envelope floor at the joint limit is
+        # z' -0.028 rel pivot; spine top sits at -0.040)
+        _chassis_box("spine", (0, 0, 0.001), (0.270, 0.026, 0.018),
+                     SHUTTLE_COL)
+        # pivot shaft r 8 mm dropped to z' -0.028 rel pivot (crown -0.020):
+        # the dished plate bottom orbits to z' -0.010 near the axis at the
+        # joint limit — 10 mm clear of the crown at every angle.
         shaft = UsdGeom.Cylinder.Define(self.stage, f"{base}/pivot_shaft")
-        shaft.CreateRadiusAttr(0.014)
+        shaft.CreateRadiusAttr(0.008)
         shaft.CreateHeightAttr(float(S["tray_l"] - 0.06))
         shaft.CreateAxisAttr("X")
         shxf = UsdGeom.Xformable(shaft.GetPrim())
-        shxf.AddTranslateOp().Set(Gf.Vec3d(0, 0, float(pivot_dz) - 0.014))
+        shxf.AddTranslateOp().Set(Gf.Vec3d(0, 0, float(pivot_dz) - 0.028))
         shaft.CreateDisplayColorAttr([Gf.Vec3f(*CHUTE_COL)])
         self._bind_vis(shaft.GetPrim(), CHUTE_COL, roughness=CHUTE_R,
                        metallic=CHUTE_M)
-        for sgn, enm in ((1, "e"), (-1, "w")):   # bearing blocks, shaft ends
-            _chassis_box(f"bearing_{enm}",
-                         (sgn * 0.250, 0, pivot_dz - 0.030),
-                         (0.020, 0.028, 0.012), POWDER_COL,
+        # saddle cradles on the spine: pillow blocks the shaft nests into
+        # (narrow in y so the near-axis plate dip clears their tops)
+        for sgn, enm in ((1, "e"), (-1, "w")):
+            _chassis_box(f"saddle_{enm}",
+                         (sgn * 0.250, 0, pivot_dz - 0.038),
+                         (0.018, 0.012, 0.014), POWDER_COL,
                          rough=POWDER_R, met=POWDER_M)
-        # tilt-actuator housing + rod, SOUTH flank: the tilted lip trace
-        # bottoms at y -0.244 / z 0.426 world — the housing (y -0.27..-0.31,
-        # bottom z 0.532 on the top run) stays >= 0.10 m above/behind the
-        # discharge fall line and outside the tilted-plate envelope.
-        _chassis_box("actuator", (0, -0.29, 0.010), (0.055, 0.020, 0.035),
-                     POWDER_COL, rough=POWDER_R, met=POWDER_M)
-        _chassis_box("actuator_rod", (0, -0.270, 0.030),
-                     (0.008, 0.008, 0.020), CHUTE_COL, euler=(30, 0, 0),
-                     rough=CHUTE_R, met=CHUTE_M)
+        # chain follower link + stem up to the spine (the drive load path)
+        _chassis_box("link", (0, 0, -0.075), (0.10, 0.06, 0.025),
+                     (0.30, 0.31, 0.34))
+        _chassis_box("link_stem", (0, 0, -0.0335), (0.015, 0.015, 0.0165),
+                     (0.30, 0.31, 0.34))
+        # tilt drive: servo gearbox + motor slung UNDER the spine on the
+        # south flank (top z' -0.121 rel pivot; the envelope floor at that
+        # lateral offset is z' -0.065) with a chain riser to the shaft end
+        # sprocket behind the west saddle. Represents the real actuator the
+        # revolute drive models; entirely below the swept sector.
+        _chassis_box("tiltdrive_gearbox", (-0.12, -0.095, -0.101),
+                     (0.045, 0.030, 0.028), POWDER_COL,
+                     rough=POWDER_R, met=POWDER_M)
+        mtr = UsdGeom.Cylinder.Define(self.stage, f"{base}/tiltdrive_motor")
+        mtr.CreateRadiusAttr(0.024)
+        mtr.CreateHeightAttr(0.060)
+        mtr.CreateAxisAttr("X")
+        mxf = UsdGeom.Xformable(mtr.GetPrim())
+        mxf.AddTranslateOp().Set(Gf.Vec3d(-0.185, -0.095, -0.101))
+        mtr.CreateDisplayColorAttr([Gf.Vec3f(*POWDER_COL)])
+        self._bind_vis(mtr.GetPrim(), POWDER_COL, roughness=POWDER_R,
+                       metallic=POWDER_M)
+        _chassis_box("tiltdrive_riser", (-0.225, 0, -0.033),
+                     (0.012, 0.010, 0.0165), (0.30, 0.31, 0.34))
 
         tray = f"{ROOT}/sorter/tray{i}"
         txform = UsdGeom.Xform.Define(self.stage, tray)
@@ -715,11 +729,31 @@ class SceneBuilder:
                 sgn * (S["tray_l"] / 2 - S["lip_t"] / 2), 0,
                 z_in + S["lip_h"]))
             cxf3.AddRotateXYZOp().Set(Gf.Vec3f(0, 45, 0))
+            # 3.5 mm strip: the old 5 mm one's 45-deg diagonal out-reached
+            # the lip face by 1 mm and pinched the chain-pitch gap to 7.9 mm
             cxf3.AddScaleOp().Set(Gf.Vec3f(
-                0.005, S.get("lip_w", S["tray_w"]) / 2 - 0.004, 0.005))
+                0.0035, S.get("lip_w", S["tray_w"]) / 2 - 0.004, 0.0035))
             chf.CreateDisplayColorAttr([Gf.Vec3f(0.30, 0.31, 0.34)])
             self._bind_vis(chf.GetPrim(), (0.30, 0.31, 0.34), roughness=0.45,
                            metallic=0.40)
+        # HINGE KNUCKLES: four lugs under the tray plates that wrap the
+        # pivot shaft (they ride the TRAY body, so they rotate about the
+        # shaft axis and can never clash with it — a real trunnion knuckle).
+        # This is the visible connection that used to be missing: the tray
+        # no longer floats on an invisible joint. Lug bottoms reach z'
+        # -0.024 rel pivot (shaft crown -0.020, 4 mm designed wrap); their
+        # swing orbit r=28 mm clears the spine top (z' -0.040) by 12 mm.
+        for kx in (-0.205, -0.115, 0.115, 0.205):
+            lug = UsdGeom.Cube.Define(
+                self.stage, f"{tray}/knuckle_{'n' if kx > 0 else 'p'}"
+                            f"{abs(int(kx * 1000))}")
+            lug.CreateSizeAttr(2.0)
+            kxf = UsdGeom.Xformable(lug.GetPrim())
+            kxf.AddTranslateOp().Set(Gf.Vec3d(float(kx), 0.0, -0.0035))
+            kxf.AddScaleOp().Set(Gf.Vec3f(0.010, 0.014, 0.0205))
+            lug.CreateDisplayColorAttr([Gf.Vec3f(0.35, 0.36, 0.39)])
+            self._bind_vis(lug.GetPrim(), (0.35, 0.36, 0.39), roughness=0.55,
+                           metallic=0.35)
         # revolute tilt joint shuttle -> tray, axis X, angular position drive
         rj = UsdPhysics.RevoluteJoint.Define(self.stage, f"{tray}_tilt")
         rj.CreateAxisAttr("X")
@@ -852,13 +886,35 @@ class SceneBuilder:
         # the z 0.26 return run below) with hub and wall-to-wall axle
         # tells HOW carriers come back. All visual, collide=False; the
         # deck-side face stays fully open for the carrier path.
-        for enm, mx, z0m, z1m, cz, ch in (("e", 9.57, 0.18, 0.74, 0.76, 0.02),
-                                          ("w", 6.59, 0.19, 0.61, 0.604, 0.006)):
-            hx_m, hy_m = 0.20, 0.40
+        # SWEEP-AUDIT REBUILD: the old 0.40-deep modules put the end wheel,
+        # spokes, axle and cap INSIDE the carrier over-run strip (the tray
+        # legitimately runs to x_east + 0.295 through the module interior on
+        # BOTH legs, and carries residual REVIEW-discharge tilt right up to
+        # the east face). Modules are now 0.68 deep: the wheel assembly
+        # lives BEYOND the wrap over-run (west face of the east wheel >=
+        # 9.73 vs over-run 9.715), and the caps sit above the tilted-lip
+        # joint-limit trace (z 0.877 -> cap bottom 0.895).
+        for enm, mx, z0m, z1m, cz, ch, wx in (
+                ("e", 9.71, 0.18, 0.88, 0.915, 0.02, 9.87),
+                ("w", 6.45, 0.19, 0.61, 0.635, 0.008, 6.27)):
+            hx_m, hy_m = 0.34, 0.40
             zc_m, hz_m = (z0m + z1m) / 2, (z1m - z0m) / 2
             out = 1.0 if enm == "e" else -1.0     # outward, away from deck
-            self.add_box(f"train_end_{enm}_cap", (mx, y, cz),
-                         (hx_m, hy_m, ch), color=DARK, collide=False)
+            if enm == "e":
+                # full top cap, raised above the tilted-lip joint-limit
+                # trace (0.877) — REVIEW residual tilt reaches this module
+                self.add_box(f"train_end_{enm}_cap", (mx, y, cz),
+                             (hx_m, hy_m, ch), color=DARK, collide=False)
+            else:
+                # west module ducks BELT A (its knife section crosses at
+                # z 0.66-0.70, y 2.75-3.25): no full cap — two side cap
+                # rails OUTSIDE both the tray band (|y| 0.315) and the
+                # belt's y band, walls stay below the belt line
+                for sgn3 in (-1, 1):
+                    self.add_box(f"train_end_{enm}_cap{sgn3}",
+                                 (mx, y + sgn3 * 0.3735, cz),
+                                 (hx_m, 0.0265, ch), color=DARK,
+                                 collide=False)
             self.add_box(f"train_end_{enm}_wall",
                          (mx + out * (hx_m - 0.008), y, zc_m),
                          (0.008, hy_m, hz_m), color=FRAME_COL, collide=False)
@@ -880,20 +936,21 @@ class SceneBuilder:
                              (hx_m - 0.025, 0.004, hz_m - 0.025),
                              color=(0.7, 0.75, 0.8), opacity=0.25,
                              collide=False)
-            # end wheel: axle + drum + 6 spokes (3 crossing bars) + hub
-            self.add_cylinder(f"train_end_{enm}_axle", (mx, y, 0.43),
+            # end wheel: axle + drum + 6 spokes (3 crossing bars) + hub —
+            # the whole assembly sits at wx, OUTSIDE the tray over-run
+            self.add_cylinder(f"train_end_{enm}_axle", (wx, y, 0.43),
                               0.016, hy_m - 0.02, color=STEEL, axis="Y",
                               roughness=0.35, metallic=0.80)
-            self.add_cylinder(f"train_end_{enm}_wheel", (mx, y, 0.43),
-                              0.17, 0.10, color=(0.18, 0.19, 0.22), axis="Y",
+            self.add_cylinder(f"train_end_{enm}_wheel", (wx, y, 0.43),
+                              0.14, 0.10, color=(0.18, 0.19, 0.22), axis="Y",
                               roughness=0.55, metallic=0.40)
             for si in range(3):
-                self.add_box(f"train_end_{enm}_spoke{si}", (mx, y, 0.43),
-                             (0.146, 0.115, 0.017),
+                self.add_box(f"train_end_{enm}_spoke{si}", (wx, y, 0.43),
+                             (0.118, 0.115, 0.015),
                              euler_rad=(0.0, math.radians(60.0 * si), 0.0),
                              color=(0.30, 0.32, 0.36), collide=False,
                              roughness=0.50, metallic=0.50)
-            self.add_cylinder(f"train_end_{enm}_hub", (mx, y, 0.43),
+            self.add_cylinder(f"train_end_{enm}_hub", (wx, y, 0.43),
                               0.048, 0.13, color=(0.24, 0.25, 0.28), axis="Y",
                               roughness=0.45, metallic=0.60)
         return carriers
@@ -906,11 +963,39 @@ class SceneBuilder:
         x, side = st["x"], st["side"]
         col = P.ROUTE_RGBA.get(zone, (0.7, 0.7, 0.7))
         by = P.SORTER["y"] + side * 0.46
-        for sgn in (-1, 1):
-            self.add_box(f"st{zone}_post{sgn}", (x + sgn * 0.30, by, 0.50),
-                         (0.02, 0.02, 0.50), color=FRAME_COL, collide=False)
-        self.add_box(f"st{zone}_beam", (x, by, 1.02), (0.32, 0.02, 0.02),
-                     color=FRAME_COL, collide=False)
+        # PORTAL POSTS OUTSIDE the freight path (sweep-audit fix): the old
+        # +-0.30 posts stood INSIDE the 0.70-wide chute (and, at B, inside
+        # the 0.62-wide incline belt), planted through the sliding surface
+        # in the item corridor. C/D get +-0.44 portals (clears chute + rails
+        # by >= 45 mm). B and REVIEW lanes are only 0.65 m apart — ANY post
+        # between them lands in the other lane's corridor — so the north
+        # side is ONE SHARED two-lane gantry: posts west of the B lane
+        # (7.96) and east of the REVIEW lane (9.49), one beam carrying both
+        # beacon assemblies. REVIEW adds no posts/beam of its own.
+        if zone == "B":
+            px0, px1 = x - 0.44, P.STATIONS["REVIEW"]["x"] + 0.44
+            for sgn, px_ in ((-1, px0), (1, px1)):
+                self.add_box(f"st{zone}_post{sgn}", (px_, by, 0.50),
+                             (0.02, 0.02, 0.50), color=FRAME_COL,
+                             collide=False)
+                self.add_box(f"st{zone}_postbase{sgn}", (px_, by, 0.008),
+                             (0.045, 0.045, 0.008), color=(0.10, 0.11, 0.13),
+                             collide=False)
+            self.add_box(f"st{zone}_beam", ((px0 + px1) / 2, by, 1.02),
+                         ((px1 - px0) / 2 + 0.02, 0.02, 0.02),
+                         color=FRAME_COL, collide=False)
+        elif zone != "REVIEW":
+            for sgn in (-1, 1):
+                self.add_box(f"st{zone}_post{sgn}",
+                             (x + sgn * 0.44, by, 0.50),
+                             (0.02, 0.02, 0.50), color=FRAME_COL,
+                             collide=False)
+                self.add_box(f"st{zone}_postbase{sgn}",
+                             (x + sgn * 0.44, by, 0.008),
+                             (0.045, 0.045, 0.008), color=(0.10, 0.11, 0.13),
+                             collide=False)
+            self.add_box(f"st{zone}_beam", (x, by, 1.02),
+                         (0.46, 0.02, 0.02), color=FRAME_COL, collide=False)
         # route beacon HOUSED in a dark bezel channel (a bare colour block
         # sitting on the beam read as a floating fragment on video): bottom
         # tray + end caps + top visor, lamp face recessed 5 mm inside

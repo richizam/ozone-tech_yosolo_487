@@ -64,9 +64,20 @@ SORTER = {
                                        # -> 9 carriers at 0.6 m pitch
     "x_west": 6.72,                    # top-run entry (under the belt-A knife)
     "x_east": 9.42,                    # top-run end = east end-module face
-    "return_z": 0.26,                  # under-deck return run height
-                                       # (tray+lips top 0.34 clears the
-                                       # deepened chute undersides at 0.355)
+    "return_z": 0.24,                  # under-deck return run height.
+                                       # 0.26 -> 0.24 (visual sweep audit):
+                                       # the TRUE chute-plate underside at
+                                       # the tray-edge y (mouth drop + 30 mm
+                                       # shell / cos32) is 0.322, and the
+                                       # old return lip-chamfer top (0.328)
+                                       # passed +1.5 mm THROUGH it (silent:
+                                       # kinematic-static pairs raise no
+                                       # PhysX contact). Now lip tops ride
+                                       # at 0.308 -> 13 mm real clearance.
+                                       # Return carriers are always empty
+                                       # (hold-at-escapement: occupied
+                                       # carriers never wrap), so freight
+                                       # physics is untouched.
     # tray: shallow-V dished plate (real tilt trays are dished so round items
     # self-centre and cannot roll off during carry)
     "tray_l": 0.59, "tray_w": 0.62,    # x along travel / y across
@@ -126,12 +137,18 @@ SORTER = {
     # escapement's 3 mm skim gap (a 2 mm card) can arrive unmetered and
     # knife into an inter-tray gap — it lands on the pan and the watchdog
     # raises an operator call-out (a real sorter's drip pan / debris tray).
-    # SWEEP-CORRIDOR CONSTRAINT: the full-tilt tray plane is
-    # z = pivot_z - tan(tilt)*|y - y0| (0.616 - 0.781*|dy|), so the pan must
-    # satisfy pan_z_top <= 0.616 - 0.781*pan_y_half - margin, and its edge
-    # must stay north of the discharge fall corridor (|dy| < 0.24). A 0.33 x
-    # 0.515 pan deflected the rolling pen off the C chute mouth (floor drop).
-    "pan_z_top": 0.42, "pan_y_half": 0.22, "pan_x0": 6.78, "pan_x1": 9.28,
+    # SWEEP-CORRIDOR CONSTRAINT (tightened by the visual sweep audit): the
+    # constraint must hold at the +-46 deg REVOLUTE JOINT LIMIT, not just
+    # the commanded 38 deg — the fault envelope's plate-corner arc reaches
+    # z 0.4005 at |dy| 0.223, and the old 0.42-top/0.22-half pan sat 11.8 mm
+    # INSIDE it. Now: top 0.39 (10 mm under the fault arc) and half 0.19
+    # (33 mm inside the arc's lateral reach). Kept >= 0.18 half so the pan
+    # still spans the inter-tray debris drop zone; a 0.33 x 0.515 pan once
+    # deflected the rolling pen off the C chute mouth (floor drop).
+    # (pan_y_half 0.18: the 0.19 pan's north corner still sat 3.6 mm inside
+    # the REVIEW discharge corridor prism; 0.18 is the test-floor minimum
+    # that still spans the inter-tray debris drop zone.)
+    "pan_z_top": 0.39, "pan_y_half": 0.18, "pan_x0": 6.78, "pan_x1": 9.28,
 }
 
 # ---------------------------------------------------------------- induction (physical, synchronized)

@@ -116,7 +116,21 @@ def test_macro_certification_floor_passes_11mm():
 
 
 def test_return_run_clears_structures():
-    """Under-deck return trays pass beneath the chute undersides."""
-    tray_top_return = P.SORTER["return_z"] + 0.05 + P.SORTER["lip_h"]
-    chute_underside = P.CHUTE["z0"] - 0.04       # at the train edge
-    assert tray_top_return < chute_underside
+    """Under-deck return trays pass beneath the chute undersides — measured
+    with the TRUE plate geometry, not a flat estimate: the sweep audit
+    caught the old +1.5 mm graze because the -0.04 guess ignored the mouth
+    drop and the 30 mm shell thickness along the 32-deg slope."""
+    import math
+    S = P.SORTER
+    # return tray stack: shuttle centre -> pivot -> plate top -> lip -> lipch
+    pivot_return = (S["return_z"] - 0.05) + (S["pivot_z"]
+                                             - (S["shuttle_top"] - 0.025))
+    tray_top_return = pivot_return + (S["tray_top"] - S["pivot_z"]) \
+        + S["lip_h"] + 0.008                     # lipch 45-deg strip crown
+    # chute underside at the deepest overlap point: the tray edge reaches
+    # y0 -/+ 0.06 into the mouth band; the shell is 30 mm thick along the
+    # 32-deg slope
+    tan32 = math.tan(math.radians(32.0))
+    underside = P.CHUTE["z0"] - 0.06 * tan32 - 0.030 / math.cos(
+        math.radians(32.0))
+    assert tray_top_return < underside - 0.010   # >= 10 mm real clearance

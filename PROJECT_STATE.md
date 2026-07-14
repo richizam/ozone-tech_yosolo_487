@@ -1,3 +1,43 @@
+# HARD CORRECTION (2026-07-14, owner): mechanism-credibility audit
+
+Owner rejected the build mid-showcase with screenshots of (A) the tilting
+tray clipping dark chassis geometry, (B) colored bars inside/behind the
+roll cages, (C) posts/beam inside a chute mouth. Showcase STOPPED at 8/18
+clips (old clips preserved server-side in `before_fix_evidence/`).
+
+**New gate: `isaac/audit_visual_sweep.py`** — poses trays at 0/25/50/75/
+100% tilt both directions + the ±46° joint limit at every station
+(x clamped to the physical run), return-leg poses, adjacent-carrier pitch
+gap, and item fall-corridor occupancy — measuring oriented min-distance
+against EVERY prim (visual AND collider; `audit_clearance.py` only ever
+saw CollisionAPI prims, which is how collide=False furniture clipped for
+so long). BEFORE: 64 violations + 15 corridor hits. Root causes and fixes:
+- carrier chassis was a decorative full-width slab the tray swept through
+  (jointed bodies never self-collide → PhysX silent): rebuilt as an
+  open-frame trunnion (spine, saddle cradles, r8 shaft, tray-side
+  knuckles, slung tilt-drive gearbox/motor, chain link+stem) — every part
+  placed from the swept-envelope math incl. joint limit;
+- station portals ±0.30 stood THROUGH the chutes/B-belt: C/D portals now
+  ±0.44 with base plates; B+REVIEW share ONE two-lane gantry (7.96/9.49);
+- end modules: wheel/axle/spokes moved beyond the wrap over-run
+  (east wx 9.87, west 6.27), east cap raised over the tilted-lip limit
+  trace (0.895), west module ducks belt A (side cap rails only);
+- B-connector: east skirt deleted (stood in the REVIEW slide path), west
+  skirt starts y≥3.45, tail drum tucked under the mouth apron, legs to
+  ±0.27 under the belt, nose apron raised/shortened, under-skirt deleted;
+- chute under-shells inset 150 mm down-slope + trims flush (grazed the
+  return-leg trays); RETURN_Z 0.26→0.24 (return lips passed +1.5 mm under
+  the C-mouth plate — kinematic-static pairs raise no contacts; return
+  carriers are always empty, freight physics untouched);
+- catch pan 0.39/0.19 (was 11.8 mm inside the joint-limit envelope);
+- chute-side colored signs REMOVED; ozon band/kick segmented to skirt
+  panels (floated across discharge cutouts); rails/cheeks neutral steel;
+  TILT-TRAY label recentered onto the solid C–D skirt segment;
+  lipch strips 3.5 mm (inter-tray gap 7.9→12 mm).
+AFTER-1: 24 viol (incl. phantom poses past the wrap — audit clamped).
+Then: audit_clearance rerun + seed42 lean gate parity + full showcase
+re-render (showcase5b.sh) + before/after evidence at the 3 defect angles.
+
 # AUTONOMOUS RUN (2026-07-14) — RTX 4090 box, owner away, OK granted
 
 **Server:** `ssh -p 35206 root@85.218.235.6` (RTX 4090, 24 GB). Docker +
