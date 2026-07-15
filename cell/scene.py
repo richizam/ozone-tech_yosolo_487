@@ -257,28 +257,34 @@ def _spill_xml():
     g = []
 
     def plate(nm, x0, x1, y0, y1):
+        # brake-pad style: soft contact + grip kill the first bounce, so a
+        # tumbling box stays IN the pan instead of skipping the lip
         g.append(f'<geom name="spill_{nm}" type="box" '
                  f'size="{(x1 - x0) / 2:.4f} {(y1 - y0) / 2:.4f} '
                  f'{sp["plate_t"] / 2}" '
                  f'pos="{(x0 + x1) / 2:.4f} {(y0 + y1) / 2:.4f} {zc:.4f}" '
-                 f'rgba="0.58 0.60 0.63 1"/>')
+                 f'friction="{sp["pad_friction"]}" priority="1" '
+                 f'solref="0.008 1" rgba="0.58 0.60 0.63 1"/>')
 
-    def lip(nm, x0, x1, y, north):
+    def lip(nm, x0, x1, y, north, h=None):
+        h = sp["lip_h"] if h is None else h
         yc = y + (sp["lip_t"] / 2 if north else -sp["lip_t"] / 2)
         g.append(f'<geom name="spill_lip_{nm}" type="box" '
                  f'size="{(x1 - x0) / 2:.4f} {sp["lip_t"] / 2} '
-                 f'{sp["lip_h"] / 2:.4f}" '
-                 f'pos="{(x0 + x1) / 2:.4f} {yc:.4f} {lip_zc:.4f}" '
+                 f'{h / 2:.4f}" '
+                 f'pos="{(x0 + x1) / 2:.4f} {yc:.4f} '
+                 f'{sp["z_top"] + h / 2:.4f}" '
                  f'rgba="0.50 0.52 0.55 1"/>')
 
     # south flank, pedestal collar cut out of the plate
     plate("s_w", s["x0"], px - ex, s["y0"], s["y1"])
     plate("s_e", px + ex, s["x1"], s["y0"], s["y1"])
     plate("s_n", px - ex, px + ex, py + ex, s["y1"])
+    plate("s_s", px - ex, px + ex, s["y0"], py - ex)
     plate("s_fw", *s["fill_w"], s["fill_y0"], s["y1"])
     plate("s_fe", *s["fill_e"], s["fill_y0"], s["y1"])
-    lip("s_w", s["x0"], px - ex, s["y0"], north=False)
-    lip("s_e", px + ex, s["x1"], s["y0"], north=False)
+    # continuous south retention wall (120 mm)
+    lip("s", s["x0"], s["x1"], s["y0"], north=False, h=sp["lip_s_h"])
     # north flank, west of the B connector
     n = sp["north"]
     plate("n", n["x0"], n["x1"], n["y0"], n["y1"])

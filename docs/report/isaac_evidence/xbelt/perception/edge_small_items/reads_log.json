@@ -80,26 +80,26 @@
     "zone": "C",
     "reason": "undersize",
     "dims_mm": [
-     118.0,
+     117.6,
      9.0,
-     9.0
+     8.8
     ],
     "dims_macro_mm": [
-     119.62,
-     9.39,
+     119.72,
+     9.35,
      9.0
     ],
-    "footprint_circularity": 0.058,
-    "section_ratio": 0.18,
-    "dome_score": 0.011,
+    "footprint_circularity": 0.055,
+    "section_ratio": 0.403,
+    "dome_score": 0.0,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.998,
-    "elongation": 13.09,
-    "n_points": 254,
+    "aspect_hw": 1.02,
+    "elongation": 13.32,
+    "n_points": 245,
     "head": "overhead",
-    "x_lo": 5.859,
-    "x_hi": 5.94
+    "x_lo": 5.85,
+    "x_hi": 5.932
    },
    {
     "zone": "C",
@@ -183,25 +183,25 @@
     "reason": "undersize (macro head, floor 10.8 mm)",
     "dims_mm": [
      13.71,
-     13.52,
+     13.56,
      10.0
     ],
     "dims_macro_mm": [
      13.71,
-     13.52,
+     13.56,
      10.0
     ],
-    "footprint_circularity": 0.74,
+    "footprint_circularity": 0.739,
     "section_ratio": 0.0,
     "dome_score": 0.0,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.74,
+    "aspect_hw": 0.737,
     "elongation": 1.01,
     "n_points": 240,
     "head": "macro",
-    "x_lo": 5.727,
-    "x_hi": 5.74
+    "x_lo": 5.719,
+    "x_hi": 5.732
    },
    {
     "zone": "C",
@@ -332,28 +332,28 @@
    },
    {
     "zone": "B",
-    "reason": "fits (macro head): circ=0.71 dome=0.00",
+    "reason": "fits (macro head): circ=0.70 dome=0.00",
     "dims_mm": [
-     13.96,
-     13.79,
+     12.87,
+     12.69,
      11.0
     ],
     "dims_macro_mm": [
-     13.96,
-     13.79,
+     12.87,
+     12.69,
      11.0
     ],
-    "footprint_circularity": 0.713,
+    "footprint_circularity": 0.704,
     "section_ratio": 0.0,
     "dome_score": 0.0,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.798,
+    "aspect_hw": 0.867,
     "elongation": 1.01,
-    "n_points": 292,
+    "n_points": 294,
     "head": "macro",
-    "x_lo": 5.727,
-    "x_hi": 5.741
+    "x_lo": 5.718,
+    "x_hi": 5.732
    },
    {
     "zone": "B",
@@ -433,10 +433,10 @@
   ],
   "fused": {
    "zone": "B",
-   "reason": "fits, no circle evidence: circ=0.73 sect=0.00 dome=0.00 flank=n/a elong=1.0 h/w=0.81 [macro head: 5 reads, floor 10.8 mm]",
+   "reason": "fits, no circle evidence: circ=0.73 sect=0.00 dome=0.00 flank=n/a elong=1.0 h/w=0.87 [macro head: 5 reads, floor 10.8 mm]",
    "dims_mm": [
-    13.9,
-    13.6,
+    12.9,
+    12.7,
     11.0
    ],
    "guards_mm": [
@@ -513,24 +513,24 @@
     "dims_mm": [
      141.8,
      8.9,
-     8.2
+     8.3
     ],
     "dims_macro_mm": [
-     146.24,
+     146.34,
      13.41,
      8.93
     ],
-    "footprint_circularity": 0.042,
-    "section_ratio": 0.836,
-    "dome_score": 0.108,
+    "footprint_circularity": 0.057,
+    "section_ratio": 0.763,
+    "dome_score": 0.088,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.086,
-    "elongation": 17.26,
-    "n_points": 266,
+    "aspect_hw": 1.08,
+    "elongation": 17.17,
+    "n_points": 264,
     "head": "overhead",
-    "x_lo": 5.814,
-    "x_hi": 5.84
+    "x_lo": 5.806,
+    "x_hi": 5.831
    },
    {
     "zone": "C",
@@ -561,34 +561,34 @@
     "zone": "C",
     "reason": "undersize",
     "dims_mm": [
-     116.9,
-     8.8,
-     8.0
+     141.9,
+     8.9,
+     7.8
     ],
     "dims_macro_mm": [
-     146.29,
-     13.54,
+     146.32,
+     13.48,
      8.93
     ],
-    "footprint_circularity": 0.062,
-    "section_ratio": 0.805,
-    "dome_score": 0.1,
+    "footprint_circularity": 0.047,
+    "section_ratio": 0.674,
+    "dome_score": 0.014,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.105,
-    "elongation": 14.6,
-    "n_points": 180,
+    "aspect_hw": 1.148,
+    "elongation": 18.27,
+    "n_points": 256,
     "head": "overhead",
-    "x_lo": 5.981,
+    "x_lo": 5.973,
     "x_hi": 5.997
    }
   ],
   "fused": {
    "zone": "C",
-   "reason": "undersize: dim 8.9 mm below certification floor 10.8 mm [macro head: 4 reads, floor 10.8 mm]",
+   "reason": "undersize: dim 8.9 mm below certification floor 10.8 mm [macro head: 5 reads, floor 10.8 mm]",
    "dims_mm": [
-    146.2,
-    13.3,
+    146.3,
+    13.4,
     8.9
    ],
    "guards_mm": [
@@ -596,12 +596,12 @@
     0.8,
     0.8
    ],
-   "macro_reads": 4,
-   "footprint_circularity": 0.044,
-   "section_ratio": 0.863,
+   "macro_reads": 5,
+   "footprint_circularity": 0.05,
+   "section_ratio": 0.86,
    "dome_score": 0.12,
    "flank_mm": null,
-   "n_reads": 4,
+   "n_reads": 5,
    "d_votes": 0,
    "sensor_miss": false,
    "confidence": 1.0

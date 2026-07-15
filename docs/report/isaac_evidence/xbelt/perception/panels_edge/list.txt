@@ -1,9 +1,0 @@
-file 'perception_edge_cube10.png'
-duration 2.5
-file 'perception_edge_cube11.png'
-duration 2.5
-file 'perception_edge_rod9.png'
-duration 2.5
-file 'perception_pen.png'
-duration 2.5
-file 'perception_pen.png'

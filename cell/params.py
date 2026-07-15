@@ -248,6 +248,11 @@ CHUTE_REVIEW = {"cx": STATIONS["REVIEW"]["x"], "y0": 3.25, "dir": +1,
 # collar pair is a designed interface in the visual-sweep whitelist).
 SPILL = {
     "z_top": 0.30, "plate_t": 0.02, "lip_h": 0.045, "lip_t": 0.012,
+    # south retention wall: a hard box tumbling off a 2-s late slide lands
+    # on the pan with real energy and SKIPS a 45 mm lip (night smoke:
+    # box_l bounced out to y 2.05) — 120 mm holds it; plates are soft
+    # (brake-pad style) to kill the first bounce
+    "lip_s_h": 0.12, "pad_friction": "1.2 0.005 0.0001",
     "ped_gap": 0.008,
     # south flank: between mouth C (x<=7.80) and mouth D (x>=8.40). The pan
     # STOPS 50 mm short of the tray line (south tray edge y 2.69): the
@@ -256,7 +261,9 @@ SPILL = {
     # (box_l at y 2.39), well inside the pan. x edges stand 5 mm off the
     # cage side-wall faces; fillers close the slots over the cage-wall
     # tops beside each mouth cheek
-    "south": {"x0": 7.87, "x1": 8.33, "y0": 2.30, "y1": 2.64,
+    # y0 1.95: the pan floors the whole inter-cage corridor — the night
+    # smoke measured a tumbling box_l reaching y 2.05 after bouncing
+    "south": {"x0": 7.87, "x1": 8.33, "y0": 1.95, "y1": 2.64,
               "fill_w": (7.80, 7.87), "fill_e": (8.33, 8.40),
               "fill_y0": 2.50},
     # north flank: west of the powered B connector flare, clear of the
@@ -264,7 +271,7 @@ SPILL = {
     "north": {"x0": 7.72, "x1": 8.09, "y0": 3.37, "y1": 3.70},
     # resting-item watchdog zones (x0, x1, y0, y1); z window sits on the
     # plate top, generous enough for the tallest edge freight
-    "zones": [(7.80, 8.40, 2.28, 2.66), (7.70, 8.11, 3.35, 3.72)],
+    "zones": [(7.80, 8.40, 1.93, 2.66), (7.70, 8.11, 3.35, 3.72)],
     "watch_s": 3.0,
 }
 

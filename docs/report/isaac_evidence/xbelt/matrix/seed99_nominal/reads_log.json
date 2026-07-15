@@ -45,7 +45,7 @@
    },
    {
     "zone": "D",
-    "reason": "circle: section r_in/R=0.94",
+    "reason": "circle: section r_in/R=0.96",
     "dims_mm": [
      286.8,
      99.8,
@@ -53,7 +53,7 @@
     ],
     "dims_macro_mm": null,
     "footprint_circularity": 0.38,
-    "section_ratio": 0.935,
+    "section_ratio": 0.956,
     "dome_score": 0.694,
     "flank_mm": 16.9,
     "plateau_frac": 0.647,
@@ -66,52 +66,52 @@
    },
    {
     "zone": "D",
-    "reason": "circle: section r_in/R=0.94",
+    "reason": "dome=0.76",
     "dims_mm": [
-     286.7,
-     99.7,
-     86.3
+     281.3,
+     90.4,
+     79.9
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.378,
-    "section_ratio": 0.94,
-    "dome_score": 0.697,
-    "flank_mm": 7.8,
-    "plateau_frac": 0.643,
-    "aspect_hw": 1.155,
-    "elongation": 3.32,
-    "n_points": 4269,
+    "footprint_circularity": 0.252,
+    "section_ratio": 0.761,
+    "dome_score": 0.762,
+    "flank_mm": 6.0,
+    "plateau_frac": 0.636,
+    "aspect_hw": 1.132,
+    "elongation": 3.52,
+    "n_points": 2835,
     "head": "overhead",
     "x_lo": 5.765,
-    "x_hi": 6.055
+    "x_hi": 6.024
    },
    {
     "zone": "D",
-    "reason": "ambiguous prism section: 0.79",
+    "reason": "dome=0.85",
     "dims_mm": [
-     287.2,
-     99.7,
-     86.1
+     156.7,
+     61.8,
+     48.0
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.372,
-    "section_ratio": 0.79,
-    "dome_score": 0.697,
-    "flank_mm": 5.4,
-    "plateau_frac": 0.636,
-    "aspect_hw": 1.158,
-    "elongation": 3.33,
-    "n_points": 4346,
+    "footprint_circularity": 0.143,
+    "section_ratio": 0.713,
+    "dome_score": 0.851,
+    "flank_mm": 4.0,
+    "plateau_frac": 0.667,
+    "aspect_hw": 1.288,
+    "elongation": 3.27,
+    "n_points": 1116,
     "head": "overhead",
     "x_lo": 5.848,
-    "x_hi": 6.14
+    "x_hi": 5.988
    }
   ],
   "fused": {
    "zone": "D",
-   "reason": "circle evidence: circ=0.38 sect=0.94 dome=0.70 flank=12.3mm elong=3.3 h/w=1.16",
+   "reason": "circle evidence: circ=0.38 sect=0.95 dome=0.73 flank=16.9mm elong=3.3 h/w=1.16",
    "dims_mm": [
-    286.8,
+    286.5,
     99.8,
     86.3
    ],
@@ -122,11 +122,11 @@
    ],
    "macro_reads": 0,
    "footprint_circularity": 0.379,
-   "section_ratio": 0.939,
-   "dome_score": 0.697,
-   "flank_mm": 12.3,
-   "n_reads": 4,
-   "d_votes": 4,
+   "section_ratio": 0.948,
+   "dome_score": 0.729,
+   "flank_mm": 16.9,
+   "n_reads": 3,
+   "d_votes": 3,
    "sensor_miss": false,
    "confidence": 1.0
   }
@@ -166,7 +166,7 @@
     "footprint_circularity": 0.821,
     "section_ratio": 0.0,
     "dome_score": 0.696,
-    "flank_mm": 122.8,
+    "flank_mm": 122.7,
     "plateau_frac": 1.0,
     "aspect_hw": 1.014,
     "elongation": 1.22,
@@ -179,73 +179,73 @@
     "zone": "D",
     "reason": "circle: footprint=0.83",
     "dims_mm": [
-     354.6,
+     320.6,
      295.4,
-     291.0
+     292.7
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.83,
+    "footprint_circularity": 0.835,
     "section_ratio": 0.0,
-    "dome_score": 0.689,
-    "flank_mm": 118.4,
+    "dome_score": 0.681,
+    "flank_mm": 116.7,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.015,
-    "elongation": 1.22,
-    "n_points": 24246,
+    "aspect_hw": 1.009,
+    "elongation": 1.1,
+    "n_points": 21980,
     "head": "overhead",
     "x_lo": 5.637,
-    "x_hi": 6.022
+    "x_hi": 5.992
    },
    {
-    "zone": "D",
-    "reason": "circle: footprint=0.82",
+    "zone": "B",
+    "reason": "box: circ=0.70 sect=0.00 dome=0.69",
     "dims_mm": [
-     354.1,
-     295.4,
-     290.8
+     297.6,
+     294.8,
+     277.7
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.821,
+    "footprint_circularity": 0.7,
     "section_ratio": 0.0,
-    "dome_score": 0.682,
-    "flank_mm": 99.2,
+    "dome_score": 0.69,
+    "flank_mm": 98.4,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.016,
-    "elongation": 1.22,
-    "n_points": 24366,
+    "aspect_hw": 1.062,
+    "elongation": 1.07,
+    "n_points": 18411,
     "head": "overhead",
     "x_lo": 5.719,
-    "x_hi": 6.104
+    "x_hi": 6.075
    },
    {
-    "zone": "D",
-    "reason": "circle: footprint=0.81",
+    "zone": "B",
+    "reason": "box: circ=0.56 sect=0.00 dome=0.58",
     "dims_mm": [
-     353.8,
-     295.4,
-     290.4
+     308.9,
+     272.6,
+     227.3
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.807,
+    "footprint_circularity": 0.564,
     "section_ratio": 0.0,
-    "dome_score": 0.674,
-    "flank_mm": 99.5,
+    "dome_score": 0.578,
+    "flank_mm": 84.5,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.017,
-    "elongation": 1.22,
-    "n_points": 24513,
+    "aspect_hw": 1.2,
+    "elongation": 1.36,
+    "n_points": 14049,
     "head": "overhead",
     "x_lo": 5.803,
-    "x_hi": 6.187
+    "x_hi": 6.159
    }
   ],
   "fused": {
    "zone": "D",
-   "reason": "circle evidence: circ=0.82 sect=0.00 dome=0.69 flank=109.0mm elong=1.2 h/w=1.02",
+   "reason": "circle evidence: circ=0.82 sect=0.00 dome=0.69 flank=107.6mm elong=1.2 h/w=1.04",
    "dims_mm": [
-    354.4,
-    295.4,
-    290.9
+    314.8,
+    295.1,
+    284.5
    ],
    "guards_mm": [
     6.0,
@@ -253,14 +253,14 @@
     6.0
    ],
    "macro_reads": 0,
-   "footprint_circularity": 0.823,
+   "footprint_circularity": 0.825,
    "section_ratio": 0.0,
-   "dome_score": 0.691,
-   "flank_mm": 109.0,
+   "dome_score": 0.692,
+   "flank_mm": 107.6,
    "n_reads": 4,
-   "d_votes": 4,
+   "d_votes": 2,
    "sensor_miss": false,
-   "confidence": 1.0
+   "confidence": 0.5
   }
  },
  "detergent": {
@@ -277,7 +277,7 @@
     "footprint_circularity": 0.722,
     "section_ratio": 0.0,
     "dome_score": 0.645,
-    "flank_mm": 106.8,
+    "flank_mm": 106.9,
     "plateau_frac": 1.0,
     "aspect_hw": 0.706,
     "elongation": 1.08,
@@ -309,75 +309,75 @@
    },
    {
     "zone": "B",
-    "reason": "box: circ=0.72 sect=0.00 dome=0.66",
+    "reason": "box: circ=0.73 sect=0.00 dome=0.68",
     "dims_mm": [
-     246.8,
-     242.8,
-     176.6
+     278.7,
+     263.2,
+     175.4
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.72,
+    "footprint_circularity": 0.732,
     "section_ratio": 0.0,
-    "dome_score": 0.656,
-    "flank_mm": 96.8,
+    "dome_score": 0.683,
+    "flank_mm": 107.4,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.715,
-    "elongation": 0.98,
-    "n_points": 15133,
+    "aspect_hw": 0.666,
+    "elongation": 1.06,
+    "n_points": 14440,
     "head": "overhead",
     "x_lo": 5.66,
-    "x_hi": 5.99
+    "x_hi": 5.955
    },
    {
     "zone": "B",
-    "reason": "box: circ=0.73 sect=0.00 dome=0.66",
+    "reason": "box: circ=0.44 sect=0.00 dome=0.73",
     "dims_mm": [
-     250.2,
-     246.2,
-     176.6
+     294.4,
+     218.5,
+     162.8
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.726,
+    "footprint_circularity": 0.435,
     "section_ratio": 0.0,
-    "dome_score": 0.658,
-    "flank_mm": 81.5,
+    "dome_score": 0.732,
+    "flank_mm": 70.8,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.706,
-    "elongation": 0.98,
-    "n_points": 15552,
+    "aspect_hw": 0.745,
+    "elongation": 1.35,
+    "n_points": 10797,
     "head": "overhead",
     "x_lo": 5.742,
-    "x_hi": 6.073
+    "x_hi": 6.006
    },
    {
-    "zone": "B",
-    "reason": "box: circ=0.73 sect=0.00 dome=0.66",
+    "zone": "D",
+    "reason": "dome=0.87",
     "dims_mm": [
-     253.1,
-     249.3,
-     176.6
+     312.8,
+     207.8,
+     163.4
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.726,
+    "footprint_circularity": 0.055,
     "section_ratio": 0.0,
-    "dome_score": 0.657,
-    "flank_mm": 55.8,
+    "dome_score": 0.866,
+    "flank_mm": 72.1,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.698,
-    "elongation": 0.98,
-    "n_points": 15984,
+    "aspect_hw": 0.786,
+    "elongation": 1.51,
+    "n_points": 6411,
     "head": "overhead",
     "x_lo": 5.826,
-    "x_hi": 6.156
+    "x_hi": 6.089
    }
   ],
   "fused": {
    "zone": "B",
-   "reason": "fits, no circle evidence: circ=0.73 sect=0.00 dome=0.66 flank=86.5mm elong=1.0 h/w=0.71",
+   "reason": "fits, no circle evidence: circ=0.72 sect=0.00 dome=0.77 flank=81.8mm elong=1.2 h/w=0.73",
    "dims_mm": [
-    248.5,
-    244.5,
-    176.6
+    286.5,
+    230.1,
+    169.4
    ],
    "guards_mm": [
     6.0,
@@ -385,14 +385,14 @@
     6.0
    ],
    "macro_reads": 0,
-   "footprint_circularity": 0.726,
+   "footprint_circularity": 0.719,
    "section_ratio": 0.0,
-   "dome_score": 0.657,
-   "flank_mm": 86.5,
+   "dome_score": 0.765,
+   "flank_mm": 81.8,
    "n_reads": 4,
-   "d_votes": 0,
+   "d_votes": 1,
    "sensor_miss": false,
-   "confidence": 1.0
+   "confidence": 0.75
   }
  },
  "box_l": {
@@ -422,19 +422,19 @@
     "zone": "C",
     "reason": "oversize",
     "dims_mm": [
-     390.4,
-     389.3,
-     300.9
+     392.4,
+     386.4,
+     300.8
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.774,
+    "footprint_circularity": 0.72,
     "section_ratio": 0.0,
     "dome_score": 0.0,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.773,
-    "elongation": 1.0,
-    "n_points": 52967,
+    "aspect_hw": 0.779,
+    "elongation": 1.02,
+    "n_points": 51009,
     "head": "overhead",
     "x_lo": 5.54,
     "x_hi": 5.948
@@ -443,19 +443,19 @@
     "zone": "C",
     "reason": "oversize",
     "dims_mm": [
-     392.1,
-     389.7,
-     300.9
+     394.2,
+     394.0,
+     300.7
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.77,
+    "footprint_circularity": 0.549,
     "section_ratio": 0.0,
     "dome_score": 0.0,
-    "flank_mm": 109.8,
+    "flank_mm": 94.8,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.772,
-    "elongation": 1.01,
-    "n_points": 54638,
+    "aspect_hw": 0.763,
+    "elongation": 1.0,
+    "n_points": 47139,
     "head": "overhead",
     "x_lo": 5.622,
     "x_hi": 6.031
@@ -464,19 +464,19 @@
     "zone": "C",
     "reason": "oversize",
     "dims_mm": [
-     391.3,
-     389.9,
-     300.9
+     398.4,
+     397.0,
+     300.7
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.752,
+    "footprint_circularity": 0.369,
     "section_ratio": 0.0,
     "dome_score": 0.0,
-    "flank_mm": 152.3,
+    "flank_mm": 52.7,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.772,
+    "aspect_hw": 0.755,
     "elongation": 1.0,
-    "n_points": 56531,
+    "n_points": 43464,
     "head": "overhead",
     "x_lo": 5.705,
     "x_hi": 6.115
@@ -485,19 +485,19 @@
     "zone": "C",
     "reason": "oversize",
     "dims_mm": [
-     391.1,
-     390.1,
-     300.9
+     405.1,
+     402.5,
+     300.7
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.746,
+    "footprint_circularity": 0.537,
     "section_ratio": 0.0,
     "dome_score": 0.0,
-    "flank_mm": -1.0,
+    "flank_mm": 3.6,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.771,
-    "elongation": 1.0,
-    "n_points": 58485,
+    "aspect_hw": 0.742,
+    "elongation": 0.99,
+    "n_points": 39829,
     "head": "overhead",
     "x_lo": 5.788,
     "x_hi": 6.195
@@ -507,9 +507,9 @@
    "zone": "C",
    "reason": "oversize (guard band 6 mm)",
    "dims_mm": [
-    391.3,
-    389.9,
-    300.9
+    398.4,
+    397.0,
+    300.7
    ],
    "guards_mm": [
     6.0,
@@ -517,10 +517,10 @@
     6.0
    ],
    "macro_reads": 0,
-   "footprint_circularity": 0.761,
+   "footprint_circularity": 0.543,
    "section_ratio": 0.0,
    "dome_score": 0.0,
-   "flank_mm": 131.1,
+   "flank_mm": 52.7,
    "n_reads": 3,
    "d_votes": 0,
    "sensor_miss": false,
@@ -594,54 +594,54 @@
    },
    {
     "zone": "B",
-    "reason": "box: circ=0.72 sect=0.00 dome=0.51",
+    "reason": "box: circ=0.65 sect=0.00 dome=0.49",
     "dims_mm": [
-     189.8,
-     171.3,
-     159.5
+     190.7,
+     171.4,
+     133.8
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.723,
+    "footprint_circularity": 0.648,
     "section_ratio": 0.0,
-    "dome_score": 0.507,
-    "flank_mm": 50.6,
+    "dome_score": 0.488,
+    "flank_mm": 45.3,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.074,
-    "elongation": 1.19,
-    "n_points": 7059,
+    "aspect_hw": 1.28,
+    "elongation": 1.43,
+    "n_points": 6441,
     "head": "overhead",
     "x_lo": 5.82,
-    "x_hi": 5.993
+    "x_hi": 5.969
    },
    {
     "zone": "B",
-    "reason": "box: circ=0.69 sect=0.00 dome=0.50",
+    "reason": "box: circ=0.18 sect=0.30 dome=0.65",
     "dims_mm": [
-     189.9,
-     171.4,
-     157.6
+     200.1,
+     158.0,
+     72.4
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.693,
-    "section_ratio": 0.0,
-    "dome_score": 0.502,
-    "flank_mm": 27.5,
-    "plateau_frac": 1.0,
-    "aspect_hw": 1.087,
-    "elongation": 1.21,
-    "n_points": 7230,
+    "footprint_circularity": 0.184,
+    "section_ratio": 0.296,
+    "dome_score": 0.648,
+    "flank_mm": 16.6,
+    "plateau_frac": 0.458,
+    "aspect_hw": 2.183,
+    "elongation": 2.76,
+    "n_points": 3194,
     "head": "overhead",
     "x_lo": 5.903,
-    "x_hi": 6.075
+    "x_hi": 6.0
    }
   ],
   "fused": {
    "zone": "D",
-   "reason": "circle evidence: circ=0.78 sect=0.00 dome=0.51 flank=52.1mm elong=1.2 h/w=1.06",
+   "reason": "circle evidence: circ=0.78 sect=0.00 dome=0.51 flank=52.7mm elong=1.2 h/w=1.06",
    "dims_mm": [
     190.1,
     171.4,
-    161.1
+    161.8
    ],
    "guards_mm": [
     6.0,
@@ -649,14 +649,14 @@
     6.0
    ],
    "macro_reads": 0,
-   "footprint_circularity": 0.775,
+   "footprint_circularity": 0.779,
    "section_ratio": 0.0,
-   "dome_score": 0.513,
-   "flank_mm": 52.1,
-   "n_reads": 5,
+   "dome_score": 0.514,
+   "flank_mm": 52.7,
+   "n_reads": 4,
    "d_votes": 1,
    "sensor_miss": false,
-   "confidence": 0.2
+   "confidence": 0.25
   }
  },
  "lunchbox": {
@@ -726,53 +726,53 @@
    },
    {
     "zone": "B",
-    "reason": "box: circ=0.66 sect=0.00 dome=0.14",
+    "reason": "box: circ=0.65 sect=0.00 dome=0.14",
     "dims_mm": [
-     192.8,
-     138.1,
+     192.7,
+     137.8,
      61.6
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.656,
+    "footprint_circularity": 0.655,
     "section_ratio": 0.0,
-    "dome_score": 0.142,
-    "flank_mm": 33.2,
+    "dome_score": 0.144,
+    "flank_mm": 33.3,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.446,
+    "aspect_hw": 0.447,
     "elongation": 1.4,
-    "n_points": 6641,
+    "n_points": 6633,
     "head": "overhead",
     "x_lo": 5.825,
     "x_hi": 5.989
    },
    {
     "zone": "B",
-    "reason": "box: circ=0.64 sect=0.00 dome=0.14",
+    "reason": "box: circ=0.30 sect=0.27 dome=0.21",
     "dims_mm": [
-     192.7,
-     137.7,
+     194.9,
+     69.6,
      61.6
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.639,
-    "section_ratio": 0.0,
-    "dome_score": 0.144,
-    "flank_mm": 16.0,
-    "plateau_frac": 1.0,
-    "aspect_hw": 0.447,
-    "elongation": 1.4,
-    "n_points": 6750,
+    "footprint_circularity": 0.303,
+    "section_ratio": 0.271,
+    "dome_score": 0.213,
+    "flank_mm": 12.1,
+    "plateau_frac": 0.867,
+    "aspect_hw": 0.885,
+    "elongation": 2.8,
+    "n_points": 3460,
     "head": "overhead",
     "x_lo": 5.908,
-    "x_hi": 6.069
+    "x_hi": 5.996
    }
   ],
   "fused": {
    "zone": "B",
-   "reason": "fits, no circle evidence: circ=0.67 sect=0.00 dome=0.15 flank=29.6mm elong=1.4 h/w=0.45",
+   "reason": "fits, no circle evidence: circ=0.68 sect=0.00 dome=0.15 flank=30.3mm elong=1.4 h/w=0.44",
    "dims_mm": [
-    193.0,
-    138.3,
+    193.2,
+    138.8,
     61.6
    ],
    "guards_mm": [
@@ -781,11 +781,11 @@
     6.0
    ],
    "macro_reads": 0,
-   "footprint_circularity": 0.672,
+   "footprint_circularity": 0.675,
    "section_ratio": 0.0,
-   "dome_score": 0.151,
-   "flank_mm": 29.6,
-   "n_reads": 5,
+   "dome_score": 0.155,
+   "flank_mm": 30.3,
+   "n_reads": 4,
    "d_votes": 0,
    "sensor_miss": false,
    "confidence": 1.0
@@ -858,50 +858,50 @@
    },
    {
     "zone": "D",
-    "reason": "circle: footprint=0.90",
+    "reason": "circle: footprint=0.93",
     "dims_mm": [
-     199.8,
-     199.7,
+     199.4,
+     191.2,
      26.6
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.898,
+    "footprint_circularity": 0.927,
     "section_ratio": 0.0,
-    "dome_score": 0.485,
-    "flank_mm": 41.3,
+    "dome_score": 0.514,
+    "flank_mm": 37.6,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.133,
-    "elongation": 1.0,
-    "n_points": 3845,
+    "aspect_hw": 0.139,
+    "elongation": 1.04,
+    "n_points": 3667,
     "head": "overhead",
     "x_lo": 5.796,
-    "x_hi": 6.004
+    "x_hi": 5.992
    },
    {
-    "zone": "D",
-    "reason": "circle: footprint=0.87",
+    "zone": "B",
+    "reason": "box: circ=0.47 sect=0.30 dome=0.49",
     "dims_mm": [
-     201.0,
-     200.6,
+     203.5,
+     111.8,
      26.6
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.874,
-    "section_ratio": 0.0,
-    "dome_score": 0.489,
-    "flank_mm": 54.6,
-    "plateau_frac": 1.0,
-    "aspect_hw": 0.132,
-    "elongation": 1.0,
-    "n_points": 3842,
+    "footprint_circularity": 0.469,
+    "section_ratio": 0.304,
+    "dome_score": 0.491,
+    "flank_mm": 32.0,
+    "plateau_frac": 0.375,
+    "aspect_hw": 0.238,
+    "elongation": 1.82,
+    "n_points": 1875,
     "head": "overhead",
     "x_lo": 5.879,
-    "x_hi": 6.086
+    "x_hi": 5.996
    }
   ],
   "fused": {
    "zone": "D",
-   "reason": "circle evidence: circ=0.94 sect=0.00 dome=0.49 flank=25.2mm elong=1.0 h/w=0.13",
+   "reason": "circle evidence: circ=0.95 sect=0.00 dome=0.49 flank=25.0mm elong=1.0 h/w=0.13",
    "dims_mm": [
     200.7,
     200.0,
@@ -913,12 +913,12 @@
     6.0
    ],
    "macro_reads": 0,
-   "footprint_circularity": 0.943,
+   "footprint_circularity": 0.95,
    "section_ratio": 0.0,
-   "dome_score": 0.488,
-   "flank_mm": 25.2,
-   "n_reads": 5,
-   "d_votes": 5,
+   "dome_score": 0.494,
+   "flank_mm": 25.0,
+   "n_reads": 4,
+   "d_votes": 4,
    "sensor_miss": false,
    "confidence": 1.0
   }
@@ -950,93 +950,93 @@
     "zone": "C",
     "reason": "oversize",
     "dims_mm": [
-     440.8,
-     425.2,
+     441.3,
+     389.7,
      264.0
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.957,
+    "footprint_circularity": 0.835,
     "section_ratio": 0.0,
     "dome_score": 0.001,
-    "flank_mm": 184.5,
+    "flank_mm": 161.3,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.621,
-    "elongation": 1.04,
-    "n_points": 53634,
+    "aspect_hw": 0.677,
+    "elongation": 1.13,
+    "n_points": 50695,
     "head": "overhead",
     "x_lo": 5.53,
-    "x_hi": 5.984
+    "x_hi": 5.962
+   },
+   {
+    "zone": "C",
+    "reason": "oversize",
+    "dims_mm": [
+     443.9,
+     408.5,
+     264.0
+    ],
+    "dims_macro_mm": null,
+    "footprint_circularity": 0.661,
+    "section_ratio": 0.0,
+    "dome_score": 0.016,
+    "flank_mm": 102.7,
+    "plateau_frac": 1.0,
+    "aspect_hw": 0.646,
+    "elongation": 1.09,
+    "n_points": 47078,
+    "head": "overhead",
+    "x_lo": 5.584,
+    "x_hi": 6.042
    },
    {
     "zone": "C",
     "reason": "oversize",
     "dims_mm": [
      445.5,
-     440.6,
+     412.4,
      264.0
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.979,
+    "footprint_circularity": 0.486,
     "section_ratio": 0.0,
-    "dome_score": 0.013,
-    "flank_mm": 110.4,
+    "dome_score": 0.022,
+    "flank_mm": 77.4,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.599,
-    "elongation": 1.01,
-    "n_points": 55317,
-    "head": "overhead",
-    "x_lo": 5.584,
-    "x_hi": 6.067
-   },
-   {
-    "zone": "C",
-    "reason": "oversize",
-    "dims_mm": [
-     448.7,
-     440.4,
-     264.0
-    ],
-    "dims_macro_mm": null,
-    "footprint_circularity": 0.977,
-    "section_ratio": 0.0,
-    "dome_score": 0.017,
-    "flank_mm": 120.9,
-    "plateau_frac": 1.0,
-    "aspect_hw": 0.599,
-    "elongation": 1.02,
-    "n_points": 56298,
+    "aspect_hw": 0.64,
+    "elongation": 1.08,
+    "n_points": 42731,
     "head": "overhead",
     "x_lo": 5.667,
-    "x_hi": 6.15
+    "x_hi": 6.126
    },
    {
     "zone": "C",
     "reason": "oversize",
     "dims_mm": [
-     448.0,
-     440.4,
+     448.2,
+     413.8,
      264.0
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.959,
+    "footprint_circularity": 0.666,
     "section_ratio": 0.0,
-    "dome_score": 0.019,
-    "flank_mm": -1.0,
+    "dome_score": 0.028,
+    "flank_mm": 43.2,
     "plateau_frac": 1.0,
-    "aspect_hw": 0.599,
-    "elongation": 1.02,
-    "n_points": 57595,
+    "aspect_hw": 0.638,
+    "elongation": 1.08,
+    "n_points": 38697,
     "head": "overhead",
     "x_lo": 5.75,
-    "x_hi": 6.232
+    "x_hi": 6.209
    }
   ],
   "fused": {
    "zone": "C",
    "reason": "oversize (guard band 6 mm)",
    "dims_mm": [
-    448.0,
-    440.4,
+    445.5,
+    412.4,
     264.0
    ],
    "guards_mm": [
@@ -1045,10 +1045,10 @@
     6.0
    ],
    "macro_reads": 0,
-   "footprint_circularity": 0.978,
+   "footprint_circularity": 0.663,
    "section_ratio": 0.0,
-   "dome_score": 0.018,
-   "flank_mm": 115.7,
+   "dome_score": 0.025,
+   "flank_mm": 77.4,
    "n_reads": 3,
    "d_votes": 0,
    "sensor_miss": false,
@@ -1101,75 +1101,75 @@
    },
    {
     "zone": "B",
-    "reason": "box: circ=0.59 sect=0.00 dome=0.01",
+    "reason": "box: circ=0.66 sect=0.00 dome=0.00",
     "dims_mm": [
-     293.7,
-     200.0,
-     195.1
+     285.0,
+     203.9,
+     200.0
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.593,
+    "footprint_circularity": 0.659,
     "section_ratio": 0.0,
-    "dome_score": 0.007,
-    "flank_mm": 49.9,
+    "dome_score": 0.002,
+    "flank_mm": 50.0,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.025,
-    "elongation": 1.51,
-    "n_points": 17689,
+    "aspect_hw": 0.981,
+    "elongation": 1.4,
+    "n_points": 15923,
     "head": "overhead",
     "x_lo": 5.665,
-    "x_hi": 5.989
+    "x_hi": 5.962
    },
    {
     "zone": "B",
-    "reason": "box: circ=0.59 sect=0.00 dome=0.01",
+    "reason": "box: circ=0.72 sect=0.00 dome=0.00",
     "dims_mm": [
-     293.2,
-     200.0,
-     195.0
+     307.4,
+     227.7,
+     199.9
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.594,
+    "footprint_circularity": 0.722,
     "section_ratio": 0.0,
-    "dome_score": 0.006,
-    "flank_mm": 56.0,
+    "dome_score": 0.003,
+    "flank_mm": 55.0,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.026,
-    "elongation": 1.5,
-    "n_points": 18212,
+    "aspect_hw": 0.878,
+    "elongation": 1.35,
+    "n_points": 11802,
     "head": "overhead",
     "x_lo": 5.748,
-    "x_hi": 6.072
+    "x_hi": 6.046
    },
    {
     "zone": "B",
-    "reason": "box: circ=0.60 sect=0.00 dome=0.00",
+    "reason": "box: circ=0.39 sect=0.21 dome=0.00",
     "dims_mm": [
-     292.6,
-     200.0,
-     195.1
+     199.7,
+     196.0,
+     103.8
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.595,
-    "section_ratio": 0.0,
-    "dome_score": 0.0,
-    "flank_mm": 33.6,
+    "footprint_circularity": 0.388,
+    "section_ratio": 0.211,
+    "dome_score": 0.004,
+    "flank_mm": 17.1,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.025,
-    "elongation": 1.5,
-    "n_points": 18738,
+    "aspect_hw": 1.924,
+    "elongation": 1.89,
+    "n_points": 7379,
     "head": "overhead",
     "x_lo": 5.832,
-    "x_hi": 6.154
+    "x_hi": 5.967
    }
   ],
   "fused": {
    "zone": "B",
-   "reason": "fits, no circle evidence: circ=0.60 sect=0.00 dome=0.01 flank=46.8mm elong=1.5 h/w=1.02",
+   "reason": "fits, no circle evidence: circ=0.69 sect=0.00 dome=0.01 flank=50.0mm elong=1.4 h/w=0.98",
    "dims_mm": [
-    293.4,
-    200.0,
-    195.1
+    294.0,
+    203.9,
+    199.9
    ],
    "guards_mm": [
     6.0,
@@ -1177,11 +1177,11 @@
     6.0
    ],
    "macro_reads": 0,
-   "footprint_circularity": 0.597,
+   "footprint_circularity": 0.691,
    "section_ratio": 0.0,
-   "dome_score": 0.009,
-   "flank_mm": 46.8,
-   "n_reads": 4,
+   "dome_score": 0.008,
+   "flank_mm": 50.0,
+   "n_reads": 3,
    "d_votes": 0,
    "sensor_miss": false,
    "confidence": 1.0
@@ -1203,7 +1203,7 @@
      8.72
     ],
     "footprint_circularity": 0.076,
-    "section_ratio": 0.837,
+    "section_ratio": 0.84,
     "dome_score": 0.086,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
@@ -1228,7 +1228,7 @@
      8.72
     ],
     "footprint_circularity": 0.074,
-    "section_ratio": 0.782,
+    "section_ratio": 0.797,
     "dome_score": 0.075,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
@@ -1253,7 +1253,7 @@
      8.72
     ],
     "footprint_circularity": 0.078,
-    "section_ratio": 0.906,
+    "section_ratio": 0.868,
     "dome_score": 0.063,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
@@ -1278,7 +1278,7 @@
      8.72
     ],
     "footprint_circularity": 0.081,
-    "section_ratio": 0.915,
+    "section_ratio": 0.914,
     "dome_score": 0.063,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
@@ -1293,7 +1293,7 @@
     "zone": "C",
     "reason": "undersize",
     "dims_mm": [
-     143.2,
+     83.6,
      8.7,
      8.1
     ],
@@ -1302,22 +1302,22 @@
      13.52,
      8.72
     ],
-    "footprint_circularity": 0.075,
-    "section_ratio": 0.888,
-    "dome_score": 0.086,
+    "footprint_circularity": 0.066,
+    "section_ratio": 0.871,
+    "dome_score": 0.125,
     "flank_mm": -1.0,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.077,
-    "elongation": 17.69,
-    "n_points": 263,
+    "aspect_hw": 1.083,
+    "elongation": 10.38,
+    "n_points": 154,
     "head": "overhead",
     "x_lo": 5.913,
-    "x_hi": 6.059
+    "x_hi": 5.997
    }
   ],
   "fused": {
    "zone": "C",
-   "reason": "undersize: dim 8.7 mm below certification floor 10.8 mm [macro head: 5 reads, floor 10.8 mm]",
+   "reason": "undersize: dim 8.7 mm below certification floor 10.8 mm [macro head: 4 reads, floor 10.8 mm]",
    "dims_mm": [
     146.2,
     13.5,
@@ -1328,12 +1328,12 @@
     0.8,
     0.8
    ],
-   "macro_reads": 5,
-   "footprint_circularity": 0.078,
-   "section_ratio": 0.906,
-   "dome_score": 0.086,
+   "macro_reads": 4,
+   "footprint_circularity": 0.079,
+   "section_ratio": 0.879,
+   "dome_score": 0.078,
    "flank_mm": null,
-   "n_reads": 5,
+   "n_reads": 4,
    "d_votes": 0,
    "sensor_miss": false,
    "confidence": 1.0
@@ -1364,7 +1364,7 @@
    },
    {
     "zone": "D",
-    "reason": "ambiguous prism section: 0.51",
+    "reason": "ambiguous prism section: 0.54",
     "dims_mm": [
      408.2,
      43.0,
@@ -1372,7 +1372,7 @@
     ],
     "dims_macro_mm": null,
     "footprint_circularity": 0.106,
-    "section_ratio": 0.509,
+    "section_ratio": 0.539,
     "dome_score": 0.068,
     "flank_mm": 8.0,
     "plateau_frac": 1.0,
@@ -1385,75 +1385,75 @@
    },
    {
     "zone": "D",
-    "reason": "ambiguous prism section: 0.59",
+    "reason": "ambiguous prism section: 0.57",
     "dims_mm": [
-     410.3,
+     385.2,
      43.0,
-     37.3
+     37.7
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.103,
-    "section_ratio": 0.586,
-    "dome_score": 0.06,
-    "flank_mm": 7.9,
+    "footprint_circularity": 0.106,
+    "section_ratio": 0.567,
+    "dome_score": 0.032,
+    "flank_mm": 7.7,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.154,
-    "elongation": 11.01,
-    "n_points": 3201,
+    "aspect_hw": 1.141,
+    "elongation": 10.22,
+    "n_points": 3079,
     "head": "overhead",
     "x_lo": 5.631,
-    "x_hi": 6.02
+    "x_hi": 5.988
    },
    {
     "zone": "D",
-    "reason": "ambiguous prism section: 0.61",
+    "reason": "ambiguous prism section: 0.75",
     "dims_mm": [
-     410.3,
+     298.5,
      43.0,
-     37.3
+     36.2
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.1,
-    "section_ratio": 0.613,
-    "dome_score": 0.062,
-    "flank_mm": 7.8,
+    "footprint_circularity": 0.132,
+    "section_ratio": 0.751,
+    "dome_score": 0.049,
+    "flank_mm": 6.6,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.153,
-    "elongation": 11.0,
-    "n_points": 3282,
+    "aspect_hw": 1.188,
+    "elongation": 8.25,
+    "n_points": 2327,
     "head": "overhead",
     "x_lo": 5.715,
-    "x_hi": 6.103
+    "x_hi": 5.996
    },
    {
     "zone": "D",
-    "reason": "ambiguous prism section: 0.59",
+    "reason": "ambiguous prism section: 0.75",
     "dims_mm": [
-     411.1,
+     210.6,
      43.0,
-     37.1
+     36.8
     ],
     "dims_macro_mm": null,
-    "footprint_circularity": 0.097,
-    "section_ratio": 0.588,
-    "dome_score": 0.064,
-    "flank_mm": 7.6,
+    "footprint_circularity": 0.17,
+    "section_ratio": 0.749,
+    "dome_score": 0.053,
+    "flank_mm": 8.3,
     "plateau_frac": 1.0,
-    "aspect_hw": 1.158,
-    "elongation": 11.07,
-    "n_points": 3362,
+    "aspect_hw": 1.167,
+    "elongation": 5.72,
+    "n_points": 1633,
     "head": "overhead",
     "x_lo": 5.798,
-    "x_hi": 6.186
+    "x_hi": 5.995
    }
   ],
   "fused": {
    "zone": "D",
-   "reason": "ambiguous prism section on elongated item (safe side): circ=0.10 sect=0.59 dome=0.07 flank=7.8mm elong=11.0 h/w=1.15",
+   "reason": "ambiguous prism section on elongated item (safe side): circ=0.12 sect=0.66 dome=0.06 flank=7.7mm elong=10.2 h/w=1.15",
    "dims_mm": [
-    410.3,
+    385.2,
     43.0,
-    37.3
+    37.5
    ],
    "guards_mm": [
     6.0,
@@ -1461,12 +1461,12 @@
     6.0
    ],
    "macro_reads": 0,
-   "footprint_circularity": 0.104,
-   "section_ratio": 0.594,
-   "dome_score": 0.065,
-   "flank_mm": 7.8,
-   "n_reads": 4,
-   "d_votes": 4,
+   "footprint_circularity": 0.119,
+   "section_ratio": 0.659,
+   "dome_score": 0.059,
+   "flank_mm": 7.7,
+   "n_reads": 3,
+   "d_votes": 3,
    "sensor_miss": false,
    "confidence": 1.0
   }

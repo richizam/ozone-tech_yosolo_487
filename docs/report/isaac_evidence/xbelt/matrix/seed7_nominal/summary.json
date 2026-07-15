@@ -8,7 +8,7 @@
     "n_correct": 11,
     "accuracy": 1.0,
     "sensor_misses": 0,
-    "reads_per_item": 4.3
+    "reads_per_item": 4.0
   },
   "executive": "tilt_tray_sorter",
   "nominal_motion_model": "surface_contact_only",
@@ -25,10 +25,10 @@
     "gain_noise_frac": 0.01,
     "carrier_commands_count": 11,
     "escapement_releases": 11,
-    "tilt_time_ms": 459.1,
-    "discharge_latency_ms": 832.3,
-    "landing_offset_mean_mm": 66.8,
-    "landing_offset_max_mm": 126.3,
+    "tilt_time_ms": 462.1,
+    "discharge_latency_ms": 809.0,
+    "landing_offset_mean_mm": 66.6,
+    "landing_offset_max_mm": 125.5,
     "carrier_wraps": 136,
     "chain_spacing_err_max_mm": 0.0,
     "double_occupancy_events": 0,
@@ -157,17 +157,17 @@
     "tracked": 8,
     "violations": 0,
     "containment_rate": 1.0,
-    "cage_entry_speed_max_mps": 2.017,
-    "cage_max_z": 0.447
+    "cage_entry_speed_max_mps": 2.016,
+    "cage_max_z": 0.461
   },
   "cycle_s": {
-    "mean": 5.159,
+    "mean": 5.136,
     "p95": 7.242,
-    "max": 7.45
+    "max": 7.483
   },
   "command_margin_s": {
     "min": 1.2,
-    "mean": 3.086
+    "mean": 3.085
   },
   "throughput_items_per_h": 483.0,
   "flow": {
@@ -176,8 +176,8 @@
     "conveyor_a_stop_count": 0
   },
   "sim_s": 81.99,
-  "wall_s": 145.8,
-  "realtime_factor": 0.56,
+  "wall_s": 150.6,
+  "realtime_factor": 0.54,
   "frames": 0,
   "items": [
     {
@@ -195,25 +195,25 @@
       "carrier": 2,
       "landing_offset_m": -0.101,
       "review_reason": null,
-      "t_delivered": 12.267,
+      "t_delivered": 12.183,
       "n_reads": 5,
       "confidence": 0.4,
       "dims_mm": [
-        194.5,
+        195.3,
         172.1,
         164.9
       ],
       "cls_reason": "circle evidence: circ=0.80 sect=0.00 dome=0.64 flank=58.5mm elong=1.2 h/w=1.04",
       "final_pos": [
-        8.585,
-        2.489,
-        0.337
+        8.535,
+        2.493,
+        0.341
       ],
       "contained": true,
-      "v_entry": 1.714,
-      "cage_max_z": 0.337,
+      "v_entry": 1.736,
+      "cage_max_z": 0.341,
       "cage_settle_s": null,
-      "cycle_s": 5.767,
+      "cycle_s": 5.683,
       "command_margin_s": 4.283
     },
     {
@@ -235,18 +235,18 @@
       "n_reads": 3,
       "confidence": 1.0,
       "dims_mm": [
-        448.0,
-        440.4,
+        445.4,
+        412.3,
         264.0
       ],
       "cls_reason": "oversize (guard band 6 mm)",
       "final_pos": [
-        7.543,
-        2.484,
-        0.412
+        7.53,
+        2.486,
+        0.413
       ],
       "contained": true,
-      "v_entry": 1.929,
+      "v_entry": 1.939,
       "cage_max_z": 0.413,
       "cage_settle_s": null,
       "cycle_s": 3.117,
@@ -269,21 +269,21 @@
       "review_reason": null,
       "t_delivered": 26.8,
       "n_reads": 4,
-      "confidence": 0.5,
+      "confidence": 0.25,
       "dims_mm": [
-        352.9,
-        295.4,
-        294.0
+        352.6,
+        292.8,
+        270.7
       ],
-      "cls_reason": "circle evidence: circ=0.80 sect=0.00 dome=0.68 flank=115.2mm elong=1.2 h/w=1.00",
+      "cls_reason": "circle evidence: circ=0.79 sect=0.00 dome=0.70 flank=104.8mm elong=1.3 h/w=1.09",
       "final_pos": [
-        8.747,
-        2.468,
-        0.41
+        8.741,
+        2.471,
+        0.414
       ],
       "contained": true,
-      "v_entry": 1.889,
-      "cage_max_z": 0.41,
+      "v_entry": 1.887,
+      "cage_max_z": 0.414,
       "cage_settle_s": null,
       "cycle_s": 5.183,
       "command_margin_s": 3.917
@@ -318,7 +318,7 @@
         0.265
       ],
       "contained": true,
-      "v_entry": 2.017,
+      "v_entry": 2.016,
       "cage_max_z": 0.265,
       "cage_settle_s": null,
       "cycle_s": 5.483,
@@ -335,26 +335,26 @@
       "t_route_cmd": 35.667,
       "t_released": 35.667,
       "t_inducted": 36.6,
-      "t_tilt_cmd": 38.617,
+      "t_tilt_cmd": 38.583,
       "carrier": 6,
       "landing_offset_m": -0.126,
       "review_reason": null,
-      "t_delivered": 41.95,
+      "t_delivered": 41.917,
       "n_reads": 4,
       "confidence": 1.0,
       "dims_mm": [
-        293.6,
-        200.0,
-        197.1
+        317.0,
+        204.2,
+        199.2
       ],
-      "cls_reason": "fits, no circle evidence: circ=0.61 sect=0.00 dome=0.01 flank=44.5mm elong=1.5 h/w=1.01",
+      "cls_reason": "fits, no circle evidence: circ=0.61 sect=0.00 dome=0.01 flank=44.5mm elong=1.5 h/w=0.98",
       "final_pos": [
-        8.345,
-        5.716,
+        8.33,
+        5.712,
         0.8
       ],
-      "cycle_s": 6.767,
-      "command_margin_s": 2.95
+      "cycle_s": 6.733,
+      "command_margin_s": 2.917
     },
     {
       "slug": "lunchbox",
@@ -369,23 +369,23 @@
       "t_inducted": 43.65,
       "t_tilt_cmd": 45.367,
       "carrier": 0,
-      "landing_offset_m": -0.05,
+      "landing_offset_m": -0.049,
       "review_reason": null,
-      "t_delivered": 48.783,
-      "n_reads": 4,
+      "t_delivered": 48.75,
+      "n_reads": 3,
       "confidence": 1.0,
       "dims_mm": [
-        183.9,
-        139.7,
+        187.7,
+        146.8,
         61.7
       ],
-      "cls_reason": "fits, no circle evidence: circ=0.68 sect=0.00 dome=0.14 flank=35.5mm elong=1.3 h/w=0.44",
+      "cls_reason": "fits, no circle evidence: circ=0.69 sect=0.00 dome=0.14 flank=34.6mm elong=1.3 h/w=0.42",
       "final_pos": [
-        8.263,
-        5.711,
+        8.252,
+        5.706,
         0.731
       ],
-      "cycle_s": 7.033,
+      "cycle_s": 7.0,
       "command_margin_s": 3.133
     },
     {
@@ -404,22 +404,22 @@
       "landing_offset_m": -0.09,
       "review_reason": null,
       "t_delivered": 53.383,
-      "n_reads": 5,
+      "n_reads": 4,
       "confidence": 1.0,
       "dims_mm": [
-        200.5,
-        200.2,
+        200.3,
+        200.0,
         26.6
       ],
-      "cls_reason": "circle evidence: circ=0.94 sect=0.00 dome=0.48 flank=24.4mm elong=1.0 h/w=0.13",
+      "cls_reason": "circle evidence: circ=0.94 sect=0.00 dome=0.50 flank=23.8mm elong=1.0 h/w=0.13",
       "final_pos": [
         8.796,
         2.491,
-        0.251
+        0.252
       ],
       "contained": true,
-      "v_entry": 1.955,
-      "cage_max_z": 0.251,
+      "v_entry": 1.952,
+      "cage_max_z": 0.252,
       "cage_settle_s": null,
       "cycle_s": 5.1,
       "command_margin_s": 3.75
@@ -439,25 +439,25 @@
       "carrier": 7,
       "landing_offset_m": 0.012,
       "review_reason": null,
-      "t_delivered": 58.167,
-      "n_reads": 5,
+      "t_delivered": 58.067,
+      "n_reads": 4,
       "confidence": 1.0,
       "dims_mm": [
         146.3,
         13.4,
         8.7
       ],
-      "cls_reason": "undersize: dim 8.7 mm below certification floor 10.8 mm [macro head: 5 reads, floor 10.8 mm]",
+      "cls_reason": "undersize: dim 8.7 mm below certification floor 10.8 mm [macro head: 4 reads, floor 10.8 mm]",
       "final_pos": [
-        7.768,
-        2.491,
-        0.241
+        7.69,
+        2.486,
+        0.239
       ],
       "contained": true,
-      "v_entry": 1.746,
-      "cage_max_z": 0.241,
+      "v_entry": 1.858,
+      "cage_max_z": 0.239,
       "cage_settle_s": null,
-      "cycle_s": 2.983,
+      "cycle_s": 2.883,
       "command_margin_s": 1.2
     },
     {
@@ -475,25 +475,25 @@
       "carrier": 1,
       "landing_offset_m": -0.008,
       "review_reason": null,
-      "t_delivered": 65.367,
+      "t_delivered": 65.333,
       "n_reads": 3,
       "confidence": 1.0,
       "dims_mm": [
-        391.4,
-        389.9,
-        300.9
+        393.5,
+        393.2,
+        300.7
       ],
       "cls_reason": "oversize (guard band 6 mm)",
       "final_pos": [
-        7.596,
-        2.492,
-        0.447
+        7.592,
+        2.49,
+        0.461
       ],
       "contained": true,
-      "v_entry": 0.467,
-      "cage_max_z": 0.447,
+      "v_entry": 0.533,
+      "cage_max_z": 0.461,
       "cage_settle_s": null,
-      "cycle_s": 3.183,
+      "cycle_s": 3.15,
       "command_margin_s": 1.8
     },
     {
@@ -507,26 +507,26 @@
       "t_route_cmd": 69.8,
       "t_released": 70.317,
       "t_inducted": 71.217,
-      "t_tilt_cmd": 73.383,
+      "t_tilt_cmd": 73.4,
       "carrier": 4,
       "landing_offset_m": -0.031,
       "review_reason": null,
-      "t_delivered": 76.767,
+      "t_delivered": 76.8,
       "n_reads": 4,
       "confidence": 1.0,
       "dims_mm": [
-        316.6,
-        287.6,
+        306.2,
+        259.1,
         176.6
       ],
-      "cls_reason": "fits, no circle evidence: circ=0.71 sect=0.00 dome=0.67 flank=81.8mm elong=1.1 h/w=0.61",
+      "cls_reason": "fits, no circle evidence: circ=0.71 sect=0.00 dome=0.67 flank=58.3mm elong=1.2 h/w=0.69",
       "final_pos": [
-        8.467,
-        5.705,
+        8.464,
+        5.708,
         0.767
       ],
-      "cycle_s": 7.45,
-      "command_margin_s": 3.583
+      "cycle_s": 7.483,
+      "command_margin_s": 3.6
     },
     {
       "slug": "cylinder",
@@ -547,18 +547,18 @@
       "n_reads": 5,
       "confidence": 1.0,
       "dims_mm": [
-        408.7,
+        409.2,
         43.0,
-        36.9
+        37.1
       ],
-      "cls_reason": "ambiguous prism section on elongated item (safe side): circ=0.10 sect=0.58 dome=0.07 flank=6.8mm elong=11.1 h/w=1.17",
+      "cls_reason": "ambiguous prism section on elongated item (safe side): circ=0.10 sect=0.58 dome=0.07 flank=6.8mm elong=11.0 h/w=1.16",
       "final_pos": [
         8.598,
-        2.483,
+        2.482,
         0.257
       ],
       "contained": true,
-      "v_entry": 1.567,
+      "v_entry": 1.45,
       "cage_max_z": 0.257,
       "cage_settle_s": null,
       "cycle_s": 4.683,
