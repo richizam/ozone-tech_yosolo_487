@@ -272,14 +272,18 @@ class RTXPerception:
         return pos, R
 
     @classmethod
-    def _head_points(cls, cam, edge_filter=False, edge_tau=0.008):
+    def _head_grid(cls, cam, edge_filter=False, edge_tau=0.008):
+        """Full-frame unprojection, image shape preserved: (world HxWx3,
+        valid HxW). The measuring path flattens this via _head_points; the
+        evidence export keeps the pixel layout so a saved segmentation mask
+        overlays the saved RGB/depth still 1:1."""
         frame = cam.get_current_frame()
         depth = frame.get("distance_to_image_plane")
         if depth is None:
-            return None
+            return None, None
         depth = np.asarray(depth, dtype=np.float32)
         if depth.ndim != 2 or depth.size == 0:
-            return None
+            return None, None
         H, W = depth.shape
         K = np.asarray(cam.get_intrinsics_matrix(), dtype=float)
         fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
@@ -304,9 +308,15 @@ class RTXPerception:
         xc = (us - cx) / fx * D                     # camera +X (right)
         yc = -(vs - cy) / fy * D                    # camera +Y (up); v grows down
         zc = -D                                     # look along -Z
-        cam_pts = np.stack([xc, yc, zc], axis=-1).reshape(-1, 3)
-        world = pos + cam_pts @ R.T
-        return world[valid.reshape(-1)]
+        world = pos + np.stack([xc, yc, zc], axis=-1) @ R.T
+        return world, valid
+
+    @classmethod
+    def _head_points(cls, cam, edge_filter=False, edge_tau=0.008):
+        world, valid = cls._head_grid(cam, edge_filter, edge_tau)
+        if world is None:
+            return None
+        return world.reshape(-1, 3)[valid.reshape(-1)]
 
     def _points_world(self):
         """Overhead cloud only — the metrology head (dims/footprint/dome)."""
@@ -535,6 +545,40 @@ class RTXPerception:
         Hh = float(np.percentile(obj[:, 2], 99.7) - self.belt_z)
         dims = sorted([L * 1000.0, Wd * 1000.0, Hh * 1000.0], reverse=True)
         return dims, xy, obj
+
+    # ------------------------------------------------------ evidence export
+    def _mask_head(self, cam, macro=False, exclude_x=(), x_hint=None):
+        """Pixel-space segmentation of one head's CURRENT frame with the
+        measuring pipeline's own filters: same measuring-volume crop and
+        z-floor as _segment()/_measure_macro(), same raised-hardware
+        exclusions, same identity gate. Returns (mask HxW bool, cloud Nx3)."""
+        world, valid = self._head_grid(cam, edge_filter=macro)
+        if world is None:
+            return None, None
+        x, y, z = world[..., 0], world[..., 1], world[..., 2]
+        z_lo = 0.0015 if macro else self.z_margin  # macro's own z floor
+        m = (valid & (z > self.belt_z + z_lo) & (z < self.belt_z + 0.56)
+             & (np.abs(y - self.belt_y) < self.belt_half_w)
+             & (x > self.window_x[0]) & (x < self.window_x[1]))
+        for x0, x1 in exclude_x:
+            m &= ~((x > x0) & (x < x1))
+        if x_hint is not None and m.any():
+            kept = self._identity_gate(world[m], x_hint)
+            if len(kept):                       # clusters are x-disjoint, so
+                m &= ((x >= kept[:, 0].min() - 1e-6)   # the x-range filter IS
+                      & (x <= kept[:, 0].max() + 1e-6))  # the cluster choice
+        return m, world[m]
+
+    def export_masks(self, exclude_x=(), x_hint=None):
+        """Evidence for the saved stills: the pipeline's OWN segmentation
+        mask + world-space item cloud per head, pixel-aligned with the
+        frame the stills capture saves. Nothing here is a re-derivation —
+        it is the measuring code path evaluated per pixel."""
+        out = {"overhead": self._mask_head(self.cams[0], False,
+                                           exclude_x, x_hint)}
+        out["macro"] = (self._mask_head(self.macro, True, exclude_x, x_hint)
+                        if self.macro is not None else (None, None))
+        return out
 
     def measure(self, debug=False, exclude_x=(), x_hint=None):
         """Return a dict with dims/features/verdict, or None on a sensor miss.

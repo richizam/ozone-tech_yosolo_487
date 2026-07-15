@@ -1,0 +1,9 @@
+file 'perception_bottle.png'
+duration 2.5
+file 'perception_box_s.png'
+duration 2.5
+file 'perception_edge_cube11.png'
+duration 2.5
+file 'perception_helmet.png'
+duration 2.5
+file 'perception_helmet.png'

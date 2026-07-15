@@ -57,8 +57,12 @@ def main():
         lw = 340
         lh = int(logo.height * lw / logo.width)
         img.paste(logo.resize((lw, lh)), (W - lw - 70, 52), logo.resize((lw, lh)))
-    d.text((70, 56), "TILT-TRAY SORT CELL — VALIDATED DIGITAL TWIN",
-           font=font(60), fill=(240, 242, 246))
+    title = "TILT-TRAY SORT CELL — VALIDATED DIGITAL TWIN"
+    tf = font(60)
+    max_title_w = (W - 70 - 340 - 70 - 40) if logo_p.is_file() else W - 140
+    while d.textlength(title, tf) > max_title_w and tf.size > 34:
+        tf = font(tf.size - 2)
+    d.text((70, 56), title, font=tf, fill=(240, 242, 246))
     d.text((70, 146), "NVIDIA Isaac Sim 6.0.1 · PhysX 5 · RTX dual-range "
                       "sensors in the loop · size-independent divert",
            font=font(34, bold=False), fill=(150, 155, 165))
@@ -72,7 +76,9 @@ def main():
         (pct(cls), "classification from the RTX depth station, in motion"),
         (pct(route), "nominal physical routing to B / C / D"),
         ("11 mm → B", f"smallest certified parcel carried on its own tray "
-                      f"(measured {tuple((cube.get('dims_mm') or ['…'])[:1])[0]} mm, "
+                      f"(measured "
+                      f"{'×'.join(f'{v:.0f}' for v in cube.get('dims_mm') or [])
+                         or '…'} mm, "
                       f"delivered {cube.get('delivered', '…')})"),
         ("0", "unsafe errors · 0 floor drops · containment 1.0 in every run"),
         ("0", "direct velocity writes — freight moves by contact physics only"),
@@ -84,8 +90,10 @@ def main():
     for big, small in rows:
         col = GREEN if big == "0" else OZON_BLUE
         d.text((70, y), str(big), font=font(64), fill=col)
-        d.text((560, y + 14), small, font=font(36, bold=False),
-               fill=(210, 213, 220))
+        sf = font(36, bold=False)
+        while d.textlength(small, sf) > W - 560 - 70 and sf.size > 24:
+            sf = font(sf.size - 2, bold=False)
+        d.text((560, y + 14), small, font=sf, fill=(210, 213, 220))
         y += 104
     d.text((70, H - 66), "RTX perception → official B/C/D rules → per-carrier "
            "route → tilt-tray gravity discharge → chute → roll-cage — "

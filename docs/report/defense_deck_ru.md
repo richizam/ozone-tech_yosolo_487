@@ -1,6 +1,9 @@
 # Презентация для защиты — SortMaster (Трек 3)
 > 7 минут. Слайд-план + тезисы докладчика + тайминг.
-> Видеовставки — из `docs/report/isaac_evidence/xbelt/showcase/`.
+> Видеовставки — из `docs/report/isaac_evidence/xbelt/videos_final/`;
+> перцепционные панели и perception_demo.mp4 — из
+> `docs/report/isaac_evidence/xbelt/perception/`; финальная карточка метрик —
+> `videos_final/endcard.png`.
 
 ---
 
@@ -24,7 +27,11 @@
 * Охранные полосы измерителя: порог недомера = 10 мм + 2×GSD → куб 11 мм
   честно B (макро-камера), куб 10 мм честно C. Все сомнения — в C/D/REVIEW,
   никогда в B.
-* Визуал: панель «RGB | глубина | измеренные габариты | вердикт» (3 товара).
+* Визуал: панели «RGB | глубина | измеренные габариты | вердикт» — ГОТОВЫ:
+  `perception/panels_edge/perception_edge_cube11.png` (11 мм → B, макро-кроп)
+  рядом с `perception_edge_cube10.png` (10 мм → C, под полом 10.8 мм) +
+  `perception/panels/perception_helmet.png` (агрегатная улика формы → D);
+  либо ролик `perception/perception_demo.mp4` (23 с, 7 панелей).
 
 ## Слайд 4 — Исполнительная часть: tilt-tray сортировщик (60 с)
 * Полный цикл контактной физикой: эскейпмент-накопитель → синхронная посадка

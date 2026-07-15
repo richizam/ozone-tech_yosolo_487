@@ -487,6 +487,8 @@ def main():
                 md = mf.get("distance_to_image_plane")
                 if md is not None and getattr(md, "size", 0):
                     d2 = np.asarray(md, dtype=float)
+                    np.save(out_dir / f"vision_macro_depth_{slug}.npy",
+                            d2.astype(np.float32))
                     fin = np.isfinite(d2)
                     if fin.any():
                         lo, hi = np.percentile(d2[fin], [2, 98])
@@ -494,6 +496,30 @@ def main():
                         img[~fin] = 1.0
                         Image.fromarray((255 * (1 - img)).astype(np.uint8)).save(
                             out_dir / f"vision_macro_{slug}.png")
+            # pipeline-truth segmentation: the measuring pipeline's OWN mask
+            # and world cloud for THIS frame (same crop / z-floor / hardware
+            # exclusions / identity gate as measure()) — the jury panels
+            # overlay these instead of any presentation-side re-derivation
+            if perc is not None:
+                excl = [(bx - 0.05, bx + 0.05)
+                        for nm, bx in (("egate", a["gate_x"]),
+                                       ("hold2", a["hold2_x"]))
+                        if blade_up_state.get(nm)]
+                em = perc.export_masks(exclude_x=excl,
+                                       x_hint=float(pose(slug)[0][0]))
+                msk, cloud = em["overhead"]
+                if msk is not None and msk.any():
+                    Image.fromarray((msk.astype(np.uint8)) * 255).save(
+                        out_dir / f"vision_mask_{slug}.png")
+                    np.save(out_dir / f"vision_cloud_{slug}.npy",
+                            cloud.astype(np.float32))
+                mmsk, mcloud = em["macro"]
+                if mmsk is not None and mmsk.any() \
+                        and min(entries[slug]["dims_m"]) < 0.03:
+                    Image.fromarray((mmsk.astype(np.uint8)) * 255).save(
+                        out_dir / f"vision_macro_mask_{slug}.png")
+                    np.save(out_dir / f"vision_macro_cloud_{slug}.npy",
+                            mcloud.astype(np.float32))
             ev(t, "vision_capture", slug)
         except Exception as exc:
             ev(t, "vision_capture_failed", slug, err=str(exc)[:120])
@@ -544,7 +570,10 @@ def main():
                 if "t_detected" not in st and p[0] >= win0:
                     st["t_detected"] = t
                     ev(t, "item_detected", slug)
-                    capture_still(t, slug)
+                    # stills are captured at the FIRST successful read (below),
+                    # not here: at window entry a small item's footprint can
+                    # straddle the crop edge and no head has measured yet, so
+                    # the mask/cloud export would not match any real read
                 # multi-read sensing while this item owns the corridor
                 if (perc is not None and "zone" not in st and "t_detected" in st
                         and p[0] <= win1 and t >= st.get("next_read_t", 0.0)
@@ -570,6 +599,12 @@ def main():
                                 if blade_up_state.get(nm)]
                         r = perc.measure(exclude_x=excl, x_hint=float(p[0]))
                         st.setdefault("reads", []).append(r)
+                        if r is not None and \
+                                sum(1 for x in st["reads"] if x) == 1:
+                            # first successful read: the annotators were just
+                            # flushed and every engaged head sees the item —
+                            # the exported mask/cloud matches this exact frame
+                            capture_still(t, slug)
                 # look-ahead classification: commit at window exit + latency
                 if "zone" not in st and "t_detected" in st and p[0] > win1:
                     st.setdefault("t_verdict", t + proc_lat)

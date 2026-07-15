@@ -10,7 +10,7 @@ PORT="${SM_PORT:-40576}"
 MATRIX="${1:-xbelt_matrix}"
 SHOW="${2:-showcase5}"
 DEST="docs/report/isaac_evidence/xbelt"
-mkdir -p "$DEST/matrix" "$DEST/videos" "$DEST/perception" "$DEST/stills"
+mkdir -p "$DEST/matrix" "$DEST/videos_final" "$DEST/perception" "$DEST/stills"
 
 # consolidated matrix + per-run summaries/logs (small text artifacts)
 scp -P $PORT "$HOST:/root/sortmaster_out/$MATRIX/matrix_summary.json" "$DEST/matrix/" || true
@@ -24,18 +24,24 @@ for run in seed42_nominal seed1_nominal seed2_nominal seed3_nominal seed7_nomina
 done
 
 # final MP4s (cinematics, statics, edge cases, faults)
-scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/*.mp4" "$DEST/videos/" || true
+scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/*.mp4" "$DEST/videos_final/" || true
 
-# perception stills + depth: RGB / depth / macro pngs and the raw npy
+# perception stills + depth: RGB / depth / macro pngs, raw npy, the
+# pipeline-truth masks/clouds (vision_mask/cloud/macro_*) and the fused
+# reads log (make_perception_panels.py composes the jury panels from
+# these locally)
 for run in sensor edge_small_items; do
-  scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/$run/vision_*.png" "$DEST/perception/" 2>/dev/null || true
-  scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/$run/vision_depth_*.npy" "$DEST/perception/" 2>/dev/null || true
+  mkdir -p "$DEST/perception/$run"
+  scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/$run/vision_*.png" "$DEST/perception/$run/" 2>/dev/null || true
+  scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/$run/vision_*.npy" "$DEST/perception/$run/" 2>/dev/null || true
+  scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/$run/reads_log.json" "$DEST/perception/$run/" 2>/dev/null || true
+  scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/$run/summary.json"   "$DEST/perception/$run/" 2>/dev/null || true
 done
 
 # perception side-by-side panels + demo mp4 (built on the host by
 # tools/make_perception_panels.py) and the metrics end card
 scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/panels/*"   "$DEST/perception/" 2>/dev/null || true
-scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/endcard.png" "$DEST/videos/"    2>/dev/null || true
+scp -P $PORT "$HOST:/root/sortmaster_out/$SHOW/endcard.png" "$DEST/videos_final/" 2>/dev/null || true
 
 echo "--- fetched into $DEST ---"
 find "$DEST" -type f | sort | sed 's/^/  /'

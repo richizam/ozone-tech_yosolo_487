@@ -326,6 +326,18 @@ details: [isaac/README.md](isaac/README.md).
   `cell/params.py`) · [кинематика каретки](docs/report/figures/carrier_kinematics.png) ·
   [спецификация узлов](docs/report/node_spec.md) ·
   [before/after доказательства механики](docs/report/isaac_evidence/xbelt/proof_pack/README.md).
+- **Perception evidence (jury panels):** side-by-side «RGB + RTX depth +
+  segmentation + fused dims + route decision» panels built from real sensor
+  frames by `tools/make_perception_panels.py` —
+  [panels](docs/report/isaac_evidence/xbelt/perception/panels/) ·
+  [edge-case panels](docs/report/isaac_evidence/xbelt/perception/panels_edge/)
+  (11 mm cube→B vs 10 mm cube→C at the 10.8 mm certification floor) ·
+  [perception_demo.mp4](docs/report/isaac_evidence/xbelt/perception/perception_demo.mp4) ·
+  final [metrics end card](docs/report/isaac_evidence/xbelt/videos_final/endcard.png).
+  The overlaid segmentation masks and item point clouds are the measuring
+  pipeline's OWN export (`RTXPerception.export_masks` → `vision_mask_*.png`,
+  `vision_cloud_*.npy`, incl. the close-range macro head), pixel-aligned with
+  the saved stills — not a visualization-side re-derivation.
 - **Cloud links** (large binaries: full showcase videos, sensor stills/NPY, CAD sources) — collected here with per-link descriptions when uploaded 🔜; the in-repo evidence set lives under [docs/report/isaac_evidence/](docs/report/isaac_evidence/).
 
 ## 9. Team & contacts 🔜

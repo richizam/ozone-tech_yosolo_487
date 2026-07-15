@@ -59,7 +59,15 @@ def font(sz, mono=False, bold=True):
 
 
 def depth_view(d):
-    """Depth array -> (blue-steel uint8 RGB, item mask)."""
+    """Depth array -> (blue-steel uint8 RGB, item mask).
+
+    The item is the connected above-belt component that (a) does not touch
+    the frame border (fixed structures — infeed hardware, gate posts — all
+    run off-frame) and (b) sits nearest the frame centre, where the release
+    is timed to put the item at capture. Threshold 6 mm above the belt plane
+    (~3 sigma of depth noise) keeps the 10-11 mm certification-floor cubes
+    segmentable — the old 15 mm cut could never see them.
+    """
     d = d.astype(float)
     finite = np.isfinite(d)
     lo, hi = (np.percentile(d[finite], [1, 99]) if finite.any() else (0, 1))
@@ -71,28 +79,43 @@ def depth_view(d):
     gch = (22 + 150 * near).astype(np.uint8)
     b = (34 + 190 * near).astype(np.uint8)
     img = np.dstack([r, gch, b])
-    # item mask: meaningfully above the belt plane, seeded at the closest
-    # point inside the central corridor (same logic as validation)
     H0, W0 = d.shape
-    strip = d[int(H0 * 0.40):int(H0 * 0.60), :]
+    strip = d[int(H0 * 0.40):int(H0 * 0.60), int(W0 * 0.25):int(W0 * 0.75)]
     sf = np.isfinite(strip)
     belt_d = np.median(strip[sf]) if sf.any() else 0
-    cand = finite & (d < belt_d - 0.015)
-    mask = np.zeros_like(cand)
-    corridor = np.zeros_like(cand)
-    corridor[int(H0 * 0.30):int(H0 * 0.70), int(W0 * 0.22):int(W0 * 0.78)] = True
-    if (cand & corridor).any():
-        dd = np.where(cand & corridor, d, np.inf)
-        seed = np.unravel_index(np.argmin(dd), dd.shape)
-        stack = [seed]
-        mask[seed] = True
+    cand = finite & (d < belt_d - 0.006)
+    lab = np.zeros(d.shape, np.int32)
+    best, best_dist = None, None
+    n_lab = 0
+    for sy, sx in zip(*np.where(cand)):
+        if lab[sy, sx]:
+            continue
+        n_lab += 1
+        stack = [(sy, sx)]
+        lab[sy, sx] = n_lab
+        px_y, px_x = [sy], [sx]
         while stack:
             y, x = stack.pop()
             for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
                 if 0 <= ny < H0 and 0 <= nx < W0 and cand[ny, nx] \
-                        and not mask[ny, nx]:
-                    mask[ny, nx] = True
+                        and not lab[ny, nx]:
+                    lab[ny, nx] = n_lab
                     stack.append((ny, nx))
+                    px_y.append(ny)
+                    px_x.append(nx)
+        ys, xs = np.array(px_y), np.array(px_x)
+        if len(ys) < 8:                                   # noise speck
+            continue
+        if ys.min() == 0 or xs.min() == 0 or ys.max() == H0 - 1 \
+                or xs.max() == W0 - 1:                    # fixed structure
+            continue
+        cy, cx = ys.mean() / H0, xs.mean() / W0
+        if not (0.20 <= cy <= 0.80 and 0.20 <= cx <= 0.80):
+            continue
+        dist = (cy - 0.5) ** 2 + (cx - 0.5) ** 2
+        if best is None or dist < best_dist:
+            best, best_dist = n_lab, dist
+    mask = (lab == best) if best is not None else np.zeros_like(cand)
     return img, mask
 
 
@@ -101,7 +124,24 @@ def _rounded(d, xy, radius, fill=None, outline=None, width=1):
                         width=width)
 
 
-def compose_panel(slug, rgb_img, depth_rgb, mask, fused, run_tag=""):
+def steel(depth_crop):
+    """Locally re-normalized blue-steel render of a raw depth crop — small
+    items (11 mm over a 1.7 m global range) are sub-quantization in the
+    globally graded view; a local stretch makes them plainly visible."""
+    c = depth_crop.astype(float)
+    fin = np.isfinite(c)
+    lo, hi = (np.percentile(c[fin], [2, 98]) if fin.any() else (0, 1))
+    g = np.clip((c - lo) / max(hi - lo, 1e-6), 0, 1)
+    g[~fin] = 1.0
+    near = 1 - g
+    return np.dstack([(18 + 130 * near).astype(np.uint8),
+                      (22 + 150 * near).astype(np.uint8),
+                      (34 + 190 * near).astype(np.uint8)])
+
+
+def compose_panel(slug, rgb_img, depth_rgb, mask, fused, run_tag="",
+                  depth_raw=None, mask_src="local", n_cloud=None,
+                  macro_depth=None, macro_mask=None):
     zone = fused.get("zone", "?")
     col = ROUTE_COL.get(zone, (170, 170, 180))
     W, H = 1920, 1080
@@ -123,11 +163,13 @@ def compose_panel(slug, rgb_img, depth_rgb, mask, fused, run_tag=""):
     # view panels
     vw, vh = 860, 610
     y0 = 186
+    sensor_sub = ("глубина + сегментация perception_rtx + габариты (fusion)"
+                  if mask_src == "pipeline" else
+                  "глубина + сегментация + габариты (fusion)")
     for i, (im, title, subtitle) in enumerate((
             (rgb_img, "SCENE VIEW · RGB",
              "верхняя камера над зоной измерения"),
-            (None, "SENSOR VIEW · RTX DEPTH",
-             "глубина + сегментация + габариты (fusion)"))):
+            (None, "SENSOR VIEW · RTX DEPTH", sensor_sub))):
         x0 = 56 + i * (vw + 88)
         _rounded(d, [x0 - 10, y0 - 10, x0 + vw + 10, y0 + vh + 10], 18,
                  fill=PANEL_BG, outline=EDGE, width=2)
@@ -143,14 +185,72 @@ def compose_panel(slug, rgb_img, depth_rgb, mask, fused, run_tag=""):
     dep = Image.fromarray(depth_rgb).convert("RGB")
     dims = fused.get("dims_mm")
     if mask is not None and mask.any():
+        H0, W0 = mask.shape
         ys, xs = np.where(mask)
-        bx0, bx1, by0, by1 = xs.min(), xs.max(), ys.min(), ys.max()
+        # pad the reticle so it frames rather than covers tiny items
+        pad = 5
+        bx0 = max(int(xs.min()) - pad, 0)
+        bx1 = min(int(xs.max()) + pad, W0 - 1)
+        by0 = max(int(ys.min()) - pad, 0)
+        by1 = min(int(ys.max()) + pad, H0 - 1)
         ov = np.array(dep, dtype=np.uint8)
         tint = np.zeros_like(ov)
         tint[..., 0], tint[..., 1], tint[..., 2] = col
         m3 = mask[..., None]
         ov = np.where(m3, (0.52 * ov + 0.48 * tint).astype(np.uint8), ov)
         dep = Image.fromarray(ov)
+        # macro inset for small items. Preferred source: the REAL macro
+        # head's depth frame + the pipeline's own macro mask (dual-range
+        # metrology evidence). Fallback: magnified overhead crop re-rendered
+        # from RAW depth with a local contrast stretch (globally graded
+        # pixels are sub-quantization for an 11 mm item).
+        inset = rgb_inset = None
+        inset_label = None
+        bw, bh = bx1 - bx0, by1 - by0
+        small = max(bw, bh) < 90
+        if small and macro_depth is not None and macro_mask is not None \
+                and macro_mask.any():
+            mys, mxs = np.where(macro_mask)
+            mH, mW = macro_mask.shape
+            mside = int(min(max(120, int(max(mxs.max() - mxs.min(),
+                                             mys.max() - mys.min()) * 1.8)),
+                            min(mH, mW)))
+            mcx, mcy = (mxs.min() + mxs.max()) // 2, (mys.min() + mys.max()) // 2
+            jx0 = int(np.clip(mcx - mside // 2, 0, mW - mside))
+            jy0 = int(np.clip(mcy - mside // 2, 0, mH - mside))
+            crop = steel(macro_depth[jy0:jy0 + mside, jx0:jx0 + mside])
+            mcrop = macro_mask[jy0:jy0 + mside, jx0:jx0 + mside]
+            tint_c = np.zeros_like(crop)
+            tint_c[..., 0], tint_c[..., 1], tint_c[..., 2] = col
+            crop = np.where(mcrop[..., None],
+                            (0.35 * crop + 0.65 * tint_c).astype(np.uint8),
+                            crop)
+            inset = Image.fromarray(crop).resize((320, 320), Image.NEAREST)
+            inset_label = "МАКРО-ГОЛОВКА · РЕАЛЬНЫЙ КАДР · GSD 0.4 мм"
+        elif small and depth_raw is not None:
+            side = int(min(max(90, max(bw, bh) * 2.5), 260))
+            icx = (bx0 + bx1) // 2
+            icy = (by0 + by1) // 2
+            ix0 = int(np.clip(icx - side // 2, 0, W0 - side))
+            iy0 = int(np.clip(icy - side // 2, 0, H0 - side))
+            crop = steel(depth_raw[iy0:iy0 + side, ix0:ix0 + side])
+            mcrop = mask[iy0:iy0 + side, ix0:ix0 + side]
+            tint_c = np.zeros_like(crop)
+            tint_c[..., 0], tint_c[..., 1], tint_c[..., 2] = col
+            crop = np.where(mcrop[..., None],
+                            (0.35 * crop + 0.65 * tint_c).astype(np.uint8),
+                            crop)
+            inset = Image.fromarray(crop).resize((320, 320), Image.NEAREST)
+            inset_label = f"МАКРО-ГОЛОВКА · КРОП ×{320 / side:.1f}"
+        if small and depth_raw is not None and rgb_img.size == (W0, H0):
+            side = int(min(max(90, max(bw, bh) * 2.5), 260))
+            icx = (bx0 + bx1) // 2
+            icy = (by0 + by1) // 2
+            ix0 = int(np.clip(icx - side // 2, 0, W0 - side))
+            iy0 = int(np.clip(icy - side // 2, 0, H0 - side))
+            zoom = 320 / side
+            rgb_inset = rgb_img.crop((ix0, iy0, ix0 + side, iy0 + side)) \
+                               .resize((320, 320), Image.NEAREST)
         dd = ImageDraw.Draw(dep)
         dd.rectangle([bx0, by0, bx1, by1], outline=col, width=4)
         # corner ticks (industrial reticle look)
@@ -166,20 +266,60 @@ def compose_panel(slug, rgb_img, depth_rgb, mask, fused, run_tag=""):
         if dims:
             fx0, fx1 = bx0 * sx_, bx1 * sx_
             fy0, fy1 = by0 * sy_, by1 * sy_
+            fxm = (fx0 + fx1) / 2
+            # dimension line never shorter than 70 px, centred on the box
+            lx0, lx1 = fx0, fx1
+            if lx1 - lx0 < 70:
+                lx0, lx1 = fxm - 35, fxm + 35
             f22 = font(22, mono=True)
             wlab = f"{dims[0]:.0f} mm"
-            dd.line([fx0, fy1 + 22, fx1, fy1 + 22], fill=(255, 255, 255),
+            dd.line([lx0, fy1 + 22, lx1, fy1 + 22], fill=(255, 255, 255),
                     width=2)
-            dd.text(((fx0 + fx1) / 2 - dd.textlength(wlab, f22) / 2,
-                     fy1 + 28), wlab, font=f22, fill=(255, 255, 255))
+            dd.text((fxm - dd.textlength(wlab, f22) / 2, fy1 + 28), wlab,
+                    font=f22, fill=(255, 255, 255))
             hlab = f"{dims[1]:.0f} mm"
             dd.line([fx1 + 22, fy0, fx1 + 22, fy1], fill=(255, 255, 255),
                     width=2)
             dd.text((fx1 + 30, (fy0 + fy1) / 2 - 12), hlab, font=f22,
                     fill=(255, 255, 255))
+        if inset is not None:
+            iw = 320
+            ix, iy = 18, vh - iw - 18
+            dep.paste(inset, (ix, iy))
+            dd.rectangle([ix - 2, iy - 2, ix + iw + 1, iy + iw + 1],
+                         outline=col, width=3)
+            ilab = inset_label
+            f18 = font(18)
+            lw = dd.textlength(ilab, f18)
+            dd.rectangle([ix - 2, iy - 34, ix + lw + 18, iy - 2],
+                         fill=(12, 13, 16))
+            dd.text((ix + 8, iy - 30), ilab, font=f18, fill=TXT)
     else:
         dep = dep.resize((vw, vh))
+    if mask_src == "pipeline":
+        # provenance badge: this mask is the measuring pipeline's export,
+        # not a presentation-side re-derivation
+        dd = ImageDraw.Draw(dep)
+        blab = "маска и облако: экспорт perception_rtx"
+        f16 = font(16, bold=False)
+        bw_ = dd.textlength(blab, f16)
+        dd.rectangle([vw - bw_ - 26, vh - 36, vw - 6, vh - 6],
+                     fill=(12, 13, 16))
+        dd.text((vw - bw_ - 16, vh - 31), blab, font=f16, fill=SUB)
     panel.paste(dep, (x0d, y0))
+    if mask is not None and mask.any() and rgb_inset is not None:
+        # same magnified window on the RGB pane (heads are pixel-aligned)
+        iw = 320
+        gx, gy = 56 + 18, y0 + vh - iw - 18
+        panel.paste(rgb_inset, (gx, gy))
+        d.rectangle([gx - 2, gy - 2, gx + iw + 1, gy + iw + 1],
+                    outline=col, width=3)
+        ilab = f"КРОП ×{zoom:.1f}"
+        f18 = font(18)
+        lw = d.textlength(ilab, f18)
+        d.rectangle([gx - 2, gy - 34, gx + lw + 18, gy - 2],
+                    fill=(12, 13, 16))
+        d.text((gx + 8, gy - 30), ilab, font=f18, fill=TXT)
     rgb_small = None  # freed
 
     # footer strip
@@ -192,20 +332,43 @@ def compose_panel(slug, rgb_img, depth_rgb, mask, fused, run_tag=""):
     n_r = fused.get("n_reads")
     conf = fused.get("confidence")
     d.text((600, fy + 26), "ЧТЕНИЯ · УВЕРЕННОСТЬ", font=font(20), fill=SUB)
-    d.text((600, fy + 56), f"{n_r if n_r is not None else '—'} reads",
-           font=font(34, mono=True), fill=TXT)
-    # confidence meter
+    reads_s = f"{n_r if n_r is not None else '—'} reads"
+    d.text((600, fy + 56), reads_s, font=font(34, mono=True), fill=TXT)
+    if n_cloud:
+        d.text((600 + d.textlength(reads_s, font(34, mono=True)) + 22,
+                fy + 68), f"· облако {n_cloud:,} тчк".replace(",", " "),
+               font=font(20, bold=False), fill=SUB)
+    # confidence meter (= per-read agreement with the fused verdict)
     if conf is not None:
         mx0, mx1, my = 600, 980, fy + 104
         d.rounded_rectangle([mx0, my, mx1, my + 14], 7, fill=(40, 44, 52))
-        d.rounded_rectangle([mx0, my,
-                             mx0 + (mx1 - mx0) * float(min(conf, 1.0)),
-                             my + 14], 7, fill=col)
+        if float(conf) > 0:
+            d.rounded_rectangle([mx0, my,
+                                 mx0 + (mx1 - mx0) * float(min(conf, 1.0)),
+                                 my + 14], 7, fill=col)
         d.text((mx1 + 14, my - 8), f"{float(conf):.2f}",
                font=font(22, mono=True), fill=TXT)
-    reason = (fused.get("reason") or "")[:104]
-    d.text((80, fy + 146), f"правило: {reason}",
-           font=font(19, mono=True, bold=False), fill=SUB)
+        if float(conf) < 0.5 and not fused.get("sensor_miss"):
+            # fused evidence overruled the per-frame votes — that IS the
+            # value of multi-read fusion; say so instead of looking broken
+            note = "→ агрегатная улика (safe-side)"
+            fn = font(17, bold=False)
+            nx = mx1 + 84
+            if nx + d.textlength(note, fn) > W - 560 - 16:
+                nx = W - 560 - 16 - d.textlength(note, fn)
+            d.text((nx, my - 6), note, font=fn, fill=SUB)
+    reason = fused.get("reason") or ""
+    max_w = (W - 560) - 80 - 30           # stop before the route chip
+    rf = None
+    for sz in (19, 18, 17):
+        rf = font(sz, mono=True, bold=False)
+        if d.textlength(f"правило: {reason}", rf) <= max_w:
+            break
+    if d.textlength(f"правило: {reason}", rf) > max_w:
+        while reason and d.textlength(f"правило: {reason}…", rf) > max_w:
+            reason = reason[:-1]
+        reason += "…"
+    d.text((80, fy + 146), f"правило: {reason}", font=rf, fill=SUB)
 
     # route decision chip
     chip_x0, chip_y0 = W - 560, fy + 22
@@ -225,12 +388,14 @@ def mock_inputs():
     """Synthetic RGB/depth/fused record for --selftest design iteration."""
     Wv, Hv = 640, 480
     rng = np.random.default_rng(7)
+    # the box must cover <50% of the central belt-estimation strip or the
+    # fallback segmentation's belt median reads the box top instead
     rgb = np.full((Hv, Wv, 3), 52, np.uint8)
     rgb[:, :, 2] += 6
-    rgb[Hv // 2 - 90:Hv // 2 + 90, Wv // 2 - 130:Wv // 2 + 130] = (188, 176, 158)
+    rgb[Hv // 2 - 70:Hv // 2 + 70, Wv // 2 - 70:Wv // 2 + 70] = (188, 176, 158)
     rgb += rng.integers(0, 6, rgb.shape, dtype=np.uint8)
     depth = np.full((Hv, Wv), 1.30, float)
-    depth[Hv // 2 - 90:Hv // 2 + 90, Wv // 2 - 130:Wv // 2 + 130] = 1.06
+    depth[Hv // 2 - 70:Hv // 2 + 70, Wv // 2 - 70:Wv // 2 + 70] = 1.06
     depth += rng.normal(0, 0.002, depth.shape)
     fused = {"zone": "B", "dims_mm": [312.0, 218.0, 174.0],
              "confidence": 0.97, "n_reads": 5,
@@ -246,7 +411,8 @@ def main():
         out.mkdir(parents=True, exist_ok=True)
         rgb, depth, fused = mock_inputs()
         dview, mask = depth_view(depth)
-        p = compose_panel("mock_box", rgb, dview, mask, fused, "selftest")
+        p = compose_panel("mock_box", rgb, dview, mask, fused, "selftest",
+                          depth_raw=depth)
         p.save(out / "perception_mock.png")
         print(f"panel: {out/'perception_mock.png'}")
         return 0
@@ -265,9 +431,32 @@ def main():
         if not npy_p.is_file():
             continue
         rgb = Image.open(rgb_p).convert("RGB")
-        dview, mask = depth_view(np.load(npy_p))
+        depth_raw = np.load(npy_p)
+        dview, mask = depth_view(depth_raw)
+        # pipeline-truth artifacts (exported by run_isaac capture_still):
+        # the measuring pipeline's own mask/cloud beat any local re-derivation
+        mask_src, n_cloud = "local", None
+        mask_p = run / f"vision_mask_{slug}.png"
+        if mask_p.is_file():
+            pm = np.array(Image.open(mask_p).convert("L")) > 127
+            if pm.shape == depth_raw.shape and pm.any():
+                mask, mask_src = pm, "pipeline"
+        cloud_p = run / f"vision_cloud_{slug}.npy"
+        if cloud_p.is_file():
+            n_cloud = int(len(np.load(cloud_p)))
+        macro_depth = macro_mask = None
+        md_p = run / f"vision_macro_depth_{slug}.npy"
+        mm_p = run / f"vision_macro_mask_{slug}.png"
+        if md_p.is_file() and mm_p.is_file():
+            macro_depth = np.load(md_p)
+            macro_mask = np.array(Image.open(mm_p).convert("L")) > 127
+            if macro_mask.shape != macro_depth.shape:
+                macro_depth = macro_mask = None
         fused = (reads.get(slug) or {}).get("fused", {})
-        p = compose_panel(slug, rgb, dview, mask, fused, run.name)
+        p = compose_panel(slug, rgb, dview, mask, fused, run.name,
+                          depth_raw=depth_raw, mask_src=mask_src,
+                          n_cloud=n_cloud, macro_depth=macro_depth,
+                          macro_mask=macro_mask)
         fp = out / f"perception_{slug}.png"
         p.save(fp)
         panels.append(fp)
@@ -277,10 +466,12 @@ def main():
         lst.write_text("".join(f"file '{p.name}'\nduration 2.5\n"
                                for p in panels) + f"file '{panels[-1].name}'\n",
                        encoding="utf-8")
+        # bare names + cwd=out: the list entries are bare filenames, so every
+        # path must resolve relative to the panels directory
         res = subprocess.run(
-            ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
+            ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", "list.txt",
              "-vf", "fps=30", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-             str(out / "perception_demo.mp4")], cwd=out, capture_output=True)
+             "perception_demo.mp4"], cwd=out, capture_output=True)
         if res.returncode == 0:
             print(f"video: {out / 'perception_demo.mp4'}")
     return 0
