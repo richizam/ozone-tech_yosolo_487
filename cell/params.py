@@ -235,6 +235,39 @@ CHUTE_D = {"cx": STATIONS["D"]["x"], "y0": 2.75, "dir": -1, **CHUTE}
 CHUTE_REVIEW = {"cx": STATIONS["REVIEW"]["x"], "y0": 3.25, "dir": +1,
                 **{**CHUTE, "width": 0.62}}
 
+# SPILL CONTAINMENT along both discharge flanks. The mouths do not tile the
+# flank: naked floor waited between the C and D mouths (x 7.80-8.40, where a
+# hold-released box_l once crept off ~1 s late and landed at x 8.08) and west
+# of the B connector (a box_s exited short at x 7.94). Real sorters run
+# continuous spill pans along the discharge side for exactly this class of
+# event. Flat lipped pans at z_top: an off-mouth item lands ON the pan
+# (above the floor gate), rests, and the spill watchdog raises an operator
+# call-out — the designed safe terminal, same policy as the escapement
+# debris pan. The south pan wraps the exception-arm pedestal with an 8 mm
+# collar (blocks the Ø9 mm rod, the smallest freight on this flank; the
+# collar pair is a designed interface in the visual-sweep whitelist).
+SPILL = {
+    "z_top": 0.30, "plate_t": 0.02, "lip_h": 0.045, "lip_t": 0.012,
+    "ped_gap": 0.008,
+    # south flank: between mouth C (x<=7.80) and mouth D (x>=8.40). The pan
+    # STOPS 50 mm short of the tray line (south tray edge y 2.69): the
+    # return leg runs carriers at return_z along the same line, so nothing
+    # may stand under it — observed spills land 30 cm south of the lip
+    # (box_l at y 2.39), well inside the pan. x edges stand 5 mm off the
+    # cage side-wall faces; fillers close the slots over the cage-wall
+    # tops beside each mouth cheek
+    "south": {"x0": 7.87, "x1": 8.33, "y0": 2.30, "y1": 2.64,
+              "fill_w": (7.80, 7.87), "fill_e": (8.33, 8.40),
+              "fill_y0": 2.50},
+    # north flank: west of the powered B connector flare, clear of the
+    # tray line (north tray edge y 3.31) for the same return-leg reason
+    "north": {"x0": 7.72, "x1": 8.09, "y0": 3.37, "y1": 3.70},
+    # resting-item watchdog zones (x0, x1, y0, y1); z window sits on the
+    # plate top, generous enough for the tallest edge freight
+    "zones": [(7.80, 8.40, 2.28, 2.66), (7.70, 8.11, 3.35, 3.72)],
+    "watch_s": 3.0,
+}
+
 
 def chute_run(cc):
     """(y_end_of_slope, y_end_of_pad) for a south(-1)/north(+1) chute."""

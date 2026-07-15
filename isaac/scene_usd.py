@@ -533,6 +533,54 @@ class SceneBuilder:
         # guarded no longer exists, and an open chute keeps every jam point
         # vertically extractable by the exception arm.
 
+    # ------------------------------------------------------------- spill pans
+    def build_spill_pans(self, mat_pad):
+        """Lipped spill pans along both discharge flanks (P.SPILL): the
+        mouths do not tile the flank, and an off-mouth discharge otherwise
+        meets naked floor. An item landing here rests ON the pan and the
+        spill watchdog raises an operator call-out — the same safe-terminal
+        policy as the escapement debris pan. The south pan wraps the
+        exception-arm pedestal with an 8 mm collar (designed interface,
+        whitelisted in the visual-sweep audit)."""
+        sp = P.SPILL
+        zc = sp["z_top"] - sp["plate_t"] / 2
+        lz = sp["z_top"] + sp["lip_h"] / 2
+        px, py = P.ARM["base"]
+        ex = 0.15 + sp["ped_gap"]
+        col = (0.58, 0.60, 0.63)
+        lipc = (0.50, 0.52, 0.55)
+
+        def plate(nm, x0, x1, y0, y1):
+            self.add_box(f"spill_{nm}",
+                         ((x0 + x1) / 2, (y0 + y1) / 2, zc),
+                         ((x1 - x0) / 2, (y1 - y0) / 2, sp["plate_t"] / 2),
+                         color=col, mat=mat_pad)
+
+        def lip_x(nm, x0, x1, y, north):
+            yc = y + (sp["lip_t"] / 2 if north else -sp["lip_t"] / 2)
+            self.add_box(f"spill_lip_{nm}",
+                         ((x0 + x1) / 2, yc, lz),
+                         ((x1 - x0) / 2, sp["lip_t"] / 2, sp["lip_h"] / 2),
+                         color=lipc, mat=mat_pad)
+
+        s = sp["south"]
+        plate("s_w", s["x0"], px - ex, s["y0"], s["y1"])
+        plate("s_e", px + ex, s["x1"], s["y0"], s["y1"])
+        plate("s_n", px - ex, px + ex, py + ex, s["y1"])
+        plate("s_fw", *s["fill_w"], s["fill_y0"], s["y1"])
+        plate("s_fe", *s["fill_e"], s["fill_y0"], s["y1"])
+        lip_x("s_w", s["x0"], px - ex, s["y0"], north=False)
+        lip_x("s_e", px + ex, s["x1"], s["y0"], north=False)
+        n = sp["north"]
+        plate("n", n["x0"], n["x1"], n["y0"], n["y1"])
+        lip_x("n_n", n["x0"], n["x1"], n["y1"], north=True)
+        self.add_box("spill_lip_n_w",
+                     (n["x0"] - sp["lip_t"] / 2,
+                      (n["y0"] + n["y1"]) / 2, lz),
+                     (sp["lip_t"] / 2, (n["y1"] - n["y0"]) / 2,
+                      sp["lip_h"] / 2),
+                     color=lipc, mat=mat_pad)
+
     # ------------------------------------------------------- B incline connector
     def build_b_connector(self, mat_belt, mat_wall):
         """Powered incline belt from the B-station tray lip up to the FIXED
@@ -1197,6 +1245,7 @@ class SceneBuilder:
         self.build_chute("D", P.CHUTE_D, wall_d, m_chute, m_pad, m_wall)
         self.build_chute("REVIEW", P.CHUTE_REVIEW, wall_r, m_chute, m_pad,
                          m_wall)
+        self.build_spill_pans(m_pad)
         for zone, cage in cages.items():
             self.build_cage(zone, cage, m_wall, m_mat)
         self.build_cage("REVIEW", rp, m_wall, m_mat, tag="reviewpen")

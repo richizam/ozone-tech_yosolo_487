@@ -241,6 +241,57 @@ def _chute_xml(zone, cc, wall_at):
     return g
 
 
+# ------------------------------------------------------------- spill pans
+def _spill_xml():
+    """Lipped spill pans along both discharge flanks (P.SPILL): the mouths do
+    not tile the flank, and an off-mouth discharge otherwise meets naked
+    floor. An item landing here rests ON the pan; the spill watchdog raises
+    an operator call-out (same safe-terminal policy as the debris pan).
+    The south pan wraps the exception-arm pedestal with an 8 mm collar."""
+    sp = P.SPILL
+    zc = sp["z_top"] - sp["plate_t"] / 2
+    lip_zc = sp["z_top"] + sp["lip_h"] / 2
+    px, py = P.ARM["base"]
+    ex = 0.15 + sp["ped_gap"]                  # pedestal exclusion half-size
+    s = sp["south"]
+    g = []
+
+    def plate(nm, x0, x1, y0, y1):
+        g.append(f'<geom name="spill_{nm}" type="box" '
+                 f'size="{(x1 - x0) / 2:.4f} {(y1 - y0) / 2:.4f} '
+                 f'{sp["plate_t"] / 2}" '
+                 f'pos="{(x0 + x1) / 2:.4f} {(y0 + y1) / 2:.4f} {zc:.4f}" '
+                 f'rgba="0.58 0.60 0.63 1"/>')
+
+    def lip(nm, x0, x1, y, north):
+        yc = y + (sp["lip_t"] / 2 if north else -sp["lip_t"] / 2)
+        g.append(f'<geom name="spill_lip_{nm}" type="box" '
+                 f'size="{(x1 - x0) / 2:.4f} {sp["lip_t"] / 2} '
+                 f'{sp["lip_h"] / 2:.4f}" '
+                 f'pos="{(x0 + x1) / 2:.4f} {yc:.4f} {lip_zc:.4f}" '
+                 f'rgba="0.50 0.52 0.55 1"/>')
+
+    # south flank, pedestal collar cut out of the plate
+    plate("s_w", s["x0"], px - ex, s["y0"], s["y1"])
+    plate("s_e", px + ex, s["x1"], s["y0"], s["y1"])
+    plate("s_n", px - ex, px + ex, py + ex, s["y1"])
+    plate("s_fw", *s["fill_w"], s["fill_y0"], s["y1"])
+    plate("s_fe", *s["fill_e"], s["fill_y0"], s["y1"])
+    lip("s_w", s["x0"], px - ex, s["y0"], north=False)
+    lip("s_e", px + ex, s["x1"], s["y0"], north=False)
+    # north flank, west of the B connector
+    n = sp["north"]
+    plate("n", n["x0"], n["x1"], n["y0"], n["y1"])
+    lip("n_n", n["x0"], n["x1"], n["y1"], north=True)
+    g.append(f'<geom name="spill_lip_n_w" type="box" '
+             f'size="{sp["lip_t"] / 2} {(n["y1"] - n["y0"]) / 2:.4f} '
+             f'{sp["lip_h"] / 2:.4f}" '
+             f'pos="{n["x0"] - sp["lip_t"] / 2:.4f} '
+             f'{(n["y0"] + n["y1"]) / 2:.4f} {lip_zc:.4f}" '
+             f'rgba="0.50 0.52 0.55 1"/>')
+    return g
+
+
 # ---------------------------------------------------------- B incline connector
 def _b_connector_xml():
     """Powered incline belt from the B-station tray lip up to the FIXED belt
@@ -538,6 +589,9 @@ def _executive_geoms():
 
     # powered incline connector to the FIXED belt B
     g += _b_connector_xml()
+
+    # spill pans along both discharge flanks (operator-call-out terminals)
+    g += _spill_xml()
 
     g += _stations_xml()
     g += _beacons()

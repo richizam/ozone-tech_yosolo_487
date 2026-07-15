@@ -465,7 +465,13 @@ class SorterControl:
                     trig = st["x"] - st["trigger_lead_m"] - extra
                     # SEAT TIME: never tilt during landing settle — long
                     # C-bound freight otherwise tilts AT the landing instant
-                    # and discharges while still bouncing from the drop
+                    # and discharges while still bouncing from the drop.
+                    # NOTE: the flat value is DESIGN-BINDING for C freight —
+                    # induction lands essentially at the C trigger, so every
+                    # C discharge fires right at this boundary. A length-
+                    # scaled seat was tried (box_l late-slide hunt) and
+                    # REJECTED by the matrix: deferring long freight shifts
+                    # every C discharge east and misroutes nominal seeds.
                     seated = (c.get("t_tagged") is None
                               or t - c["t_tagged"] >= self.S["seat_time_s"])
                     if seated and x >= trig \

@@ -276,6 +276,26 @@ class ItemManager:
                 self.bus.publish("pan_callout", t=t, slug=slug)
                 self._deliver(slug, "MANUAL", t)
                 continue
+            # ---- spill-pan watchdog: an off-mouth discharge lands ON a
+            # flank pan (never the floor) -> operator call-out terminal
+            sp = P.SPILL
+            on_spill = (not on_car
+                        and sp["z_top"] - 0.03 < pos[2] < sp["z_top"] + 0.45
+                        and any(x0 - 0.02 < pos[0] < x1 + 0.02
+                                and y0 - 0.02 < pos[1] < y1 + 0.02
+                                for x0, x1, y0, y1 in sp["zones"]))
+            if on_spill and st.get("spill_since") is None:
+                st["spill_since"] = t
+            elif not on_spill:
+                st.pop("spill_since", None)
+            if (st.get("spill_since") is not None
+                    and t - st["spill_since"] > sp["watch_s"]
+                    and not st.get("spill_handled")):
+                st["spill_handled"] = True
+                self.ev(t, "spill_callout", slug,
+                        pos=[round(float(v), 3) for v in pos])
+                self._deliver(slug, "MANUAL", t)
+                continue
             # ---- jam watchdog (operator call-out / arm recovery, via run_sim)
             if "routed_t" in st and not st.get("jam_reported"):
                 if t - st["watch_t"] >= P.JAM_TIMEOUT_S:
