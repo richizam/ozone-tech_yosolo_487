@@ -62,8 +62,13 @@ class Recorder:
         self.camera = camera
         self.dt_frame = 1.0 / fps
         self.next_t = 0.0
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         self.writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"),
                                       fps, size)
+        if not self.writer.isOpened():
+            # cv2 fails silently otherwise and the run "records" nothing
+            raise RuntimeError(f"VideoWriter could not open {path}")
         self.path = path
 
     def maybe_capture(self, data, t):
@@ -225,6 +230,15 @@ class ItemManager:
             # end-of-line operator call-out (dead tilt / unresolvable freight)
             if st.get("end_callout") and not st.get("end_handled"):
                 st["end_handled"] = True
+                self._deliver(slug, "MANUAL", t)
+                continue
+            # failed-recovery safety net: the arm aborted mid-carry and the
+            # dropped item never reached a terminal (wedged on a rim/deck is
+            # neither contained nor floor) — a persisting jam ends at the
+            # operator, not in limbo
+            if st.get("manual_at") is not None and t >= st["manual_at"]:
+                self.ev(t, "recovery_giveup", slug,
+                        pos=[round(float(v), 3) for v in pos])
                 self._deliver(slug, "MANUAL", t)
                 continue
             # ---- deliveries
@@ -813,7 +827,10 @@ def main(argv=None):
             return
         st["recovering"] = False
         if m.get("carrying"):
-            # item dropped mid-carry: let the delivery detector judge the landing
+            # item dropped mid-carry: give the delivery detector a grace
+            # window; if the landing never reaches a terminal, the item-loop
+            # safety net converts it into an operator call-out (MANUAL)
+            st["manual_at"] = m["t"] + 12.0
             return
         st["attempts"] = st.get("attempts", 0) + 1
         if st["attempts"] >= 2:

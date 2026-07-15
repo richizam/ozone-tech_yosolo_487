@@ -27,3 +27,9 @@ cell/assets/meshes/custom_*.stl
 
 # fetch scratch area (canonical committed set: videos_final/)
 docs/report/isaac_evidence/xbelt/videos/
+
+# guion de trabajo del video (documento interno, no entregable)
+docs/report/video_script.md
+
+# debug scratch de contenedor (reproducciones puntuales)
+out_dbg/

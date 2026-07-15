@@ -268,6 +268,15 @@ bash isaac/run_matrix.sh /out/xbelt_matrix && python3 tools/consolidate_isaac_ma
 `perfect_decktop.mp4`, `perfect_deckfront.mp4`, `cine_orbit.mp4`,
 `cine_dolly.mp4`, `cine_crane.mp4`.
 
+**Цифровой двойник MuJoCo (CPU, без GPU):**
+[twin_videos/](isaac_evidence/twin_videos/) — записи прогонов
+валидационного двойника: `twin_nominal_overview.mp4` /
+`twin_nominal_top.mp4` (номинал, 11 официальных товаров),
+`twin_borderline_overview.mp4` (пограничный набор),
+`twin_fault_jam_overview.mp4` (заклинивание и разбор). Та же ячейка из
+того же `cell/params.py`; каждый ролик воспроизводим одной командой
+(`python -m cell.run_sim ... --record`).
+
 **Финальная карточка метрик:**
 [endcard.png](isaac_evidence/xbelt/videos_final/endcard.png) — сгенерирована
 `tools/make_endcard.py` из консолидированной матрицы (никогда не расходится

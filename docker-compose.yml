@@ -1,0 +1,14 @@
+# docker compose up          — полная валидационная матрица твина (CPU)
+# docker compose run demo    — одиночный прогон с записью MP4 в ./out/
+services:
+  validate:
+    build: .
+
+  demo:
+    build: .
+    profiles: ["demo"]
+    command: >
+      python -m cell.run_sim --scenario scenarios/base.yaml --seed 42
+      --perception camera --record /out/twin_nominal.mp4 --camera overview
+    volumes:
+      - ./out:/out

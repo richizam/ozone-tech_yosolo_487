@@ -121,11 +121,16 @@ SORTER = {
     # that the C discharge point shifts < 0.08 m east (mouth half 0.35).
     "seat_time_s": 0.15,
     # SMALL-FREIGHT TILT: len < small_len_m discharges at tilt_deg *
-    # small_tilt_frac (28.5 deg) — still 10 deg above the slide onset, but
-    # without vault energy: a full-38 pen rolled off at ~1.4 m/s, banked off
-    # the mouth cheeks and hopped the throat window that the tray's own
-    # sweep keeps open (stress s11). Real sorters modulate tilt profiles.
-    "small_len_m": 0.20, "small_tilt_frac": 0.75,
+    # small_tilt_frac — reduced vault energy, but decisively past the slide
+    # onset. History of this number (stress s11 pen, both times): full 38 deg
+    # rolled the pen off at ~1.4 m/s — it banked off the mouth cheeks and
+    # hopped the throat window; 0.75 (28.5 deg) sat in the DRIBBLE band —
+    # the pen crept off so slowly it dropped through the lip->mouth gap on
+    # one physics stack and never left the tray on another (three engines,
+    # three outcomes = marginal design). 0.85 (32.3 deg, exit ~1.25 m/s)
+    # discharges decisively below vault energy on MuJoCo Windows/Linux and
+    # PhysX alike. Real sorters modulate tilt profiles the same way.
+    "small_len_m": 0.20, "small_tilt_frac": 0.85,
     # DISCHARGE CONFIRM, shape-independent: the geometric "gone" condition
     # must PERSIST before the carrier is released (an item pivoting on the
     # tray edge oscillates through any threshold — a one-tick confirm let

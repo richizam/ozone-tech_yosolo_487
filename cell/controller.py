@@ -142,10 +142,23 @@ class Controller:
             if self._at_target(self._target):
                 self._advance(t)
             elif t > self._deadline:
-                self.bus.publish("cell_event", t=t, event="phase_timeout",
-                                 slug=self.job["slug"], state=self.state,
-                                 err=round(float(np.max(np.abs(self._q_actual() - self._target))), 4))
-                self._abort(t)
+                err = round(float(np.max(np.abs(self._q_actual()
+                                                - self._target))), 4)
+                if self.state == "LOWER":
+                    # descent blocked — typically by the carried item's own
+                    # bulk against the receptacle rim/contents. The gripper
+                    # is already over the place footprint, so release HERE,
+                    # exactly like an operator would; the jam watchdog
+                    # re-escalates if the freight still fails to settle
+                    self.bus.publish("cell_event", t=t,
+                                     event="released_on_stall",
+                                     slug=self.job["slug"], err=err)
+                    self._advance(t)     # LOWER handler: weld off -> RELEASE
+                else:
+                    self.bus.publish("cell_event", t=t, event="phase_timeout",
+                                     slug=self.job["slug"], state=self.state,
+                                     err=err)
+                    self._abort(t)
         elif self.state in ("ATTACH", "RELEASE"):
             self.timer -= dt
             if self.timer <= 0:
