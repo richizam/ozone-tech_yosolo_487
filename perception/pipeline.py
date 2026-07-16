@@ -58,6 +58,20 @@ def _poly_ratio(pts_2d):
     return None if r is None else float(r / R)
 
 
+def _mirrored_hull_ratio(v_c, z, zc):
+    """Rectangle-stable section ratio for secondary sweep axes: r_in/R of the
+    band contour closed by mirror symmetry about the resting mid-height (the
+    belt hides the underbelly; convex resting bodies are symmetric there —
+    the same closure the ground-truth section uses). A rectangle's hull
+    ratio caps at 0.707 for ANY cut angle, so diagonal cuts of boxes cannot
+    inflate it the way the angular-bin estimator can."""
+    if len(v_c) < 12:
+        return None
+    sec = np.column_stack([np.concatenate([v_c, v_c]),
+                           np.concatenate([z, 2.0 * zc - z])])
+    return _poly_ratio(sec)
+
+
 class LookaheadPerception:
     """Depth sensing via ray casting (mj_multiRay) — deterministic, no OpenGL,
     identical results headless and in CI. Two virtual sensors, both standard
@@ -275,20 +289,21 @@ class LookaheadPerception:
         # inscribed/circumscribed ratio for convex sections. One formulation
         # covers cylinders, prisms (hexagon 0.866, octagon 0.749), domes AND
         # small rounded end caps (the «Цилиндр» trap) without circle fitting.
-        u_dir = np.array([np.cos(ang), np.sin(ang)])
-        v_dir = np.array([-np.sin(ang), np.cos(ang)])
+        # AXIS SWEEP (hex-prism blind-spot fix, unknown-shape campaign): the
+        # min-area-rect axis is DEGENERATE for near-square footprints — a
+        # squat prism at an odd yaw gets a diagonal station sweep whose bands
+        # mix roof and flank points into a rectangle-like contour (a lying
+        # hexagon read 0.73 instead of 0.866). The official criterion is a
+        # circular section about ANY axis, so body sections are ALSO measured
+        # over swept candidate axes and the evidence keeps the maximum.
+        # Secondary axes use the mirrored-hull inscribed/circumscribed ratio
+        # (r_in/R), NOT the angular-bin estimator: a rectangle's hull ratio
+        # is capped at 0.707 for ANY cut angle, while the bin estimator
+        # inflates on diagonal cuts of boxes (box_s read 0.78 on a diagonal
+        # axis and misrouted B->D — caught by the smoke suite). End-cap
+        # densification, revolution voting and the minor-thickness estimate
+        # stay on the primary axis where their semantics live.
         center = pts[:, :2].mean(axis=0)
-        u = (pts[:, :2] - center) @ u_dir
-        v = (pts[:, :2] - center) @ v_dir
-        # station plan (per the agreed slicing strategy): a body sweep along
-        # the main axis PLUS densified transverse slices near BOTH ends —
-        # rounded end caps are small, and their circular sections must be
-        # confirmed by SEVERAL NEARBY slices, not one lucky band
-        u_min, u_max = float(u.min()), float(u.max())
-        stations = [(s, "body") for s in np.linspace(u_min + 0.05, u_max - 0.05, 7)]
-        end_offsets = np.arange(0.006, 0.046, 0.004)
-        stations += [(u_min + o, "end") for o in end_offsets]
-        stations += [(u_max - o, "end") for o in end_offsets]
         circ_hits = []                 # (u_station, kind) with ratio >= threshold
         end_support = []               # end stations just below threshold (>= T-0.03)
         circ_minor = []                # 2*min(rho) of circular-ish sections: the
@@ -300,65 +315,100 @@ class LookaheadPerception:
         # caps); the 120-deg window still contains square corners at 45 deg,
         # so box sections keep their true ~0.71 while circles read ~1
         theta_edges = np.linspace(np.deg2rad(30), np.deg2rad(150), 9)
-        for s, s_kind in stations:
-            band = np.abs(u - s) < 0.005
-            if band.sum() < 12:
-                continue
-            ub, vb, zb = u[band], v[band], z_rel[band]
-            h_band = float(zb.max())
-            if h_band < 0.008:
-                continue
-            vc = 0.5 * (vb.min() + vb.max())
-            # the section axis of a resting item sits at half the ITEM height
-            # (a tapered end cap keeps the body's axis, not the band's own)
-            zc = 0.5 * height
-            theta = np.arctan2(zb - zc, vb - vc)
-            rho = np.hypot(vb - vc, zb - zc)
-            # (b1) prism path: outer radius per angular bin, min/max ratio
-            rho_out = []
-            for lo_e, hi_e in zip(theta_edges[:-1], theta_edges[1:]):
-                in_bin = (theta >= lo_e) & (theta < hi_e)
-                if in_bin.any():
-                    rho_out.append(float(rho[in_bin].max()))
-            if len(rho_out) >= 6:
-                ratio = min(rho_out) / max(rho_out)
-                sections.append((f"radial@u{s * 1000:+.0f}mm", ratio))
-                if ratio >= 0.75 and s_kind == "body":
-                    circ_minor.append(2.0 * min(rho_out))
-                if ratio >= RATIO_THRESHOLD:
-                    circ_hits.append((s, s_kind))
-                elif s_kind == "end" and ratio >= RATIO_THRESHOLD - 0.03:
-                    end_support.append(s)
-            # (b2) surface-of-revolution path: tapering features (end caps!)
-            # have rho constant across angles at each axial position even
-            # though rho varies along the axis — test per 2 mm axial sub-bin
-            votes, refutes = 0, 0
-            for u_sub in np.arange(ub.min(), ub.max(), 0.002):
-                sub = (ub >= u_sub) & (ub < u_sub + 0.002)
-                if sub.sum() < 6:
+        # the section axis of a resting item sits at half the ITEM height
+        # (a tapered end cap keeps the body's axis, not the band's own)
+        zc = 0.5 * height
+        for k_ax in range(12):
+            ang_c = ang + k_ax * (np.pi / 12.0)
+            primary = k_ax == 0
+            u_dir = np.array([np.cos(ang_c), np.sin(ang_c)])
+            v_dir = np.array([-np.sin(ang_c), np.cos(ang_c)])
+            u = (pts[:, :2] - center) @ u_dir
+            v = (pts[:, :2] - center) @ v_dir
+            # station plan (per the agreed slicing strategy): a body sweep
+            # along the axis PLUS, on the primary axis only, densified
+            # transverse slices near BOTH ends — rounded end caps are small,
+            # and their circular sections must be confirmed by SEVERAL
+            # NEARBY slices, not one lucky band
+            u_min, u_max = float(u.min()), float(u.max())
+            stations = [(s, "body")
+                        for s in np.linspace(u_min + 0.05, u_max - 0.05, 7)]
+            if primary:
+                end_offsets = np.arange(0.006, 0.046, 0.004)
+                stations += [(u_min + o, "end") for o in end_offsets]
+                stations += [(u_max - o, "end") for o in end_offsets]
+            ax_tag = "" if primary else f"/ax{k_ax}"
+            for s, s_kind in stations:
+                band = np.abs(u - s) < 0.005
+                if band.sum() < 12:
                     continue
-                th = theta[sub]
-                if np.ptp(th) < np.deg2rad(80):
+                ub, vb, zb = u[band], v[band], z_rel[band]
+                h_band = float(zb.max())
+                if h_band < 0.008:
                     continue
-                r_sub = rho[sub]
-                med = float(np.median(r_sub))
-                if med < 0.004:
-                    continue
-                if sub.sum() >= 8 and np.ptp(ub[sub]) > 5e-4:
-                    # remove the axial taper (expected for cones/domes) so the
-                    # spread measures angular asymmetry only
-                    trend = np.polyval(np.polyfit(ub[sub], r_sub, 1), ub[sub])
-                    resid = r_sub - trend
+                vc = 0.5 * (vb.min() + vb.max())
+                theta = np.arctan2(zb - zc, vb - vc)
+                rho = np.hypot(vb - vc, zb - zc)
+                if primary:
+                    # (b1) prism path: outer radius per angular bin,
+                    # min/max ratio
+                    rho_out = []
+                    for lo_e, hi_e in zip(theta_edges[:-1], theta_edges[1:]):
+                        in_bin = (theta >= lo_e) & (theta < hi_e)
+                        if in_bin.any():
+                            rho_out.append(float(rho[in_bin].max()))
+                    if len(rho_out) >= 6:
+                        ratio = min(rho_out) / max(rho_out)
+                        sections.append(
+                            (f"radial@u{s * 1000:+.0f}mm", ratio))
+                        if ratio >= 0.75 and s_kind == "body":
+                            circ_minor.append(2.0 * min(rho_out))
+                        if ratio >= RATIO_THRESHOLD:
+                            circ_hits.append((s, s_kind))
+                        elif s_kind == "end" and ratio >= RATIO_THRESHOLD - 0.03:
+                            end_support.append(s)
                 else:
-                    resid = r_sub - med
-                spread = float(np.percentile(resid, 95) - np.percentile(resid, 5)) / med
-                if spread < 0.12:
-                    votes += 1
-                elif spread > 0.5:
-                    refutes += 1        # interior fill (a flat face crossing the band)
-            if votes >= 2 and votes > refutes:
-                sections.append((f"revolution@u{s * 1000:+.0f}mm", 0.995))
-                circ_hits.append((s, s_kind))
+                    # secondary axis: rectangle-stable mirrored-hull r_in/R
+                    ratio = _mirrored_hull_ratio(vb - vc, zb, zc)
+                    if ratio is not None:
+                        sections.append(
+                            (f"radial@u{s * 1000:+.0f}mm{ax_tag}", ratio))
+                        if ratio >= RATIO_THRESHOLD:
+                            circ_hits.append((s, s_kind))
+                    continue
+                # (b2) surface-of-revolution path: tapering features (end
+                # caps!) have rho constant across angles at each axial
+                # position even though rho varies along the axis — test per
+                # 2 mm axial sub-bin
+                votes, refutes = 0, 0
+                for u_sub in np.arange(ub.min(), ub.max(), 0.002):
+                    sub = (ub >= u_sub) & (ub < u_sub + 0.002)
+                    if sub.sum() < 6:
+                        continue
+                    th = theta[sub]
+                    if np.ptp(th) < np.deg2rad(80):
+                        continue
+                    r_sub = rho[sub]
+                    med = float(np.median(r_sub))
+                    if med < 0.004:
+                        continue
+                    if sub.sum() >= 8 and np.ptp(ub[sub]) > 5e-4:
+                        # remove the axial taper (expected for cones/domes)
+                        # so the spread measures angular asymmetry only
+                        trend = np.polyval(
+                            np.polyfit(ub[sub], r_sub, 1), ub[sub])
+                        resid = r_sub - trend
+                    else:
+                        resid = r_sub - med
+                    spread = float(np.percentile(resid, 95)
+                                   - np.percentile(resid, 5)) / med
+                    if spread < 0.12:
+                        votes += 1
+                    elif spread > 0.5:
+                        refutes += 1    # interior fill (flat face in band)
+                if votes >= 2 and votes > refutes:
+                    sections.append((f"revolution@u{s * 1000:+.0f}mm", 0.995))
+                    circ_hits.append((s, s_kind))
 
         max_ratio = max((r for _, r in sections), default=0.0)
         minor_mm = float(np.median(circ_minor) * 1000) if circ_minor else None
