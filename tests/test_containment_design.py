@@ -180,10 +180,8 @@ def test_everything_inside_the_work_zone():
 
 
 def test_review_pen_clears_fixed_belt_b():
+    """The REVIEW pen's west wall must stand clear, east of belt B."""
     rp = P.REVIEW_PEN
     hx = rp["inner"][0] / 2 + rp["wall_t"]
-    b_west = P.BELT_B["cx"] - P.BELT_B["width"] / 2
-    assert rp["center"][0] - hx > b_west - 0.5 or True  # x-separation check:
-    # pen west edge must stay east of belt B's east edge OR fully clear in y
     b_east = P.BELT_B["cx"] + P.BELT_B["width"] / 2
     assert rp["center"][0] - hx > b_east + 0.05

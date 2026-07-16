@@ -103,7 +103,9 @@ dressing.py       industrial presentation layer (lighting truss, signage,
 asset_shells.py   official conveyor/robot/sensor assets as sanitized shells
 cinematic.py      cinematic camera paths + item-follow camera
 run_matrix.sh     the validation matrix (below)
-showcase5.sh      the final video set
+showcase5b.sh     the final video set (hardened: timeout + retry per clip)
+proof_renders.sh  mechanical before/after proof clips
+master_pipeline.sh  matrix -> gates -> stills, one command (aborts on gate fail)
 ```
 
 ## Run it (inside the isaac-sim container)

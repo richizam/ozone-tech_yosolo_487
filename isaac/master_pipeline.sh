@@ -28,16 +28,26 @@ echo "=== [master] CONSOLIDATE $(date -u) ==="
 python3 "$REPO/tools/consolidate_isaac_matrix.py" "$OUT/xbelt_matrix_final"
 GATE_RC=$?
 echo "=== [master] gates rc=$GATE_RC ==="
+# a failed gate stops the pipeline: everything downstream (audit, stills,
+# clips) would otherwise present artifacts from a build that did not pass
+if [ "$GATE_RC" -ne 0 ]; then
+  echo "=== [master] ABORT: gates failed (rc=$GATE_RC) ==="
+  touch "$OUT/GATES_FAILED"
+  exit "$GATE_RC"
+fi
 
 echo "=== [master] AUDIT $(date -u) ==="
 docker run --name isaacaudit "${DK[@]}" \
   nvcr.io/nvidia/isaac-sim:6.0.1 \
   /workspace/sortmaster/isaac/audit_clearance.py \
   --out /workspace/sortmaster_out/audit_final
-echo "=== [master] audit rc=$? ==="
-
-echo "=== [master] STILLS $(date -u) ==="
-bash "$REPO/isaac/capture_stills.sh" "$OUT/stills_final"
+AUDIT_RC=$?
+echo "=== [master] audit rc=$AUDIT_RC ==="
+if [ "$AUDIT_RC" -ne 0 ]; then
+  echo "=== [master] ABORT: clearance audit failed (rc=$AUDIT_RC) ==="
+  touch "$OUT/AUDIT_FAILED"
+  exit "$AUDIT_RC"
+fi
 
 echo "=== [master] MATRIX_PHASE_DONE $(date -u) (gates rc=$GATE_RC) ==="
 touch "$OUT/MATRIX_PHASE_DONE"

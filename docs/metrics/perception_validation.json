@@ -1,19 +1,58 @@
 {
-  "poses_per_item": 10,
-  "seed": 77,
-  "classifications": 110,
-  "category_accuracy": 0.9909,
-  "dims_err_mean_mm": 3.69,
-  "dims_err_p95_mm": 10.76,
-  "dims_err_max_mm": 31.0,
-  "misclassified": [
+  "poses_per_item": 6,
+  "seed": 5,
+  "classifications": 96,
+  "official_items": 11,
+  "category_accuracy_official": 1.0,
+  "permissive_errors": 0,
+  "conservative_deviations": 6,
+  "dims_err_mean_mm": 3.75,
+  "dims_err_p95_mm": 9.65,
+  "dims_err_max_mm": 49.3,
+  "permissive_detail": [],
+  "conservative_detail": [
     {
-      "slug": "cylinder",
+      "slug": "bl_rsq_b",
+      "pose": 0,
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.807
+    },
+    {
+      "slug": "bl_rsq_b",
       "pose": 1,
-      "zone_true": "D",
-      "zone_perceived": "B",
-      "max_ratio": 0.906,
-      "dims_err_mm": 2.8
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.807
+    },
+    {
+      "slug": "bl_rsq_b",
+      "pose": 2,
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.807
+    },
+    {
+      "slug": "bl_rsq_b",
+      "pose": 3,
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.803
+    },
+    {
+      "slug": "bl_rsq_b",
+      "pose": 4,
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.807
+    },
+    {
+      "slug": "bl_rsq_b",
+      "pose": 5,
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.807
     }
-  ]
+  ],
+  "min_per_item_accuracy_official": 1.0
 }

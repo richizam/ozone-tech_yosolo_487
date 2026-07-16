@@ -112,16 +112,26 @@ def main():
               f"| {r['carrier_commands_count']} "
               f"| {r['direct_velocity_writes_nominal']} |")
     print(json.dumps(agg, indent=2))
+    # A missing measurement must FAIL the gate, never pass it silently: an
+    # absent margin or an absent cube11 proof means the matrix did not run
+    # what it claims to prove. (The cube11 proof lives in the edge runs, so
+    # it is only required when the matrix includes them.)
+    has_edge = any("edge" in name for name in runs)
     ok = (agg["total_unsafe_errors"] == 0
           and agg["total_floor_drops"] == 0
           and (agg["min_containment_rate"] or 0) >= 1.0
           and agg["total_direct_velocity_writes_nominal"] == 0
           and agg["nominal_classification_accuracy"] >= TARGETS["classification_accuracy"]
           and agg["nominal_routing_accuracy"] >= TARGETS["routing_accuracy"]
-          and (agg["min_command_margin_s"] is None
-               or agg["min_command_margin_s"] > 0)
-          and (agg["cube11_proof"] is None
-               or agg["cube11_proof"]["delivered"] == "B"))
+          and agg["min_command_margin_s"] is not None
+          and agg["min_command_margin_s"] > 0
+          and (not has_edge
+               or (agg["cube11_proof"] is not None
+                   and agg["cube11_proof"]["delivered"] == "B")))
+    if agg["min_command_margin_s"] is None:
+        print("GATE FAIL: no command margin logged in any run")
+    if has_edge and agg["cube11_proof"] is None:
+        print("GATE FAIL: edge runs present but no 11 mm cube proof found")
     print(f"GATES: {'PASS' if ok else 'CHECK FAILURES ABOVE'}")
     return 0 if ok else 1
 

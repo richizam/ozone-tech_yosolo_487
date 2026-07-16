@@ -10,8 +10,12 @@ Flow (all freight motion is surface/gravity contact physics):
   * the escapement releases the item synchronized to an inbound EMPTY tray;
     the item rides off the belt-A knife nose and lands on the moving tray
     (landing offset measured per item);
-  * the carrier train (real prismatic velocity drives; revolute + angular
-    drive tilt trays) carries each item to its route's discharge station:
+  * the carrier train (chain positions are KINEMATIC — a servo-chain
+    schedule, disclosed in isaac/README.md and the report's honesty
+    section; the trays themselves hang on REAL revolute joints driven by
+    angular drives with latency/ramp/gain-noise/torque saturation, and
+    every tray-to-freight interaction is contact physics) carries each
+    item to its route's discharge station:
     C/D tilt south onto 32-deg brake chutes into the roll-cages, B tilts
     north onto a powered incline connector feeding the FIXED belt B, REVIEW
     tilts north into the manual-review pen (low confidence, double

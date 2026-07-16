@@ -150,7 +150,7 @@ Machine-readable: [docs/ground_truth/item_ground_truth.json](docs/ground_truth/i
 ├── scenarios/                   ← base, borderline, close_spacing, low_confidence,
 │                                  fault_jam, failed_transfer, stress_mix
 ├── tests/                       ← rules + kinematics + containment invariants + sensor-config
-│                                  truth + end-to-end smoke (pytest, 68 tests)
+│                                  truth + end-to-end smoke (pytest, 72 tests)
 ├── perception/                  ← ray-cast multi-head sensing + geometric classification
 │   ├── pipeline.py              ← DWS sensor suite → dims, sections, category, confidence
 │   ├── geometry.py              ← min-area rect, circle fit, envelope primitives
@@ -204,9 +204,19 @@ uv pip install --python .venv -r requirements.txt
 # Record a demo MP4 of any run (cameras: overview | top_view | routing | lookahead)
 .venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --record demo.mp4 --camera overview --fps 30
 
-# Perception validation campaign: 11 items x N randomized poses, camera data only
+# Perception validation campaign: official + borderline items x N randomized
+# poses, camera data only. Gates: official-set accuracy >=95% (currently 1.0)
+# AND zero permissive errors — nothing the rules exclude may be seen as
+# sorter-bound. Borderline bl_* items sit within 0.02 of a threshold, so their
+# conservative verdicts are reported, not scored as misses.
 .venv/Scripts/python -m perception.validate --poses 10 --seed 5
-# → docs/metrics/perception_validation.{csv,json}; gate: >=95% categories
+# → docs/metrics/perception_validation.{csv,json}
+
+# Unknown-shape robustness: 30 procedural solids the cell has never seen,
+# measured against the official rules computed from the mesh (the private-set
+# question, answered with numbers — incl. the two permissive classes we found)
+.venv/Scripts/python tools/unknown_shape_campaign.py --n 30 --poses 2 --seed 11
+# → docs/report/unknown_shape_campaign.{md,json}
 
 # Flow model: capacity & queueing from measured cycle times
 .venv/Scripts/python -m flow.model    # → flow/out/sweep.csv + flow_sweep.png
@@ -292,7 +302,7 @@ details: [isaac/README.md](isaac/README.md).
 | 2. Readiness matrix (УГТ 4×4) | 20 | CV L4 × Executive L4 = validated sim vs calculations |
 | 3. Category correctness | 20 | Formal-rule classifier + borderline analysis + test-set demo |
 | 4. Executive part & manipulation | 30 | Tilt-tray sorter in real physics: full cycle (signal → tilt → discharge → tray re-flattens), size-independent divert incl. 11 mm cube, per-shape behaviour swept, safety concept |
-| 5. Performance & timing | 20 | Measured cycle_mean/p95/max + perception_latency_ms + command_margin_s per item; look-ahead sync (verdict committed before the escapement; min command margin > 1.4 s; belt never stops); fault/overload scenario suite |
+| 5. Performance & timing | 20 | Measured cycle_mean/p95/max + perception_latency_ms + command_margin_s per item; look-ahead sync (verdict committed before the escapement; **min command margin 0.95 s** across the whole matrix; belt never stops); fault/overload scenario suite |
 | 6. Integration & realism | 15 | One message bus, category → command trace, industrially plausible cell |
 | 7. Report, reproducibility, README | 15 | This README, Docker one-command run, full report |
 
@@ -343,7 +353,16 @@ details: [isaac/README.md](isaac/README.md).
   pipeline's OWN export (`RTXPerception.export_masks` → `vision_mask_*.png`,
   `vision_cloud_*.npy`, incl. the close-range macro head), pixel-aligned with
   the saved stills — not a visualization-side re-derivation.
-- **Cloud links** (large binaries: full showcase videos, sensor stills/NPY, CAD sources) — collected here with per-link descriptions when uploaded 🔜; the in-repo evidence set lives under [docs/report/isaac_evidence/](docs/report/isaac_evidence/).
+- **Where the binaries live.** Everything needed to judge this entry is **in
+  this repository** — no download required: the 14-run Isaac matrix with
+  per-run raw artifacts, the 22-run twin matrix
+  ([docs/report/validation/](docs/report/validation/)), the machine audits,
+  the sensor stills + exported masks/clouds, and the video set
+  ([docs/report/isaac_evidence/](docs/report/isaac_evidence/), ~520 MB). The
+  submission rules allow large binaries to sit in cloud storage with links
+  here; we kept them in-repo instead so the evidence is versioned with the
+  code that produced it. A mirror of the video set (for reviewers who prefer
+  streaming to cloning) is listed here when uploaded 🔜.
 
 ## 9. Team & contacts 🔜
 
