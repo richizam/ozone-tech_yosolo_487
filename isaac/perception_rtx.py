@@ -400,11 +400,17 @@ class RTXPerception:
             return P
         P = P[np.lexsort((P[:, 1], P[:, 0]))]
 
+        def cross2(o, a, b):
+            # explicit 2D cross: numpy 2.0 removed np.cross on 2-vectors, so
+            # the old call ran only under Isaac's bundled numpy 1.x and threw
+            # for anyone using the pinned requirements (numpy 2.x)
+            return ((a[0] - o[0]) * (b[1] - o[1])
+                    - (a[1] - o[1]) * (b[0] - o[0]))
+
         def half(seq):
             out = []
             for p in seq:
-                while len(out) >= 2 and np.cross(out[-1] - out[-2],
-                                                 p - out[-2]) <= 0:
+                while len(out) >= 2 and cross2(out[-2], out[-1], p) <= 0:
                     out.pop()
                 out.append(p)
             return out
