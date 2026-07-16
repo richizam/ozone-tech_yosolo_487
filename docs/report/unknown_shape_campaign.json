@@ -4,67 +4,10 @@
     "poses_per_shape": 2,
     "seed": 11,
     "classifications": 60,
-    "agreement_with_official_rules": 0.5167,
-    "conservative_disagreements": 25,
-    "unsafe_disagreements": 4,
-    "unsafe_detail": [
-      {
-        "slug": "unk_17_rod",
-        "pose": 0,
-        "zone_rules": "C",
-        "zone_measured": "B",
-        "agree": false,
-        "safe": false,
-        "dims_mm": [
-          424.6,
-          310.3,
-          40.0
-        ],
-        "max_ratio": 0.625
-      },
-      {
-        "slug": "unk_17_rod",
-        "pose": 1,
-        "zone_rules": "C",
-        "zone_measured": "B",
-        "agree": false,
-        "safe": false,
-        "dims_mm": [
-          424.0,
-          310.5,
-          40.0
-        ],
-        "max_ratio": 0.604
-      },
-      {
-        "slug": "unk_25_hex",
-        "pose": 0,
-        "zone_rules": "D",
-        "zone_measured": "B",
-        "agree": false,
-        "safe": false,
-        "dims_mm": [
-          119.9,
-          104.1,
-          103.1
-        ],
-        "max_ratio": 0.731
-      },
-      {
-        "slug": "unk_25_hex",
-        "pose": 1,
-        "zone_rules": "D",
-        "zone_measured": "B",
-        "agree": false,
-        "safe": false,
-        "dims_mm": [
-          120.0,
-          104.1,
-          103.1
-        ],
-        "max_ratio": 0.731
-      }
-    ]
+    "agreement_with_official_rules": 0.6667,
+    "conservative_disagreements": 20,
+    "unsafe_disagreements": 0,
+    "unsafe_detail": []
   },
   "rows": [
     {
@@ -95,11 +38,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        495.4,
-        471.0,
-        445.7
+        495.3,
+        437.9,
+        307.6
       ],
-      "max_ratio": 0.836
+      "max_ratio": 0.854
     },
     {
       "slug": "unk_01_hex",
@@ -109,31 +52,39 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        495.1,
-        460.7,
-        445.7
+        488.4,
+        423.8,
+        308.8
       ],
-      "max_ratio": 0.822
+      "max_ratio": 0.842
     },
     {
       "slug": "unk_02_thin_plate",
       "pose": 0,
       "zone_rules": "B",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "B",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        50.0,
+        37.8,
+        14.9
+      ],
+      "max_ratio": 0.75
     },
     {
       "slug": "unk_02_thin_plate",
       "pose": 1,
       "zone_rules": "B",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "B",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        50.0,
+        37.8,
+        14.8
+      ],
+      "max_ratio": 0.75
     },
     {
       "slug": "unk_03_cone",
@@ -143,11 +94,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        463.5,
-        347.3,
-        317.5
+        444.5,
+        335.3,
+        316.6
       ],
-      "max_ratio": 0.772
+      "max_ratio": 0.966
     },
     {
       "slug": "unk_03_cone",
@@ -157,11 +108,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        462.7,
-        346.7,
-        317.7
+        445.9,
+        336.1,
+        316.1
       ],
-      "max_ratio": 0.773
+      "max_ratio": 0.938
     },
     {
       "slug": "unk_04_cyl",
@@ -207,21 +158,29 @@
       "slug": "unk_06_thin_plate",
       "pose": 0,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        250.0,
+        201.4,
+        7.4
+      ],
+      "max_ratio": 0.628
     },
     {
       "slug": "unk_06_thin_plate",
       "pose": 1,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        250.0,
+        201.4,
+        7.3
+      ],
+      "max_ratio": 0.631
     },
     {
       "slug": "unk_07_rbox",
@@ -231,11 +190,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        50.2,
-        36.7,
-        33.2
+        50.0,
+        34.2,
+        32.2
       ],
-      "max_ratio": 0.74
+      "max_ratio": 0.727
     },
     {
       "slug": "unk_07_rbox",
@@ -246,10 +205,10 @@
       "safe": true,
       "dims_mm": [
         50.0,
-        37.2,
-        33.2
+        36.5,
+        32.2
       ],
-      "max_ratio": 0.728
+      "max_ratio": 0.727
     },
     {
       "slug": "unk_08_dome_tub",
@@ -279,11 +238,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        539.3,
-        140.8,
-        38.8
+        490.0,
+        38.6,
+        38.6
       ],
-      "max_ratio": 0.437
+      "max_ratio": 0.999
     },
     {
       "slug": "unk_09_rod",
@@ -293,11 +252,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        539.3,
-        140.7,
-        38.8
+        490.0,
+        38.6,
+        38.5
       ],
-      "max_ratio": 0.429
+      "max_ratio": 0.999
     },
     {
       "slug": "unk_10_rod",
@@ -308,10 +267,10 @@
       "safe": true,
       "dims_mm": [
         128.9,
-        32.2,
-        29.3
+        32.0,
+        31.9
       ],
-      "max_ratio": 0.995
+      "max_ratio": 0.998
     },
     {
       "slug": "unk_10_rod",
@@ -322,8 +281,8 @@
       "safe": true,
       "dims_mm": [
         128.9,
-        32.2,
-        29.3
+        32.1,
+        31.9
       ],
       "max_ratio": 0.995
     },
@@ -335,11 +294,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        572.2,
-        550.0,
-        439.7
+        438.3,
+        402.4,
+        396.6
       ],
-      "max_ratio": 0.988
+      "max_ratio": 0.921
     },
     {
       "slug": "unk_11_cyl",
@@ -349,11 +308,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        550.0,
-        509.2,
-        426.5
+        439.1,
+        438.8,
+        396.9
       ],
-      "max_ratio": 0.931
+      "max_ratio": 0.99
     },
     {
       "slug": "unk_12_hull",
@@ -384,10 +343,10 @@
       "safe": true,
       "dims_mm": [
         50.0,
-        48.8,
-        36.3
+        48.4,
+        38.0
       ],
-      "max_ratio": 0.973
+      "max_ratio": 0.965
     },
     {
       "slug": "unk_13_cyl",
@@ -398,10 +357,10 @@
       "safe": true,
       "dims_mm": [
         49.9,
-        49.4,
-        36.3
+        49.0,
+        38.0
       ],
-      "max_ratio": 0.987
+      "max_ratio": 0.977
     },
     {
       "slug": "unk_14_dome_tub",
@@ -411,11 +370,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        124.0,
-        116.2,
-        100.6
+        133.1,
+        133.0,
+        100.7
       ],
-      "max_ratio": 0.995
+      "max_ratio": 0.843
     },
     {
       "slug": "unk_14_dome_tub",
@@ -425,11 +384,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        124.0,
-        116.2,
-        100.8
+        133.3,
+        133.0,
+        100.7
       ],
-      "max_ratio": 0.924
+      "max_ratio": 0.844
     },
     {
       "slug": "unk_15_rod",
@@ -440,10 +399,10 @@
       "safe": true,
       "dims_mm": [
         26.7,
-        26.2,
-        14.3
+        26.0,
+        21.0
       ],
-      "max_ratio": 0.973
+      "max_ratio": 0.967
     },
     {
       "slug": "unk_15_rod",
@@ -453,11 +412,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        26.5,
-        25.0,
-        14.3
+        26.6,
+        26.2,
+        21.0
       ],
-      "max_ratio": 0.928
+      "max_ratio": 0.972
     },
     {
       "slug": "unk_16_thin_plate",
@@ -469,7 +428,7 @@
       "dims_mm": [
         120.0,
         104.4,
-        13.0
+        13.9
       ],
       "max_ratio": 0.66
     },
@@ -483,7 +442,7 @@
       "dims_mm": [
         120.0,
         104.4,
-        12.9
+        14.0
       ],
       "max_ratio": 0.659
     },
@@ -491,101 +450,101 @@
       "slug": "unk_17_rod",
       "pose": 0,
       "zone_rules": "C",
-      "zone_measured": "B",
-      "agree": false,
-      "safe": false,
+      "zone_measured": "C",
+      "agree": true,
+      "safe": true,
       "dims_mm": [
-        424.6,
-        310.3,
-        40.0
+        490.0,
+        39.8,
+        39.7
       ],
-      "max_ratio": 0.625
+      "max_ratio": 0.999
     },
     {
       "slug": "unk_17_rod",
       "pose": 1,
       "zone_rules": "C",
-      "zone_measured": "B",
-      "agree": false,
-      "safe": false,
-      "dims_mm": [
-        424.0,
-        310.5,
-        40.0
-      ],
-      "max_ratio": 0.604
-    },
-    {
-      "slug": "unk_18_rod",
-      "pose": 0,
-      "zone_rules": "D",
-      "zone_measured": "D",
-      "agree": true,
-      "safe": true,
-      "dims_mm": [
-        418.3,
-        27.0,
-        26.6
-      ],
-      "max_ratio": 0.995
-    },
-    {
-      "slug": "unk_18_rod",
-      "pose": 1,
-      "zone_rules": "D",
-      "zone_measured": "D",
-      "agree": true,
-      "safe": true,
-      "dims_mm": [
-        418.3,
-        27.0,
-        26.6
-      ],
-      "max_ratio": 0.995
-    },
-    {
-      "slug": "unk_19_cone",
-      "pose": 0,
-      "zone_rules": "C",
-      "zone_measured": "D",
-      "agree": false,
-      "safe": true,
-      "dims_mm": [
-        356.9,
-        275.1,
-        272.4
-      ],
-      "max_ratio": 0.995
-    },
-    {
-      "slug": "unk_19_cone",
-      "pose": 1,
-      "zone_rules": "C",
-      "zone_measured": "D",
-      "agree": false,
-      "safe": true,
-      "dims_mm": [
-        416.4,
-        274.6,
-        264.0
-      ],
-      "max_ratio": 0.995
-    },
-    {
-      "slug": "unk_20_cyl",
-      "pose": 0,
-      "zone_rules": "C",
       "zone_measured": "C",
       "agree": true,
       "safe": true,
       "dims_mm": [
-        501.6,
-        276.5,
-        251.0
+        489.9,
+        39.8,
+        39.7
+      ],
+      "max_ratio": 1.0
+    },
+    {
+      "slug": "unk_18_rod",
+      "pose": 0,
+      "zone_rules": "D",
+      "zone_measured": "D",
+      "agree": true,
+      "safe": true,
+      "dims_mm": [
+        418.3,
+        26.9,
+        26.8
       ],
       "max_ratio": 0.999
     },
     {
+      "slug": "unk_18_rod",
+      "pose": 1,
+      "zone_rules": "D",
+      "zone_measured": "D",
+      "agree": true,
+      "safe": true,
+      "dims_mm": [
+        418.3,
+        26.9,
+        26.8
+      ],
+      "max_ratio": 0.998
+    },
+    {
+      "slug": "unk_19_cone",
+      "pose": 0,
+      "zone_rules": "C",
+      "zone_measured": "D",
+      "agree": false,
+      "safe": true,
+      "dims_mm": [
+        357.4,
+        275.7,
+        275.3
+      ],
+      "max_ratio": 0.997
+    },
+    {
+      "slug": "unk_19_cone",
+      "pose": 1,
+      "zone_rules": "C",
+      "zone_measured": "D",
+      "agree": false,
+      "safe": true,
+      "dims_mm": [
+        420.3,
+        275.0,
+        261.6
+      ],
+      "max_ratio": 0.995
+    },
+    {
+      "slug": "unk_20_cyl",
+      "pose": 0,
+      "zone_rules": "C",
+      "zone_measured": "C",
+      "agree": true,
+      "safe": true,
+      "dims_mm": [
+        523.0,
+        324.0,
+        250.8
+      ],
+      "max_ratio": 0.995
+    },
+    {
       "slug": "unk_20_cyl",
       "pose": 1,
       "zone_rules": "C",
@@ -593,9 +552,9 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        526.1,
-        338.1,
-        250.3
+        525.5,
+        338.0,
+        250.5
       ],
       "max_ratio": 0.995
     },
@@ -627,9 +586,9 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        489.4,
+        489.7,
         217.3,
-        217.3
+        217.1
       ],
       "max_ratio": 0.999
     },
@@ -641,9 +600,9 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        489.6,
+        489.3,
         217.3,
-        217.3
+        217.1
       ],
       "max_ratio": 1.0
     },
@@ -651,15 +610,15 @@
       "slug": "unk_23_rod",
       "pose": 0,
       "zone_rules": "D",
-      "zone_measured": "C",
-      "agree": false,
+      "zone_measured": "D",
+      "agree": true,
       "safe": true,
       "dims_mm": [
         33.2,
-        32.1,
-        9.1
+        32.5,
+        15.8
       ],
-      "max_ratio": 0.962
+      "max_ratio": 0.974
     },
     {
       "slug": "unk_23_rod",
@@ -669,11 +628,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        33.0,
-        31.9,
-        10.9
+        33.1,
+        32.3,
+        15.8
       ],
-      "max_ratio": 0.953
+      "max_ratio": 0.968
     },
     {
       "slug": "unk_24_oct",
@@ -699,29 +658,29 @@
       "slug": "unk_25_hex",
       "pose": 0,
       "zone_rules": "D",
-      "zone_measured": "B",
-      "agree": false,
-      "safe": false,
-      "dims_mm": [
-        119.9,
-        104.1,
-        103.1
-      ],
-      "max_ratio": 0.731
-    },
-    {
-      "slug": "unk_25_hex",
-      "pose": 1,
-      "zone_rules": "D",
-      "zone_measured": "B",
-      "agree": false,
-      "safe": false,
+      "zone_measured": "D",
+      "agree": true,
+      "safe": true,
       "dims_mm": [
         120.0,
-        104.1,
-        103.1
+        104.0,
+        103.9
       ],
-      "max_ratio": 0.731
+      "max_ratio": 0.867
+    },
+    {
+      "slug": "unk_25_hex",
+      "pose": 1,
+      "zone_rules": "D",
+      "zone_measured": "D",
+      "agree": true,
+      "safe": true,
+      "dims_mm": [
+        120.0,
+        104.0,
+        103.9
+      ],
+      "max_ratio": 0.866
     },
     {
       "slug": "unk_26_capsule",
@@ -731,11 +690,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        482.4,
-        269.3,
-        217.5
+        489.8,
+        217.4,
+        212.9
       ],
-      "max_ratio": 0.998
+      "max_ratio": 0.995
     },
     {
       "slug": "unk_26_capsule",
@@ -745,11 +704,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        482.5,
-        269.3,
-        217.5
+        489.6,
+        217.4,
+        212.8
       ],
-      "max_ratio": 0.998
+      "max_ratio": 0.995
     },
     {
       "slug": "unk_27_oct",
@@ -759,11 +718,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        114.9,
-        111.2,
-        84.8
+        111.0,
+        110.9,
+        86.4
       ],
-      "max_ratio": 0.909
+      "max_ratio": 0.925
     },
     {
       "slug": "unk_27_oct",
@@ -773,11 +732,11 @@
       "agree": true,
       "safe": true,
       "dims_mm": [
-        114.9,
-        111.2,
-        84.8
+        111.0,
+        110.9,
+        86.4
       ],
-      "max_ratio": 0.909
+      "max_ratio": 0.925
     },
     {
       "slug": "unk_28_rbox",

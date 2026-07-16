@@ -34,16 +34,75 @@ from perception.pipeline import LookaheadPerception  # noqa: E402
 CAM_X = 6.0
 
 
-def settle_item(model, data, slug, entry, y_off, yaw, steps=200):
-    """Teleport one item under the camera and let physics settle it."""
+def settle_item(model, data, slug, entry, y_off, yaw, steps=200,
+                max_retries=6):
+    """Teleport one item under the camera and let physics settle it.
+
+    A settled pose must be BELT-REALISTIC: freight on a 1 m/s conveyor
+    cannot rest leaning against the measuring-station furniture (drag
+    topples it instantly), but a static drop CAN produce such poses — a
+    490 mm rod once settled propped against the gantry, reading 424 mm
+    tall and certifying as 'fits' while its true OBB is oversize. If the
+    settled item is in contact with anything but the belt (or another
+    item), re-drop with a nudged pose; if it still leans after the
+    retries, fall back to an axis-aligned flat drop."""
     jid = model.joint(f"fj_{slug}").id
+    bid = model.joint(f"fj_{slug}").bodyid[0]
+    geoms = {g for g in range(model.ngeom) if model.geom_bodyid[g] == bid}
+    belt = {g for g in range(model.ngeom)
+            if (mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, g) or "")
+            .startswith("beltA")}
+    # bodies of OTHER freight items (free joints fj_*): resting against
+    # another parcel is belt-realistic; everything else — blades, gantry,
+    # guards, any actuated machine body — is furniture
+    freight_bodies = set()
+    for j in range(model.njnt):
+        nm = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, j) or ""
+        if nm.startswith("fj_"):
+            freight_bodies.add(int(model.jnt_bodyid[j]))
     qa, da = model.jnt_qposadr[jid], model.jnt_dofadr[jid]
-    data.qpos[qa:qa + 3] = [CAM_X, P.BELT_A["y"] + y_off, P.BELT_A["top"] + entry["dims_m"][2] / 2 + 0.004]
-    data.qpos[qa + 3:qa + 7] = [np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
-    data.qvel[da:da + 6] = 0
-    mujoco.mj_forward(model, data)
-    for _ in range(steps):
-        mujoco.mj_step(model, data)
+
+    def drop(y_o, yw):
+        # spawn clearance from the LONGEST extent, not dims_m[2]: a mesh
+        # whose local frame is not OBB-aligned (the campaign generator
+        # exports some solids diagonally) otherwise spawns EMBEDDED in the
+        # belt, gets ejected, and the camera snaps it mid-tumble — a
+        # 490 mm rod once measured 424x310x40 while flying
+        data.qpos[qa:qa + 3] = [CAM_X, P.BELT_A["y"] + y_o,
+                                P.BELT_A["top"] + max(entry["dims_m"]) / 2
+                                + 0.004]
+        data.qpos[qa + 3:qa + 7] = [np.cos(yw / 2), 0, 0, np.sin(yw / 2)]
+        data.qvel[da:da + 6] = 0
+        mujoco.mj_forward(model, data)
+        # settle to REST, not for a fixed step count: tall spawns need the
+        # fall + any rolling to finish before the camera reads
+        for k in range(max(steps, 2500)):
+            mujoco.mj_step(model, data)
+            if k % 50 == 0 and k > 100:
+                v = data.qvel[da:da + 6]
+                if float(np.linalg.norm(v[:3])) < 1e-3 \
+                        and float(np.linalg.norm(v[3:])) < 1e-2:
+                    break
+
+    def leans_on_statics():
+        for i in range(data.ncon):
+            c = data.contact[i]
+            g1, g2 = int(c.geom1), int(c.geom2)
+            if g1 in geoms or g2 in geoms:
+                other = g2 if g1 in geoms else g1
+                if other in belt \
+                        or int(model.geom_bodyid[other]) in freight_bodies:
+                    continue                    # belt or another parcel
+                return True
+        return False
+
+    drop(y_off, yaw)
+    tries = 0
+    while leans_on_statics() and tries < max_retries:
+        tries += 1
+        drop(y_off * 0.5, yaw + 0.9 * tries)
+    if leans_on_statics():
+        drop(0.0, 0.0)                          # axis-aligned flat fallback
 
 
 def park_item(model, data, slug, idx, entry):

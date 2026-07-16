@@ -1,14 +1,14 @@
 {
-  "poses_per_item": 6,
+  "poses_per_item": 10,
   "seed": 5,
-  "classifications": 96,
+  "classifications": 160,
   "official_items": 11,
   "category_accuracy_official": 1.0,
   "permissive_errors": 0,
-  "conservative_deviations": 6,
-  "dims_err_mean_mm": 3.75,
-  "dims_err_p95_mm": 9.65,
-  "dims_err_max_mm": 49.3,
+  "conservative_deviations": 10,
+  "dims_err_mean_mm": 4.71,
+  "dims_err_p95_mm": 12.95,
+  "dims_err_max_mm": 91.5,
   "permissive_detail": [],
   "conservative_detail": [
     {
@@ -37,7 +37,7 @@
       "pose": 3,
       "zone_true": "B",
       "zone_perceived": "D",
-      "max_ratio": 0.803
+      "max_ratio": 0.807
     },
     {
       "slug": "bl_rsq_b",
@@ -49,6 +49,34 @@
     {
       "slug": "bl_rsq_b",
       "pose": 5,
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.803
+    },
+    {
+      "slug": "bl_rsq_b",
+      "pose": 6,
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.807
+    },
+    {
+      "slug": "bl_rsq_b",
+      "pose": 7,
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.807
+    },
+    {
+      "slug": "bl_rsq_b",
+      "pose": 8,
+      "zone_true": "B",
+      "zone_perceived": "D",
+      "max_ratio": 0.807
+    },
+    {
+      "slug": "bl_rsq_b",
+      "pose": 9,
       "zone_true": "B",
       "zone_perceived": "D",
       "max_ratio": 0.807
