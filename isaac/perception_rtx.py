@@ -153,6 +153,11 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
 
     circ, sect, dome = (hi("footprint_circularity"), hi("section_ratio"),
                         hi("dome_score"))
+    # swept-axis section channel (hex blind-spot fix): certified-circle
+    # evidence only — the safe-side rules below keep reading the
+    # primary-axis section untouched
+    sect_sw = float(np.percentile(
+        [r.get("section_sweep", r["section_ratio"]) for r in top], 75))
     elong = med("elongation")
     aspect = med("aspect_hw")
     flanks = [float(r["flank_mm"]) for r in top if float(r["flank_mm"]) >= 0.0]
@@ -166,8 +171,9 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
     # honest borderline; 460 mm is caught in every frame)
     over = bool(np.any(np.sort(dims_lo)[::-1] > LIMIT_MAX_MM - guard_mm))
     flank_s = "n/a" if flank is None else f"{flank:.1f}mm"
-    feats = (f"circ={circ:.2f} sect={sect:.2f} dome={dome:.2f} "
-             f"flank={flank_s} elong={elong:.1f} h/w={aspect:.2f}")
+    feats = (f"circ={circ:.2f} sect={sect:.2f} sweep={sect_sw:.2f} "
+             f"dome={dome:.2f} flank={flank_s} elong={elong:.1f} "
+             f"h/w={aspect:.2f}")
     if under:
         i_min = int(np.argmin(dims_lo - guards))
         zone, reason = "C", (f"undersize: dim {dims_lo[i_min]:.1f} mm below "
@@ -177,6 +183,7 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
     elif over:
         zone, reason = "C", f"oversize (guard band {guard_mm:.0f} mm)"
     elif (circ >= circle_ratio or sect >= circle_ratio
+          or sect_sw >= circle_ratio
           or (dome >= dome_tau and aspect >= 0.85)
           or (circ >= 0.78 and dome >= 0.40)
           or (circ >= 0.60 and dome >= 0.35 and aspect >= 0.85)):
@@ -456,6 +463,60 @@ class RTXPerception:
             return -1.0
         return float((np.max(med) - np.min(med)) * 1000.0)
 
+    @staticmethod
+    def _radial_section_sweep(xy_c, hh, ang0, height, n_axes=12):
+        """Max radial-bin section ratio over swept cutting axes — the MuJoCo
+        twin's validated formulation, ported verbatim: 7 body stations per
+        axis, +-5 mm bands, outer radius per 15-deg angular bin over the
+        30..150-deg window about the resting axis (v_center, height/2);
+        ratio = min/max of the bin maxima. A lying hexagon reads ~0.89 on
+        the axis aligned with the prism; boxes stay <= ~0.72 on EVERY axis
+        (the 120-deg window keeps their 45-deg corners)."""
+        if height < 0.008:
+            return 0.0
+        zc = 0.5 * height
+        edges = np.linspace(np.deg2rad(30), np.deg2rad(150), 9)
+        best = 0.0
+        for k_ax in range(n_axes):
+            a_c = ang0 + k_ax * (np.pi / n_axes)
+            u = xy_c @ np.array([np.cos(a_c), np.sin(a_c)])
+            v = xy_c @ np.array([-np.sin(a_c), np.cos(a_c)])
+            u_min, u_max = float(u.min()), float(u.max())
+            if u_max - u_min < 0.11:
+                continue
+            for s in np.linspace(u_min + 0.05, u_max - 0.05, 7):
+                band = np.abs(u - s) < 0.005
+                if int(band.sum()) < 12:
+                    continue
+                vb, zb = v[band], hh[band]
+                if float(zb.max()) < 0.008:
+                    continue
+                # mirror closure about the resting axis (same philosophy as
+                # _section_ratio): the overhead head sees only the TOP
+                # surface — without the reconstructed lower half a box band
+                # is a single roof line and its ratio reads circular
+                vb = np.concatenate([vb, vb])
+                zb = np.concatenate([zb, height - zb])
+                vc = 0.5 * (float(vb.min()) + float(vb.max()))
+                theta = np.arctan2(zb - zc, vb - vc)
+                rho = np.hypot(vb - vc, zb - zc)
+                rho_out = []
+                for lo_e, hi_e in zip(edges[:-1], edges[1:]):
+                    m = (theta >= lo_e) & (theta < hi_e)
+                    if m.any():
+                        rho_out.append(float(rho[m].max()))
+                # ALL 8 bins must be populated: a corner-clipping diagonal
+                # cut of a box leaves the extreme bins empty (its telltale
+                # corners vanish with them) and the surviving mid-bins read
+                # circular — the twin never sees this because its side-fan
+                # flanks always populate the low bins. A genuine circular
+                # section closes the full contour after mirroring.
+                if len(rho_out) == 8:
+                    r = min(rho_out) / max(rho_out)
+                    if r > best:
+                        best = r
+        return float(best)
+
     @classmethod
     def _section_ratio(cls, t1, t2, h):
         """r_in/R_circ of the transverse cross-section, reconstructed from the
@@ -669,9 +730,27 @@ class RTXPerception:
         # section r_in/R from the overhead profile (mirror closure) — clean
         # for round bodies resting symmetrically (bottle ~0.95)
         sect = 0.0
+        hh = obj[:, 2] - self.belt_z
         if elong >= self.elong_min:
-            hh = obj[:, 2] - self.belt_z
             sect = self._section_ratio(t1, t2, hh)
+        # AXIS-SWEPT radial section (hex-prism blind-spot fix, mirrors the
+        # MuJoCo twin's validated method): the footprint PCA axis is
+        # DEGENERATE for near-square footprints — a squat prism at an odd
+        # yaw gets diagonal cutting stations whose contour reads
+        # rectangle-like (a lying hex read 0.73 instead of 0.866). The
+        # official criterion is a circular section about ANY axis, so body
+        # stations are scanned over 12 candidate axes with the twin's
+        # radial-bin ratio (outer radius per angular bin about the resting
+        # axis) and the evidence keeps the maximum. Feeds ONLY the
+        # certified-circle rule (>= 0.8) through its own channel; the
+        # safe-side ambiguous-prism rule keeps reading the primary-axis
+        # mirror section, so elongated B freight cannot be pushed into D
+        # by a diagonal cut. Validated in the twin: lying hex 0.89,
+        # boxes <= 0.72 on every axis (officials + 30-shape corpus).
+        ang0 = float(np.arctan2(axis1[1], axis1[0]))
+        sect_sweep = self._radial_section_sweep(xy - c, hh, ang0,
+                                                float(np.percentile(hh, 99.5)))
+        sect_sweep = max(sect_sweep, sect)
         # side profiler heads: flank verticality, for ALL items. A box or a
         # jug presents a near-VERTICAL wall (offset ~constant in z); a lying
         # cylinder/hex flank slants by millimetres; a dome (helmet) sweeps
@@ -715,6 +794,9 @@ class RTXPerception:
             zone, reason = "D", f"circle: footprint={circ:.2f}"
         elif sect >= self.circle_ratio:
             zone, reason = "D", f"circle: section r_in/R={sect:.2f}"
+        elif sect_sweep >= self.circle_ratio:
+            zone, reason = "D", ("circle: swept section "
+                                 f"r_in/R={sect_sweep:.2f}")
         elif dome >= self.dome_tau:
             zone, reason = "D", f"dome={dome:.2f}"
         elif circ >= 0.78 and dome >= 0.40:
@@ -734,6 +816,7 @@ class RTXPerception:
             "dims_macro_mm": dims_macro,
             "footprint_circularity": round(circ, 3),
             "section_ratio": round(sect, 3),
+            "section_sweep": round(sect_sweep, 3),
             "dome_score": round(dome, 3),
             "flank_mm": round(flank_mm, 1),
             "plateau_frac": round(plateau, 3),
