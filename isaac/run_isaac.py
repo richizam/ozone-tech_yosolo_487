@@ -556,7 +556,13 @@ def main():
                         np.array([0.4, a["y"] + args.spawn_offset_y,
                                   a["top"] + e["dims_m"][2] / 2 + 0.003]),
                         np.array(qz))
-                    items_rp[slug].set_linear_velocity(np.zeros(3))
+                    # freight ARRIVES riding belt A at line speed (per the
+                    # task statement) — a zero-velocity drop under a 1 m/s
+                    # belt slip-kicks round items into a sideways rolling
+                    # walk that can climb the side guide (off_center
+                    # cylinder walked off at spawn, 5th matrix pass)
+                    items_rp[slug].set_linear_velocity(
+                        np.array([a["speed"], 0.0, 0.0]))
                     items_rp[slug].set_angular_velocity(np.zeros(3))
                     active[slug] = {"t_spawn": t}
                     ev(t, "item_spawned", slug, zone_true=e["zone"])
