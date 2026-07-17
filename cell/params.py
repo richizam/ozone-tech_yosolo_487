@@ -291,7 +291,7 @@ SPILL = {
     # SORTER, the one forbidden error direction. A 6 mm sheet fin centred
     # in the seam walls it off; 6 mm thickness leaves 12 mm clearance to
     # BOTH adjacent tray sweeps (audit hard floor).
-    "seam_guard": {"x": 8.725, "t": 0.006, "y0": 3.30, "y1": 3.95,
+    "seam_guard": {"x": 8.725, "t": 0.006, "y0": 3.335, "y1": 3.95,
                    "z0": 0.30, "z1": 0.72},
 }
 
