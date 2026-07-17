@@ -154,6 +154,16 @@ SORTER = {
     # the REVIEW discharge corridor prism; 0.18 is the test-floor minimum
     # that still spans the inter-tray debris drop zone.)
     "pan_z_top": 0.39, "pan_y_half": 0.18, "pan_x0": 6.78, "pan_x1": 9.28,
+    # STEPPED SOUTH APRON of the debris pan: a 10 mm cube that over-read its
+    # dims (legal D route) missed the tray at induction and fell at
+    # (x 6.98, y 2.76) — 60 mm south of the pan edge, naked floor. The pan
+    # itself cannot widen (REVIEW corridor pins the north edge, the
+    # joint-limit fault arc pins the top, the chute lip line y 2.75 pins the
+    # south at z 0.39). The apron steps DOWN to z 0.36 (40 mm under the
+    # fault arc) and spans y 2.74-2.82 ONLY in the x windows with no chute
+    # mouth below, so it can never enter a discharge corridor.
+    "pan_apron": {"z_top": 0.36, "y0": 2.74, "y1": 2.82,
+                  "segs": [(6.78, 7.08), (7.82, 8.38), (9.12, 9.28)]},
 }
 
 # ---------------------------------------------------------------- induction (physical, synchronized)
@@ -273,6 +283,16 @@ SPILL = {
     # plate top, generous enough for the tallest edge freight
     "zones": [(7.80, 8.40, 1.93, 2.66), (7.70, 8.11, 3.35, 3.72)],
     "watch_s": 3.0,
+    # SEAM GUARD between the REVIEW mouth and the powered B connector: the
+    # two apertures adjoin within a 30 mm seam (connector east edge 8.71,
+    # REVIEW mouth west edge 8.74). A floppy sack discharged at REVIEW once
+    # tumbled sideways across the seam onto the moving incline and rode up
+    # to belt B — freight classified D physically delivered to the MAIN
+    # SORTER, the one forbidden error direction. A 6 mm sheet fin centred
+    # in the seam walls it off; 6 mm thickness leaves 12 mm clearance to
+    # BOTH adjacent tray sweeps (audit hard floor).
+    "seam_guard": {"x": 8.725, "t": 0.006, "y0": 3.30, "y1": 3.95,
+                   "z0": 0.30, "z1": 0.72},
 }
 
 

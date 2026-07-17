@@ -917,6 +917,24 @@ class SceneBuilder:
                                    S["pan_z_top"] - 0.005),
                      ((S["pan_x1"] - S["pan_x0"]) / 2, S["pan_y_half"], 0.005),
                      color=(0.13, 0.14, 0.16), mat=mat_tray)
+        # stepped south apron (P.SORTER["pan_apron"]): catches induction
+        # misses that clear the pan's pinned south edge; only where no
+        # chute mouth lies below
+        ap = S["pan_apron"]
+        for i, (ax0, ax1) in enumerate(ap["segs"]):
+            self.add_box(f"train_pan_apron{i}",
+                         ((ax0 + ax1) / 2, (ap["y0"] + ap["y1"]) / 2,
+                          ap["z_top"] - 0.005),
+                         ((ax1 - ax0) / 2, (ap["y1"] - ap["y0"]) / 2, 0.005),
+                         color=(0.13, 0.14, 0.16), mat=mat_tray)
+        # seam guard fin between REVIEW mouth and the powered B connector
+        sg = P.SPILL["seam_guard"]
+        self.add_box("seam_guard_fin",
+                     (sg["x"], (sg["y0"] + sg["y1"]) / 2,
+                      (sg["z0"] + sg["z1"]) / 2),
+                     (sg["t"] / 2, (sg["y1"] - sg["y0"]) / 2,
+                      (sg["z1"] - sg["z0"]) / 2),
+                     color=(0.50, 0.52, 0.55), mat=mat_tray)
         # matte near-black FLOOR PLATE under the whole train footprint
         # (x 6.6..9.6, y 2.62..3.38, top z 0.015): whatever still shows
         # through the guard slots and skirt lines reads as machine shadow

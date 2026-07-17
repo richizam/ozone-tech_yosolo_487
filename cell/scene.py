@@ -457,6 +457,26 @@ def _stations_xml():
              f'pos="{(S["pan_x0"] + S["pan_x1"]) / 2} {S["y"]} '
              f'{S["pan_z_top"] - 0.005}" friction="0.8 0.01 0.0001" '
              f'rgba="0.13 0.14 0.16 1"/>')
+    # stepped south apron (see P.SORTER["pan_apron"]): catches induction
+    # misses that clear the pan's pinned south edge; only where no chute
+    # mouth lies below
+    ap = S["pan_apron"]
+    for i, (ax0, ax1) in enumerate(ap["segs"]):
+        g.append(f'<geom name="train_pan_apron{i}" type="box" '
+                 f'size="{(ax1 - ax0) / 2:.4f} '
+                 f'{(ap["y1"] - ap["y0"]) / 2:.4f} 0.005" '
+                 f'pos="{(ax0 + ax1) / 2:.4f} '
+                 f'{(ap["y0"] + ap["y1"]) / 2:.4f} '
+                 f'{ap["z_top"] - 0.005}" friction="0.8 0.01 0.0001" '
+                 f'rgba="0.13 0.14 0.16 1"/>')
+    # seam guard fin between REVIEW mouth and the powered B connector
+    sg = P.SPILL["seam_guard"]
+    g.append(f'<geom name="seam_guard_fin" type="box" '
+             f'size="{sg["t"] / 2} {(sg["y1"] - sg["y0"]) / 2:.4f} '
+             f'{(sg["z1"] - sg["z0"]) / 2:.4f}" '
+             f'pos="{sg["x"]} {(sg["y0"] + sg["y1"]) / 2:.4f} '
+             f'{(sg["z0"] + sg["z1"]) / 2:.4f}" '
+             f'rgba="0.50 0.52 0.55 1"/>')
     # enclosed end modules (the carrier wrap teleports happen inside them)
     y = P.SORTER["y"]
     g.append(f'<geom name="train_end_e" type="box" size="0.15 0.40 0.28" pos="9.57 {y} 0.46" '
