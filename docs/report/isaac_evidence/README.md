@@ -72,20 +72,23 @@ unsafe errors and zero floor drops across all 14 runs. Per-run routing:
 
 ## Video vintage — read this before comparing frames with the report
 
-RTX clip rendering is expensive (~10–40 min per clip), so the showcase set was
-**not** re-rendered after every geometry change:
+RTX clip rendering is expensive (~10–40 min per clip), so the showcase set
+was **not** re-rendered after every geometry change. Three vintages exist:
 
-- `edge_small_items.mp4` and everything under `twin_videos/` — rendered **at
-  HEAD**; the discharge-flank spill pans are visible.
-- the other 16 clips in `videos_final/` — rendered on the **immediately
-  preceding geometry**, before the spill pans were added. The pans are
-  additive static furniture: they touch neither the sorter, the trays, the
-  chutes, the perception station nor any physics parameter, so those clips
-  remain faithful recordings of the mechanism they show — but they will not
-  show the pans the report describes.
+- most of `videos_final/` — rendered before the discharge-flank spill pans;
+- `edge_small_items.mp4` and `twin_videos/` — rendered on the spill-pans
+  build (pans visible);
+- the final build additionally carries the swept-axis section classifier
+  (no visual change at all) and two containment guards found by the last
+  matrix pass: a 6 mm fin inside the 30 mm REVIEW/B-connector seam and a
+  stepped south apron under the deck. Both are internal containment
+  furniture, invisible or near-invisible at every showcase camera angle;
+  `unknown_shapes_demo.mp4`, when present, is rendered on this final build.
 
-Every physics claim in the table above comes from the matrix at HEAD, not
-from the clips.
+All guards are additive statics: they touch neither the sorter, the trays,
+the chutes, the perception station nor any physics parameter, so every clip
+remains a faithful recording of the mechanism it shows. Every physics claim
+in the table above comes from the matrix at HEAD, not from the clips.
 
 ## Reproduce
 
