@@ -183,7 +183,12 @@ def fuse_reads(reads, guard_mm=6.0, circle_ratio=P.CIRCLE_RATIO,
     elif over:
         zone, reason = "C", f"oversize (guard band {guard_mm:.0f} mm)"
     elif (circ >= circle_ratio or sect >= circle_ratio
-          or sect_sw >= circle_ratio
+          or (sect_sw >= circle_ratio and dome < 0.5)
+          # ^ the swept-axis channel's mirror closure assumes a FLAT-TOP
+          # prism; a domed shoulder (detergent jug, dome 0.67) inflates the
+          # mirrored section past 0.8 and must not certify — curved-top
+          # bodies stay with the dome/aspect rules below. The hex trap the
+          # sweep exists for is flat-topped (dome 0.36, sweep 0.83-0.89).
           or (dome >= dome_tau and aspect >= 0.85)
           or (circ >= 0.78 and dome >= 0.40)
           or (circ >= 0.60 and dome >= 0.35 and aspect >= 0.85)):
@@ -794,7 +799,9 @@ class RTXPerception:
             zone, reason = "D", f"circle: footprint={circ:.2f}"
         elif sect >= self.circle_ratio:
             zone, reason = "D", f"circle: section r_in/R={sect:.2f}"
-        elif sect_sweep >= self.circle_ratio:
+        elif sect_sweep >= self.circle_ratio and dome < 0.5:
+            # flat-top validity gate: the sweep's mirror closure is only
+            # trustworthy for prisms; domed shoulders inflate it (detergent)
             zone, reason = "D", ("circle: swept section "
                                  f"r_in/R={sect_sweep:.2f}")
         elif dome >= self.dome_tau:
