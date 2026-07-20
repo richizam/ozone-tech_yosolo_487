@@ -1,7 +1,2 @@
-* text=auto
-*.stl binary
-*.STL binary
-*.stp binary
-*.glb binary
-*.pdf binary
-*.png binary
+*.sh text eol=lf
+*.py text eol=lf
