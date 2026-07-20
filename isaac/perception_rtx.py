@@ -673,25 +673,78 @@ class RTXPerception:
                 circ = self._footprint_circularity(mxy)
                 mc = mxy.mean(axis=0)
                 _, _, mvt = np.linalg.svd(mxy - mc, full_matrices=False)
-                top, filled = self._raster(mobj, mvt[0], mvt[1], mc)
+                # dome on an ADAPTIVE raster: the 4 mm main-path grid gives a
+                # 3-cell footprint on a 12 mm body — dome is unreadable there,
+                # which is what let small lying cylinders certify B. At the
+                # macro head's 0.4 mm gsd a ~w/10 cell is fully sampled.
+                mt1 = (mxy - mc) @ mvt[0]
+                mt2 = (mxy - mc) @ mvt[1]
+                Lm = float(np.percentile(mt1, 99.7) - np.percentile(mt1, 0.3))
+                Wm = float(np.percentile(mt2, 99.7) - np.percentile(mt2, 0.3))
+                saved_grid = self.grid
+                self.grid = max(0.0012, min(self.grid, Wm / 10.0))
+                try:
+                    top, filled = self._raster(mobj, mvt[0], mvt[1], mc)
+                finally:
+                    self.grid = saved_grid
                 dome = self._dome_score(top, filled)
+                # transverse-section circle evidence on the macro cloud — the
+                # SAME channels as the main path, at close-range density (a
+                # 12 mm body spans ~30 macro px; the overhead head's ~4 px
+                # cannot section it, and footprint+dome alone miss a small
+                # LYING cylinder: rectangular footprint, sub-raster crown).
+                mh = mobj[:, 2] - self.belt_z
+                elong = (Lm / Wm) if Wm > 1e-6 else 99.0
+                sect = (self._section_ratio(mt1, mt2, mh)
+                        if elong >= self.elong_min else 0.0)
+                # swept axes against footprint-PCA degeneracy (near-square
+                # footprints): hull-based mirror closure caps boxes at ~0.707
+                # on EVERY axis, so the max over axes stays box-safe
+                ang0 = float(np.arctan2(mvt[0][1], mvt[0][0]))
+                sect_sweep = sect
+                mxy_c = mxy - mc
+                for k_ax in range(1, 6):
+                    a_c = ang0 + k_ax * (np.pi / 6.0)
+                    ua = mxy_c @ np.array([np.cos(a_c), np.sin(a_c)])
+                    va = mxy_c @ np.array([-np.sin(a_c), np.cos(a_c)])
+                    sect_sweep = max(sect_sweep,
+                                     self._section_ratio(ua, va, mh))
                 guard_macro = P.VIRTUAL_SENSOR.get("guard_macro_mm", 0.8)
                 under = any(d < LIMIT_MIN_MM + guard_macro for d in dims_mm)
                 if under:
                     zone, reason = "C", ("undersize (macro head, floor "
                                          f"{LIMIT_MIN_MM + guard_macro:.1f} mm)")
-                elif circ >= self.circle_ratio or dome >= self.dome_tau:
+                elif circ >= self.circle_ratio:
                     zone, reason = "D", f"circle (macro): circ={circ:.2f}"
+                elif sect >= self.circle_ratio:
+                    zone, reason = "D", ("circle (macro): section "
+                                         f"r_in/R={sect:.2f}")
+                elif sect_sweep >= self.circle_ratio and dome < 0.5:
+                    # flat-top validity gate, same as the main path: the
+                    # mirror closure is only trustworthy for prisms
+                    zone, reason = "D", ("circle (macro): swept section "
+                                         f"r_in/R={sect_sweep:.2f}")
+                elif dome >= self.dome_tau:
+                    zone, reason = "D", f"dome (macro)={dome:.2f}"
+                elif elong >= 2.2 and sect >= 0.38:
+                    # safe side, mirrors the main path: an elongated prism is
+                    # certified for the sorter only with an affirmatively
+                    # rectangular section
+                    zone, reason = "D", ("ambiguous prism section (macro, "
+                                         f"safe side): {sect:.2f}")
                 else:
                     zone, reason = "B", (f"fits (macro head): circ={circ:.2f} "
+                                         f"sect={sect:.2f} "
+                                         f"sweep={sect_sweep:.2f} "
                                          f"dome={dome:.2f}")
-                elong = (dims_mm[0] / dims_mm[1]) if dims_mm[1] > 1e-6 else 99.0
                 return {
                     "zone": zone, "reason": reason,
                     "dims_mm": [round(float(v), 2) for v in dims_mm],
                     "dims_macro_mm": [round(float(v), 2) for v in dims_mm],
                     "footprint_circularity": round(circ, 3),
-                    "section_ratio": 0.0, "dome_score": round(dome, 3),
+                    "section_ratio": round(sect, 3),
+                    "section_sweep": round(sect_sweep, 3),
+                    "dome_score": round(dome, 3),
                     "flank_mm": -1.0, "plateau_frac": 1.0,
                     "aspect_hw": round(dims_mm[2] / max(dims_mm[1], 1e-6), 3),
                     "elongation": round(elong, 2),

@@ -4,8 +4,8 @@
     "poses_per_shape": 2,
     "seed": 11,
     "classifications": 60,
-    "agreement_with_official_rules": 0.6667,
-    "conservative_disagreements": 20,
+    "agreement_with_official_rules": 0.7333,
+    "conservative_disagreements": 16,
     "unsafe_disagreements": 0,
     "unsafe_detail": []
   },
@@ -14,27 +14,38 @@
       "slug": "unk_00_cyl",
       "pose": 0,
       "zone_rules": "D",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "D",
+      "why": "circle_strong",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        15.0,
+        12.8,
+        11.9
+      ],
+      "max_ratio": 0.995
     },
     {
       "slug": "unk_00_cyl",
       "pose": 1,
       "zone_rules": "D",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "D",
+      "why": "circle_strong",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        15.0,
+        12.8,
+        11.9
+      ],
+      "max_ratio": 0.995
     },
     {
       "slug": "unk_01_hex",
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -49,6 +60,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -62,8 +74,9 @@
       "slug": "unk_02_thin_plate",
       "pose": 0,
       "zone_rules": "B",
-      "zone_measured": "B",
-      "agree": true,
+      "zone_measured": "C",
+      "why": "guard_band_dims(floor=16.0mm)",
+      "agree": false,
       "safe": true,
       "dims_mm": [
         50.0,
@@ -76,8 +89,9 @@
       "slug": "unk_02_thin_plate",
       "pose": 1,
       "zone_rules": "B",
-      "zone_measured": "B",
-      "agree": true,
+      "zone_measured": "C",
+      "why": "guard_band_dims(floor=16.0mm)",
+      "agree": false,
       "safe": true,
       "dims_mm": [
         50.0,
@@ -91,6 +105,7 @@
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -105,6 +120,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -118,47 +134,68 @@
       "slug": "unk_04_cyl",
       "pose": 0,
       "zone_rules": "D",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "D",
+      "why": "circle_strong",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        16.0,
+        12.8,
+        11.9
+      ],
+      "max_ratio": 0.995
     },
     {
       "slug": "unk_04_cyl",
       "pose": 1,
       "zone_rules": "D",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "D",
+      "why": "circle_strong",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        16.0,
+        12.8,
+        11.9
+      ],
+      "max_ratio": 0.995
     },
     {
       "slug": "unk_05_hull",
       "pose": 0,
       "zone_rules": "D",
-      "zone_measured": "NONE",
+      "zone_measured": "C",
+      "why": "guard_band_dims(floor=10.8mm)",
       "agree": false,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        11.8,
+        11.3,
+        10.0
+      ],
+      "max_ratio": 0.773
     },
     {
       "slug": "unk_05_hull",
       "pose": 1,
       "zone_rules": "D",
-      "zone_measured": "NONE",
+      "zone_measured": "C",
+      "why": "rule_dims",
       "agree": false,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        11.8,
+        11.2,
+        9.9
+      ],
+      "max_ratio": 0.772
     },
     {
       "slug": "unk_06_thin_plate",
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -173,6 +210,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -186,8 +224,9 @@
       "slug": "unk_07_rbox",
       "pose": 0,
       "zone_rules": "B",
-      "zone_measured": "B",
-      "agree": true,
+      "zone_measured": "D",
+      "why": "guard_band_ratio",
+      "agree": false,
       "safe": true,
       "dims_mm": [
         50.0,
@@ -200,8 +239,9 @@
       "slug": "unk_07_rbox",
       "pose": 1,
       "zone_rules": "B",
-      "zone_measured": "B",
-      "agree": true,
+      "zone_measured": "D",
+      "why": "guard_band_ratio",
+      "agree": false,
       "safe": true,
       "dims_mm": [
         50.0,
@@ -214,27 +254,38 @@
       "slug": "unk_08_dome_tub",
       "pose": 0,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "why": "rule_dims",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        8.0,
+        7.5,
+        7.4
+      ],
+      "max_ratio": 0.763
     },
     {
       "slug": "unk_08_dome_tub",
       "pose": 1,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "why": "rule_dims",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        8.0,
+        7.4,
+        7.3
+      ],
+      "max_ratio": 0.76
     },
     {
       "slug": "unk_09_rod",
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -249,6 +300,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -263,6 +315,7 @@
       "pose": 0,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -277,6 +330,7 @@
       "pose": 1,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -291,6 +345,7 @@
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -305,6 +360,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -319,6 +375,7 @@
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "NONE",
+      "why": "sensor_miss",
       "agree": false,
       "safe": true,
       "dims_mm": null,
@@ -329,6 +386,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "NONE",
+      "why": "sensor_miss",
       "agree": false,
       "safe": true,
       "dims_mm": null,
@@ -339,34 +397,37 @@
       "pose": 0,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
         50.0,
-        48.4,
+        49.3,
         38.0
       ],
-      "max_ratio": 0.965
+      "max_ratio": 0.982
     },
     {
       "slug": "unk_13_cyl",
       "pose": 1,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
         49.9,
-        49.0,
+        49.2,
         38.0
       ],
-      "max_ratio": 0.977
+      "max_ratio": 0.979
     },
     {
       "slug": "unk_14_dome_tub",
       "pose": 0,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -381,6 +442,7 @@
       "pose": 1,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -395,35 +457,38 @@
       "pose": 0,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
         26.7,
-        26.0,
+        26.4,
         21.0
       ],
-      "max_ratio": 0.967
+      "max_ratio": 0.983
     },
     {
       "slug": "unk_15_rod",
       "pose": 1,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
-        26.6,
-        26.2,
+        26.7,
+        26.4,
         21.0
       ],
-      "max_ratio": 0.972
+      "max_ratio": 0.982
     },
     {
       "slug": "unk_16_thin_plate",
       "pose": 0,
       "zone_rules": "B",
-      "zone_measured": "B",
-      "agree": true,
+      "zone_measured": "C",
+      "why": "guard_band_dims(floor=16.0mm)",
+      "agree": false,
       "safe": true,
       "dims_mm": [
         120.0,
@@ -436,8 +501,9 @@
       "slug": "unk_16_thin_plate",
       "pose": 1,
       "zone_rules": "B",
-      "zone_measured": "B",
-      "agree": true,
+      "zone_measured": "C",
+      "why": "guard_band_dims(floor=16.0mm)",
+      "agree": false,
       "safe": true,
       "dims_mm": [
         120.0,
@@ -451,6 +517,7 @@
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -465,6 +532,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -479,6 +547,7 @@
       "pose": 0,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -493,6 +562,7 @@
       "pose": 1,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -507,6 +577,7 @@
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": false,
       "safe": true,
       "dims_mm": [
@@ -521,6 +592,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": false,
       "safe": true,
       "dims_mm": [
@@ -535,6 +607,7 @@
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -549,6 +622,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -562,27 +636,38 @@
       "slug": "unk_21_capsule",
       "pose": 0,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "why": "rule_dims",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        21.5,
+        10.3,
+        9.6
+      ],
+      "max_ratio": 0.995
     },
     {
       "slug": "unk_21_capsule",
       "pose": 1,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "why": "rule_dims",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        21.4,
+        10.3,
+        9.6
+      ],
+      "max_ratio": 0.995
     },
     {
       "slug": "unk_22_capsule",
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -597,6 +682,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -610,55 +696,68 @@
       "slug": "unk_23_rod",
       "pose": 0,
       "zone_rules": "D",
-      "zone_measured": "D",
-      "agree": true,
+      "zone_measured": "C",
+      "why": "guard_band_dims(floor=16.0mm)",
+      "agree": false,
       "safe": true,
       "dims_mm": [
         33.2,
-        32.5,
+        31.7,
         15.8
       ],
-      "max_ratio": 0.974
+      "max_ratio": 0.949
     },
     {
       "slug": "unk_23_rod",
       "pose": 1,
       "zone_rules": "D",
-      "zone_measured": "D",
-      "agree": true,
+      "zone_measured": "C",
+      "why": "guard_band_dims(floor=16.0mm)",
+      "agree": false,
       "safe": true,
       "dims_mm": [
-        33.1,
-        32.3,
+        33.2,
+        32.1,
         15.8
       ],
-      "max_ratio": 0.968
+      "max_ratio": 0.964
     },
     {
       "slug": "unk_24_oct",
       "pose": 0,
       "zone_rules": "D",
-      "zone_measured": "NONE",
+      "zone_measured": "C",
+      "why": "guard_band_dims(floor=10.8mm)",
       "agree": false,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        12.0,
+        11.0,
+        10.5
+      ],
+      "max_ratio": 0.86
     },
     {
       "slug": "unk_24_oct",
       "pose": 1,
       "zone_rules": "D",
-      "zone_measured": "NONE",
+      "zone_measured": "C",
+      "why": "guard_band_dims(floor=10.8mm)",
       "agree": false,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        12.0,
+        11.1,
+        10.5
+      ],
+      "max_ratio": 0.869
     },
     {
       "slug": "unk_25_hex",
       "pose": 0,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -673,6 +772,7 @@
       "pose": 1,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -687,6 +787,7 @@
       "pose": 0,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -701,6 +802,7 @@
       "pose": 1,
       "zone_rules": "C",
       "zone_measured": "C",
+      "why": "rule_dims",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -715,6 +817,7 @@
       "pose": 0,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -729,6 +832,7 @@
       "pose": 1,
       "zone_rules": "D",
       "zone_measured": "D",
+      "why": "circle_strong",
       "agree": true,
       "safe": true,
       "dims_mm": [
@@ -742,41 +846,61 @@
       "slug": "unk_28_rbox",
       "pose": 0,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "why": "rule_dims",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        8.0,
+        6.3,
+        5.8
+      ],
+      "max_ratio": 0.604
     },
     {
       "slug": "unk_28_rbox",
       "pose": 1,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "why": "rule_dims",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        8.0,
+        6.3,
+        5.8
+      ],
+      "max_ratio": 0.612
     },
     {
       "slug": "unk_29_dome_tub",
       "pose": 0,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "why": "rule_dims",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        8.0,
+        7.4,
+        6.7
+      ],
+      "max_ratio": 0.751
     },
     {
       "slug": "unk_29_dome_tub",
       "pose": 1,
       "zone_rules": "C",
-      "zone_measured": "NONE",
-      "agree": false,
+      "zone_measured": "C",
+      "why": "rule_dims",
+      "agree": true,
       "safe": true,
-      "dims_mm": null,
-      "max_ratio": null
+      "dims_mm": [
+        8.0,
+        7.3,
+        6.8
+      ],
+      "max_ratio": 0.778
     }
   ]
 }

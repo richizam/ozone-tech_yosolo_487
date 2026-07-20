@@ -448,8 +448,15 @@ class ItemManager:
             # certification floor (sampling physics, present at zero noise): a
             # dimension the sensor cannot resolve better than ~2x its ground
             # sampling cannot certify "> 10 mm" — divert to C, per the rules'
-            # priority (a maybe-undersize item never feeds the sorter)
-            g_dim = 2.0 * noise_mm + 2.0 * P.VIRTUAL_SENSOR["ground_res_mm"]
+            # priority (a maybe-undersize item never feeds the sorter).
+            # DUAL RANGE: the floor scales with the gsd of the head that
+            # actually measured (worst head across the fused reads) — the
+            # macro head's 0.4 mm gsd certifies an 11 mm cube at a 10.8 mm
+            # floor where the 3 mm overhead grid needs 16 mm
+            res_mm = max(float(r.get("gsd_mm",
+                                     P.VIRTUAL_SENSOR["ground_res_mm"]))
+                         for r in reads)
+            g_dim = 2.0 * noise_mm + 2.0 * res_mm
             dim_suspect = False
             if not (undersize or oversize):
                 mins = np.concatenate([dims, [] if minor is None else [minor]])
@@ -470,7 +477,9 @@ class ItemManager:
                 srt = np.sort(dims)[::-1]
                 r_est = float(np.hypot(srt[1], srt[2])) / 2.0
                 g_ratio = min(0.25, (2.0 * noise_mm
-                                     + P.VIRTUAL_SENSOR["ground_res_mm"])
+                                     + max(float(r.get("gsd_mm",
+                                           P.VIRTUAL_SENSOR["ground_res_mm"]))
+                                           for r in reads))
                               / max(r_est, 5.0))
                 ratio_suspect = P.CIRCLE_RATIO - g_ratio <= max_ratio < P.CIRCLE_RATIO
             rule_dim = "undersize" if undersize else ("oversize" if oversize else "pass")

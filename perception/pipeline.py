@@ -72,6 +72,38 @@ def _mirrored_hull_ratio(v_c, z, zc):
     return _poly_ratio(sec)
 
 
+def certify_single_read(res):
+    """Zero-noise single-read certification: the legal-metrology guard bands
+    `cell/run_sim.py` applies at fusion, condensed to one read — for harnesses
+    (validation, unknown-shape campaign) that score what the CELL decides,
+    not the raw estimator. A dimension inside the measuring head's
+    certification floor cannot take the permissive branch; a ratio inside the
+    head's uncertainty of the 0.8 criterion diverts to repack.
+    Returns (zone, why)."""
+    dims = np.array(res["dims_mm"], float)
+    minor = res.get("minor_mm")
+    gsd = float(res.get("gsd_mm", P.VIRTUAL_SENSOR["ground_res_mm"]))
+    g_dim = 2.0 * gsd
+    mins = np.concatenate([dims, [] if minor is None else [minor]])
+    undersize = bool(np.any(dims < MIN_DIM_MM)
+                     or (minor is not None and minor < MIN_DIM_MM))
+    oversize = bool(np.any(np.sort(dims)[::-1] > np.array(MAX_DIMS_MM)))
+    if undersize or oversize:
+        return "C", "rule_dims"
+    if bool(np.any(mins < MIN_DIM_MM + g_dim)):
+        return "C", f"guard_band_dims(floor={MIN_DIM_MM + g_dim:.1f}mm)"
+    if res.get("circular"):
+        return "D", "circle_strong"
+    mr = res.get("max_ratio")
+    if mr is not None:
+        srt = np.sort(dims)[::-1]
+        r_est = float(np.hypot(srt[1], srt[2])) / 2.0
+        g_ratio = min(0.25, gsd / max(r_est, 5.0))
+        if RATIO_THRESHOLD - g_ratio <= mr < RATIO_THRESHOLD:
+            return "D", "guard_band_ratio"
+    return "B", "fits"
+
+
 class LookaheadPerception:
     """Depth sensing via ray casting (mj_multiRay) — deterministic, no OpenGL,
     identical results headless and in CI. Two virtual sensors, both standard
@@ -140,6 +172,11 @@ class LookaheadPerception:
         self._fan_geomid = np.full(n_max, -1, dtype=np.int32)
         self._fan_dist = np.zeros(n_max, dtype=np.float64)
         self._scan_xs = np.arange(ROI_X[0], ROI_X[1], self.FAN_STEP)
+        # close-range macro head (dual-range DWS, published in VIRTUAL_SENSOR
+        # since the start — the twin mirror of the Isaac RTX macro path):
+        # engaged when the overhead grid cannot certify a small item
+        self.macro_engage = P.VIRTUAL_SENSOR["macro_engage_mm"] / 1000.0
+        self._last_head = "overhead"
 
     # ------------------------------------------------------------------ sensing
     def _mask(self, pts):
@@ -165,6 +202,24 @@ class LookaheadPerception:
         keep = hit & (dist < self._belt_dist - 3.0 * sig)
         grid_pts = self.cam_pos + self._dirs[keep] * dist[keep, None]
         grid_pts = grid_pts[self._mask(grid_pts)]
+        # DUAL RANGE: an item too small for the overhead grid (an 11 mm cube
+        # is ~16 returns at 3 mm sampling — below any honest cluster floor)
+        # is re-imaged by the close-range macro head at sub-mm gsd instead of
+        # being declared a miss; also engaged when the footprint is inside
+        # the macro engage band so small-item dims certify at the macro floor
+        self._last_head = "overhead"
+        # engage on the min-area-rect WIDTH, not axis-aligned extents: a
+        # small lying cylinder at a diagonal yaw spans >25 mm on both world
+        # axes while its true width is 12 mm
+        if len(grid_pts) >= 3:
+            _, rect_w, _ = min_area_rect(grid_pts[:, :2])
+        else:
+            rect_w = 0.0
+        if len(grid_pts) < 40 or rect_w < self.macro_engage:
+            mpts = self._macro_recast(data, grid_pts, x_hint)
+            if mpts is not None:
+                grid_pts = mpts
+                self._last_head = "macro"
         if len(grid_pts) < 40:
             return None
         # profile-scanner sweep, restricted to planes that can hit the item;
@@ -209,6 +264,55 @@ class LookaheadPerception:
         if pts is None or len(pts) < 40:
             return None
         return self._select_cluster(pts, x_hint)
+
+    def _macro_recast(self, data, seed_pts, x_hint):
+        """Close-range macro head: a fine grid at macro_gsd_mm cast from the
+        published macro head pose over the item's neighbourhood (seeded by
+        the sparse overhead returns, or by the tracker hint when the item is
+        below even the sparse-return floor). Same background-subtraction
+        model as the overhead grid. Returns a dense cloud or None when the
+        item is outside the macro footprint."""
+        mx, my, mz = P.VIRTUAL_SENSOR["macro_pos"]
+        gsd = P.VIRTUAL_SENSOR["macro_gsd_mm"] / 1000.0
+        half = 0.150                    # ~24 deg fov -> ~0.31 m belt footprint
+        if len(seed_pts):
+            x0 = float(seed_pts[:, 0].min()) - 0.008
+            x1 = float(seed_pts[:, 0].max()) + 0.008
+            y0 = float(seed_pts[:, 1].min()) - 0.008
+            y1 = float(seed_pts[:, 1].max()) + 0.008
+        elif x_hint is not None:
+            x0, x1 = x_hint - 0.03, x_hint + 0.03
+            y0 = P.BELT_A["y"] - 0.06
+            y1 = P.BELT_A["y"] + 0.06
+        else:
+            return None
+        if x0 < mx - half or x1 > mx + half:
+            return None                 # item not under the macro head yet
+        gx = np.arange(x0, x1, gsd)
+        gy = np.arange(y0, y1, gsd)
+        if not len(gx) or not len(gy):
+            return None
+        gxx, gyy = np.meshgrid(gx, gy)
+        targets = np.column_stack([gxx.ravel(), gyy.ravel(),
+                                   np.full(gxx.size, BELT_Z)])
+        pos = np.array([mx, my, mz], dtype=float)
+        dirs = targets - pos
+        rng = np.linalg.norm(dirs, axis=1)
+        dirs /= rng[:, None]
+        n = len(dirs)
+        geomid = np.full(n, -1, dtype=np.int32)
+        dist = np.zeros(n, dtype=np.float64)
+        mujoco.mj_multiRay(self.m, data, pos, dirs.reshape(-1).copy(),
+                           RAY_GROUPS, 1, -1, geomid, dist, None,
+                           n, mujoco.mjMAXVAL)
+        sig = max(self.noise_m, 5e-4)
+        hit = geomid >= 0
+        if self.noise_m > 0.0 and hit.any():
+            dist[hit] += self.noise_rng.normal(0.0, self.noise_m, int(hit.sum()))
+        keep = hit & (dist < rng - 3.0 * sig)
+        pts = pos + dirs[keep] * dist[keep, None]
+        pts = pts[self._mask(pts)]
+        return pts if len(pts) >= 40 else None
 
     def _denoise(self, pts):
         """Morphological cleanup under sensor noise (standard DWS practice):
@@ -350,13 +454,36 @@ class LookaheadPerception:
                 theta = np.arctan2(zb - zc, vb - vc)
                 rho = np.hypot(vb - vc, zb - zc)
                 if primary:
-                    # (b1) prism path: outer radius per angular bin,
-                    # min/max ratio
-                    rho_out = []
-                    for lo_e, hi_e in zip(theta_edges[:-1], theta_edges[1:]):
-                        in_bin = (theta >= lo_e) & (theta < hi_e)
-                        if in_bin.any():
-                            rho_out.append(float(rho[in_bin].max()))
+                    # (b1) prism path. At MACRO range the section contour is
+                    # densely sampled and the angular-bin maxima estimator
+                    # shows its intrinsic square bias (+~0.05: the 15-deg bin
+                    # max of a square contour is 0.73, and wall returns push
+                    # it to ~0.76 — inside the ratio guard band, so a legal
+                    # 12 mm die diverted D). The rectangle-stable mirrored
+                    # hull r_in/R has no such bias (square 0.707 on ANY cut,
+                    # hexagon 0.866, circle ~1.0) and is exact on the dense
+                    # macro cloud; the overhead/profiler regime keeps the
+                    # validated bin estimator untouched.
+                    if self._last_head == "macro":
+                        ratio = _mirrored_hull_ratio(vb - vc, zb, zc)
+                        if ratio is not None:
+                            sections.append(
+                                (f"radial@u{s * 1000:+.0f}mm/hull", ratio))
+                            if ratio >= RATIO_THRESHOLD:
+                                circ_hits.append((s, s_kind))
+                            elif (s_kind == "end"
+                                  and ratio >= RATIO_THRESHOLD - 0.03):
+                                end_support.append(s)
+                        # fall through to (b2) revolution voting below
+                        rho_out = []
+                    else:
+                        # outer radius per angular bin, min/max ratio
+                        rho_out = []
+                        for lo_e, hi_e in zip(theta_edges[:-1],
+                                              theta_edges[1:]):
+                            in_bin = (theta >= lo_e) & (theta < hi_e)
+                            if in_bin.any():
+                                rho_out.append(float(rho[in_bin].max()))
                     if len(rho_out) >= 6:
                         ratio = min(rho_out) / max(rho_out)
                         sections.append(
@@ -471,4 +598,12 @@ class LookaheadPerception:
         pts = self.cloud(data, x_hint=x_hint)
         if pts is None or len(pts) < 40:
             return None
-        return self.analyze(pts)
+        res = self.analyze(pts)
+        if res is not None:
+            # measuring head provenance: the runner's certification floors
+            # (legal-metrology guard bands) scale with the head's gsd
+            res["head"] = self._last_head
+            res["gsd_mm"] = (P.VIRTUAL_SENSOR["macro_gsd_mm"]
+                             if self._last_head == "macro"
+                             else P.VIRTUAL_SENSOR["ground_res_mm"])
+        return res

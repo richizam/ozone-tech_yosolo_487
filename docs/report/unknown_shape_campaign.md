@@ -18,8 +18,8 @@ ray-cast perception measures and decides** in the loop.
 | Metric | Value |
 |---|---|
 | Unseen shapes × poses | 30 × 2 = 60 classifications |
-| Agreement with the official rules | **40/60 = 66.7%** |
-| Disagreements, conservative direction (→ C/D/REVIEW) | 20 |
+| Agreement with the official rules | **44/60 = 73.3%** |
+| Disagreements, conservative direction (→ C/D/REVIEW) | 16 |
 | Disagreements, permissive direction (→ B) | **0** |
 
 The number that matters is the last one: a permissive error means

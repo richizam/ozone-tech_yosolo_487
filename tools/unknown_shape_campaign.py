@@ -142,7 +142,8 @@ def main(argv=None):
     # ---- measured verdicts: the twin's ray-cast perception, item settled
     import mujoco                                              # noqa: E402
     from cell.scene import make_model                          # noqa: E402
-    from perception.pipeline import LookaheadPerception         # noqa: E402
+    from perception.pipeline import (LookaheadPerception,       # noqa: E402
+                                     certify_single_read)
     from perception.validate import settle_item, park_item      # noqa: E402
 
     model, manifest, _ = make_model()
@@ -167,12 +168,21 @@ def main(argv=None):
                         yaw)
             res = percep.classify(data)
             ref = refs[slug]["zone"]
-            got = (res or {}).get("zone", "NONE")
+            # score what the CELL decides, not the raw estimator: the run
+            # fusion's guard bands (certification floors, ratio uncertainty)
+            # are part of the decision path — a raw-B read whose dimension
+            # sits inside the measuring head's floor is diverted C/D by the
+            # cell and must be scored as such
+            if res is None:
+                got, why = "NONE", "sensor_miss"
+            else:
+                got, why = certify_single_read(res)
             # a sensor miss is a designed safe terminal (manual review), not
             # a permissive error
             safe = (got != PERMISSIVE) if got != ref else True
             rows.append({"slug": slug, "pose": k, "zone_rules": ref,
-                         "zone_measured": got, "agree": got == ref,
+                         "zone_measured": got, "why": why,
+                         "agree": got == ref,
                          "safe": bool(safe),
                          "dims_mm": (res or {}).get("dims_mm"),
                          "max_ratio": (res or {}).get("max_ratio")})

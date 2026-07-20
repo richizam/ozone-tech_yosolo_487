@@ -1,14 +1,14 @@
 {
-  "poses_per_item": 10,
+  "poses_per_item": 8,
   "seed": 5,
-  "classifications": 160,
+  "classifications": 128,
   "official_items": 11,
   "category_accuracy_official": 1.0,
   "permissive_errors": 0,
-  "conservative_deviations": 10,
-  "dims_err_mean_mm": 4.71,
-  "dims_err_p95_mm": 12.95,
-  "dims_err_max_mm": 91.5,
+  "conservative_deviations": 8,
+  "dims_err_mean_mm": 5.05,
+  "dims_err_p95_mm": 17.09,
+  "dims_err_max_mm": 89.8,
   "permissive_detail": [],
   "conservative_detail": [
     {
@@ -51,7 +51,7 @@
       "pose": 5,
       "zone_true": "B",
       "zone_perceived": "D",
-      "max_ratio": 0.803
+      "max_ratio": 0.806
     },
     {
       "slug": "bl_rsq_b",
@@ -63,20 +63,6 @@
     {
       "slug": "bl_rsq_b",
       "pose": 7,
-      "zone_true": "B",
-      "zone_perceived": "D",
-      "max_ratio": 0.807
-    },
-    {
-      "slug": "bl_rsq_b",
-      "pose": 8,
-      "zone_true": "B",
-      "zone_perceived": "D",
-      "max_ratio": 0.807
-    },
-    {
-      "slug": "bl_rsq_b",
-      "pose": 9,
       "zone_true": "B",
       "zone_perceived": "D",
       "max_ratio": 0.807

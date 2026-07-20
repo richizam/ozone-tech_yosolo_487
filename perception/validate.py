@@ -62,13 +62,20 @@ def settle_item(model, data, slug, entry, y_off, yaw, steps=200,
             freight_bodies.add(int(model.jnt_bodyid[j]))
     qa, da = model.jnt_qposadr[jid], model.jnt_dofadr[jid]
 
+    # small freight is measured by the close-range macro head; the harness
+    # reads it at the macro station, where the moving flow's captures land
+    # (in run_sim the item passes under the head and reads accumulate there)
+    cam_x = (P.VIRTUAL_SENSOR["macro_pos"][0]
+             if max(entry["dims_m"]) < 2.0 * P.VIRTUAL_SENSOR["macro_engage_mm"]
+             / 1000.0 else CAM_X)
+
     def drop(y_o, yw):
         # spawn clearance from the LONGEST extent, not dims_m[2]: a mesh
         # whose local frame is not OBB-aligned (the campaign generator
         # exports some solids diagonally) otherwise spawns EMBEDDED in the
         # belt, gets ejected, and the camera snaps it mid-tumble — a
         # 490 mm rod once measured 424x310x40 while flying
-        data.qpos[qa:qa + 3] = [CAM_X, P.BELT_A["y"] + y_o,
+        data.qpos[qa:qa + 3] = [cam_x, P.BELT_A["y"] + y_o,
                                 P.BELT_A["top"] + max(entry["dims_m"]) / 2
                                 + 0.004]
         data.qpos[qa + 3:qa + 7] = [np.cos(yw / 2), 0, 0, np.sin(yw / 2)]
