@@ -31,7 +31,7 @@ be recomputed without a GPU.
 | Floor drops, all 14 runs | 0 | **0** |
 | Containment in receptacles | 1.0 | **1.0** |
 | Direct velocity writes on freight (nominal) | 0 | **0** |
-| Min command margin | > 0 | **0.95 s** |
+| Min command margin | > 0 | **1.05 s** |
 | 11 mm cube | delivered to B | **B** (binding min dim measured 11.0 mm, floor 10.8 mm) |
 
 **The sweep runs degrade — honestly and safely.** The accuracy gates above
