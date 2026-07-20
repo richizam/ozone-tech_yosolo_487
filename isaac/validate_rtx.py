@@ -126,8 +126,27 @@ def main():
     perc = RTXPerception([cam] + side_cams, dome_tau=args.dome_tau,
                          macro=macro_cam)
 
-    for _ in range(20):
+    # ADAPTIVE warm-up: on a cold host (fresh shader caches) the RTX
+    # annotator can take far longer than a fixed 20 renders to produce its
+    # first real frame — every read is a "no depth frame" miss then. Render
+    # until the overhead head serves finite depth, with a hard cap.
+    import time as _time
+    t0 = _time.time()
+    warm = 0
+    while True:
         world.step(render=True)
+        warm += 1
+        fr = cam.get_current_frame().get("distance_to_image_plane")
+        arr = np.asarray(fr, dtype=float) if fr is not None else None
+        if arr is not None and arr.size and np.isfinite(arr).any():
+            print(f"[rtxval] annotator warm after {warm} renders "
+                  f"({_time.time() - t0:.1f}s)", flush=True)
+            break
+        if warm >= 900 or _time.time() - t0 > 300:
+            print(f"[rtxval] WARM-UP FAILED after {warm} renders "
+                  f"({_time.time() - t0:.1f}s) — aborting", flush=True)
+            sim_app.close()
+            return 2
 
     yaws = [float(v) for v in args.yaws.split(",")]
     rows = []
@@ -158,6 +177,14 @@ def main():
             for _ in range(6):
                 world.step(render=True)
             res = perc.measure(debug=True)
+            # cold-pipeline retry: flush more frames if the annotator
+            # served nothing for this pose
+            for _retry in range(3):
+                if res is not None:
+                    break
+                for _ in range(12):
+                    world.step(render=True)
+                res = perc.measure(debug=True)
             if args.save_depth:
                 fr = cam.get_current_frame().get("distance_to_image_plane")
                 if fr is not None:
