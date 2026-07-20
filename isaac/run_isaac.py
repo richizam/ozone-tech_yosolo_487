@@ -610,10 +610,18 @@ def main():
                         p2 = pose(s2)[0]
                         if abs(float(p2[1]) - a["y"]) > 0.4:
                             continue
-                        if not (win0 - 0.3 <= float(p2[0]) <= win1 + 0.35):
+                        # SPAN overlap with the segmentation crop, not
+                        # center-in-window: a 400 mm neighbour centred past
+                        # the window still hangs its tail inside the crop
+                        # and merges (box_s once fused to a 501 mm read
+                        # that slid UNDER the 520 mm echo reject) — the
+                        # project rule: occupancy checks are span-based
+                        half2 = entries[s2]["dims_m"][0] / 2
+                        x2 = float(p2[0])
+                        if (x2 + half2 < win0 - 0.15
+                                or x2 - half2 > win1 + 0.45):
                             continue
-                        gap = (abs(float(p2[0]) - float(p[0])) - half
-                               - entries[s2]["dims_m"][0] / 2)
+                        gap = abs(x2 - float(p[0])) - half - half2
                         if gap < 0.10:
                             st["window_conflict"] = True
                             break
