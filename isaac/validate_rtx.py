@@ -91,6 +91,12 @@ def main():
         builder.build_camera_lookat("side_b", (6.0, P.BELT_A["y"] + off, zh),
                                     (6.0, P.BELT_A["y"], P.BELT_A["top"] + 0.10)),
     ]
+    # close-range MACRO head (dual-range DWS): directly over the probe pad —
+    # the static-rig equivalent of the moving cell's macro station (in run
+    # traffic the item passes under the head; here the item IS at the station)
+    macro_path = builder.build_camera(
+        "macro", (6.0, P.BELT_A["y"], vs["macro_pos"][2]), (1, 0, 0),
+        (0, 1, 0), fovy_deg=vs["macro_fov_deg"])
     item_info = {}
     for i, e in enumerate(manifest):
         path, park = builder.build_item(e, i, m_item)
@@ -114,7 +120,11 @@ def main():
         sc.initialize()
         sc.add_distance_to_image_plane_to_frame()
         side_cams.append(sc)
-    perc = RTXPerception([cam] + side_cams, dome_tau=args.dome_tau)
+    macro_cam = Camera(prim_path=macro_path, resolution=(768, 768))
+    macro_cam.initialize()
+    macro_cam.add_distance_to_image_plane_to_frame()
+    perc = RTXPerception([cam] + side_cams, dome_tau=args.dome_tau,
+                         macro=macro_cam)
 
     for _ in range(20):
         world.step(render=True)
