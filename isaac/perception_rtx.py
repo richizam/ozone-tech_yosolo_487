@@ -709,6 +709,51 @@ class RTXPerception:
                     va = mxy_c @ np.array([-np.sin(a_c), np.cos(a_c)])
                     sect_sweep = max(sect_sweep,
                                      self._section_ratio(ua, va, mh))
+                # WINDOWED ANGULAR-BIN section over swept axes: D-EVIDENCE
+                # ONLY. In MOTION the macro frame loses ~2/3 of its returns
+                # and leaves low smear points on the flanks; the hull takes
+                # them as vertices and a short lying cylinder collapsed to
+                # 0.60-0.72 -> fused B -> FLOOR off the B connector
+                # (unkclip_04, the clip's live catch). Per-bin MAXIMA read
+                # the outer contour straight through that smear (a
+                # smear point can only RAISE a bin, and a raised bin can
+                # only push toward D), and the 30-150 deg window drops the
+                # grazing extremes. The channel carries the bin estimator's
+                # +0.05 square bias — PROTECTIVE here, which is why the
+                # hull stays the only B-certifier (die 0.707, no bias).
+                sect_bins = 0.0
+                b_edges = np.linspace(np.deg2rad(30), np.deg2rad(150), 9)
+                zc_m = 0.5 * float(np.percentile(mh, 99))
+                if zc_m > 0.003:
+                    for k_ax in range(6):
+                        a_c = ang0 + k_ax * (np.pi / 6.0)
+                        ua = mxy_c @ np.array([np.cos(a_c), np.sin(a_c)])
+                        va = mxy_c @ np.array([-np.sin(a_c), np.cos(a_c)])
+                        u_min, u_max = float(ua.min()), float(ua.max())
+                        span = u_max - u_min
+                        if span < 0.008:
+                            continue
+                        for s_st in np.linspace(u_min + 0.2 * span,
+                                                u_max - 0.2 * span, 5):
+                            band = np.abs(ua - s_st) < max(0.002,
+                                                           0.08 * span)
+                            if int(band.sum()) < 12:
+                                continue
+                            vb2, hb2 = va[band], mh[band]
+                            vc2 = 0.5 * (float(vb2.min())
+                                         + float(vb2.max()))
+                            th = np.arctan2(hb2 - zc_m, vb2 - vc2)
+                            rho = np.hypot(vb2 - vc2, hb2 - zc_m)
+                            rho_out = []
+                            for lo_e, hi_e in zip(b_edges[:-1],
+                                                  b_edges[1:]):
+                                m_b = (th >= lo_e) & (th < hi_e)
+                                if m_b.any():
+                                    rho_out.append(float(rho[m_b].max()))
+                            if len(rho_out) >= 6:
+                                r_b = min(rho_out) / max(rho_out)
+                                if r_b > sect_bins:
+                                    sect_bins = r_b
                 guard_macro = P.VIRTUAL_SENSOR.get("guard_macro_mm", 0.8)
                 under = any(d < LIMIT_MIN_MM + guard_macro for d in dims_mm)
                 if under:
@@ -724,6 +769,10 @@ class RTXPerception:
                     # mirror closure is only trustworthy for prisms
                     zone, reason = "D", ("circle (macro): swept section "
                                          f"r_in/R={sect_sweep:.2f}")
+                elif sect_bins >= self.circle_ratio:
+                    # smear-immune windowed-bin channel (D evidence only)
+                    zone, reason = "D", ("circle (macro): binned section "
+                                         f"{sect_bins:.2f}")
                 elif dome >= self.dome_tau:
                     zone, reason = "D", f"dome (macro)={dome:.2f}"
                 elif elong >= 2.2 and sect >= 0.38:
@@ -736,6 +785,7 @@ class RTXPerception:
                     zone, reason = "B", (f"fits (macro head): circ={circ:.2f} "
                                          f"sect={sect:.2f} "
                                          f"sweep={sect_sweep:.2f} "
+                                         f"bins={sect_bins:.2f} "
                                          f"dome={dome:.2f}")
                 return {
                     "zone": zone, "reason": reason,
@@ -744,6 +794,7 @@ class RTXPerception:
                     "footprint_circularity": round(circ, 3),
                     "section_ratio": round(sect, 3),
                     "section_sweep": round(sect_sweep, 3),
+                    "section_bins": round(sect_bins, 3),
                     "dome_score": round(dome, 3),
                     "flank_mm": -1.0, "plateau_frac": 1.0,
                     "aspect_hw": round(dims_mm[2] / max(dims_mm[1], 1e-6), 3),
