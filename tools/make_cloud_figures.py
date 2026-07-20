@@ -64,6 +64,14 @@ def probe_meshes():
     rod = trimesh.creation.cylinder(radius=0.020, height=0.490)
     rod.apply_transform(trimesh.transformations.rotation_matrix(
         np.pi / 2, [0, 1, 0]))
+    # dual-range small set (QA-сессия 17-07: игральная кость 12 мм —
+    # ЛЕГАЛЬНЫЙ товар B; мелкие круглые — никогда в B)
+    die = trimesh.creation.box(extents=[0.012] * 3)
+    smallcyl = trimesh.creation.cylinder(radius=0.006, height=0.040,
+                                         sections=64)
+    smallcyl.apply_transform(trimesh.transformations.rotation_matrix(
+        np.pi / 2, [0, 1, 0]))
+    sphere = trimesh.creation.icosphere(subdivisions=3, radius=0.006)
     return [
         ("hex_lying", lying, "Шестигранная призма 120×104 — ЛЁЖА",
          "слепая зона закрыта: развёртка осей находит сечение 0.87"),
@@ -71,6 +79,15 @@ def probe_meshes():
          "силуэт сверху — шестиугольник: circ 0.88 решает сам"),
         ("rod_490", rod, "Цилиндр Ø40×490 — перемер",
          "OBB 490 мм > 450: габаритный гейт (приоритет правил)"),
+        ("die_12mm", die, "Игральная кость 12 мм — ЛЕГАЛЬНЫЙ товар",
+         "макро-голова 0.4 мм/px: сечение-hull 0.71 < 0.8 — честно B "
+         "(пол сертификации 10.8 мм)"),
+        ("cyl_12x40", smallcyl, "Цилиндр Ø12×40 — ЛЁЖА",
+         "макро-облако: зеркальное сечение ~1.0 — круг, D (раньше слепая "
+         "зона малых форм)"),
+        ("sphere_12mm", sphere, "Сфера Ø12 — минимальный круглый",
+         "силуэт-круг + сечения: D; габарит 12 мм > пола 10.8 — "
+         "не путать с недомером"),
     ]
 
 
@@ -113,17 +130,32 @@ def best_section(verdict, pts):
     zc = 0.5 * height
     _, _, ang = min_area_rect(xy)
     edges = np.linspace(np.deg2rad(30), np.deg2rad(150), 9)
+    # SMALL (macro-head) regime: the classifier's macro path scores the
+    # rectangle-stable mirrored-hull section, and station geometry scales
+    # with the body — mirror that here so the figure shows the estimator
+    # that actually decided
+    span_all = float(np.ptp(xy @ np.array([np.cos(ang), np.sin(ang)])))
+    small = span_all < 0.11
     best = None
     for k_ax in range(12):
         a = ang + k_ax * np.pi / 12.0
-        primary = k_ax == 0
+        primary = (k_ax == 0) and not small
         u = (xy - c) @ np.array([np.cos(a), np.sin(a)])
         v = (xy - c) @ np.array([-np.sin(a), np.cos(a)])
         u_min, u_max = float(u.min()), float(u.max())
-        if u_max - u_min < 0.11:
-            continue
-        for s in np.linspace(u_min + 0.05, u_max - 0.05, 7):
-            band = np.abs(u - s) < 0.005
+        span = u_max - u_min
+        if small:
+            if span < 0.008:
+                continue
+            stations = np.linspace(u_min + 0.2 * span, u_max - 0.2 * span, 5)
+            half_band = max(0.002, 0.08 * span)
+        else:
+            if span < 0.11:
+                continue
+            stations = np.linspace(u_min + 0.05, u_max - 0.05, 7)
+            half_band = 0.005
+        for s in stations:
+            band = np.abs(u - s) < half_band
             if int(band.sum()) < 12:
                 continue
             vb, zb = v[band], z_rel[band]
@@ -153,6 +185,7 @@ def best_section(verdict, pts):
                 best = {"ratio": r, "axis_deg": np.degrees(a) % 180.0,
                         "s": s, "vb": vb - vc, "zb": zb - zc,
                         "metodo": ("бины (осн. ось)" if primary
+                                   else "зерк. hull (макро)" if small
                                    else "зерк. hull (развёртка)"),
                         "r_in": r_in, "r_out": r_out}
     return best
@@ -205,6 +238,11 @@ def make_figure(slug, title, note, pts, verdict, out_dir):
     if sec is not None:
         vb, zb = sec["vb"] * 1000, sec["zb"] * 1000
         ax2.scatter(vb, zb, s=7, c="#7FB2FF", label="точки станции")
+        # the estimator closes the section by mirror symmetry about the
+        # resting mid-height (same closure as the ground-truth section) —
+        # show the reconstructed half so r/R is visually traceable
+        ax2.scatter(vb, -zb, s=7, facecolors="none", edgecolors="#4A5568",
+                    linewidths=0.6, label="зеркальное замыкание")
         r_in, r_out = sec["r_in"] * 1000, sec["r_out"] * 1000
         th = np.linspace(0, 2 * np.pi, 200)
         ax2.plot(r_out * np.cos(th), r_out * np.sin(th), color=MAGENTA,
