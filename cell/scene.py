@@ -457,6 +457,15 @@ def _stations_xml():
              f'pos="{(S["pan_x0"] + S["pan_x1"]) / 2} {S["y"]} '
              f'{S["pan_z_top"] - 0.005}" friction="0.8 0.01 0.0001" '
              f'rgba="0.13 0.14 0.16 1"/>')
+    # east backstop fence (P.SORTER["pan_end_fence_*"]): a thin card sliding
+    # the pan at line speed once skidded off the east edge to the floor —
+    # the fence arrests it ON the pan for the watchdog call-out
+    g.append(f'<geom name="train_pan_fence" type="box" '
+             f'size="{S["pan_end_fence_t"] / 2} {S["pan_y_half"]} '
+             f'{S["pan_end_fence_h"] / 2}" '
+             f'pos="{S["pan_x1"] - S["pan_end_fence_t"] / 2} {S["y"]} '
+             f'{S["pan_z_top"] + S["pan_end_fence_h"] / 2}" '
+             f'friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>')
     # stepped south apron (see P.SORTER["pan_apron"]): catches induction
     # misses that clear the pan's pinned south edge; only where no chute
     # mouth lies below

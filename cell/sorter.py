@@ -534,6 +534,17 @@ class SorterControl:
                     c["gone_since"] = t
                 elif not gone_now:
                     c["gone_since"] = None
+                # GEOGRAPHIC late-discharge guard (Isaac parity): a load
+                # still aboard a tilted tray this close to the NEXT
+                # station's mouth would exit INSIDE that mouth. Position,
+                # not time, bounds a legal discharge. ONLY C->D: cross-
+                # delivery needs a SAME-FLANK downstream mouth (REVIEW
+                # discharges north; a D->REVIEW guard false-fired on every
+                # D discharge — the D-REVIEW gap is under the lead).
+                nxt = {"C": "D"}.get(c["station"])
+                late_geo = (nxt is not None and c["t_full"] is not None
+                            and c["x"] >= P.STATIONS[nxt]["x"]
+                            - S["late_flatten_lead_m"])
                 if gone_now and t - c["gone_since"] >= \
                         S["confirm_persist_s"]:
                     self.ev(t, "discharge_confirmed", c["slug"],
@@ -543,8 +554,9 @@ class SorterControl:
                     c["slug"], c["route"] = None, None
                     c["gone_since"] = None
                     c["flat_at"] = t + S["discharge_dwell_s"]
-                elif ((c["t_full"] is not None and t - c["t_full"] >
-                       (2.0 if (c.get("len_m") or 0.0) >= 0.35 else 1.2))
+                elif (late_geo
+                      or (c["t_full"] is not None and t - c["t_full"] >
+                          (2.0 if (c.get("len_m") or 0.0) >= 0.35 else 1.2))
                       or (c["t_onset"] is not None and c["t_full"] is None
                           and t - c["t_onset"] > 2.8)):
                     # STUCK-TILT TIMEOUT: re-flatten so the carrier becomes
@@ -555,7 +567,8 @@ class SorterControl:
                         c["stuck_side"] = -1 if float(ip[1]) < self.S["y"]                             else +1
                     self.ev(t, "tilt_stuck_flatten", c["slug"],
                             carrier=c["i"], station=c["station"],
-                            side=c.get("stuck_side"))
+                            side=c.get("stuck_side"),
+                            trigger="next_mouth_geo" if late_geo else "timer")
                     c["goal"] = 0.0
                     c["flat_at"] = t + 0.05
                     c["station"] = None

@@ -595,6 +595,28 @@ def main():
                     pressed = (blade_up_state.get("egate")
                                and p[0] + entries[slug]["dims_m"][0] / 2
                                > a["gate_x"] - 0.06)
+                    # WINDOW-CONFLICT (MuJoCo-twin parity): ANY other body
+                    # within cloud-merge range of this item — including an
+                    # already-CLASSIFIED item queued at the escapement,
+                    # which others_ahead ignores — can merge into the
+                    # measured cloud under this item's identity (a 10 mm
+                    # cube's read once measured its 194 mm queue neighbour
+                    # and certified the wrong class). The flag survives to
+                    # fusion: a conflicted window never certifies B.
+                    half = entries[slug]["dims_m"][0] / 2
+                    for s2 in active:
+                        if s2 == slug:
+                            continue
+                        p2 = pose(s2)[0]
+                        if abs(float(p2[1]) - a["y"]) > 0.4:
+                            continue
+                        if not (win0 - 0.3 <= float(p2[0]) <= win1 + 0.35):
+                            continue
+                        gap = (abs(float(p2[0]) - float(p[0])) - half
+                               - entries[s2]["dims_m"][0] / 2)
+                        if gap < 0.10:
+                            st["window_conflict"] = True
+                            break
                     if not others_ahead and not pressed:
                         st["next_read_t"] = t + 0.08
                         # annotator freshness: the item never pauses inside
@@ -622,6 +644,16 @@ def main():
                     e = entries[slug]
                     if perc is not None:
                         fused = fuse_reads(st.get("reads", []))
+                        # single-item-discipline defense-in-depth (twin
+                        # parity): a verdict measured while another body sat
+                        # in cloud-merge range may be a merged-object
+                        # artifact — it must not feed the sorter
+                        if st.get("window_conflict") and fused["zone"] == "B":
+                            fused = dict(fused, zone="D",
+                                         reason=("window conflict during "
+                                                 "measurement -> repack "
+                                                 "review lane; "
+                                                 + fused["reason"]))
                         st["zone"] = fused["zone"]
                         st["cls"] = fused
                         reads_log[slug] = {"raw_measurements": st.get("reads", []),

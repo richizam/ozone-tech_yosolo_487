@@ -164,6 +164,20 @@ SORTER = {
     # mouth below, so it can never enter a discharge corridor.
     "pan_apron": {"z_top": 0.36, "y0": 2.74, "y1": 2.82,
                   "segs": [(6.78, 7.08), (7.82, 8.38), (9.12, 9.28)]},
+    # EAST BACKSTOP FENCE on the debris pan: the 2 mm card arrives at line
+    # speed and slides the pan nearly friction-free face-down — in traffic
+    # it skidded past x1 and off the east edge to the floor (the single red
+    # gate of the post-reset matrix). 45 mm arrests any sliding thin
+    # freight; the fence top (0.435) stays under the tilted-tray plate
+    # corner arc, which at the pan's |dy| <= 0.18 rides above z 0.44.
+    "pan_end_fence_h": 0.045, "pan_end_fence_t": 0.012,
+    # GEOGRAPHIC LATE-DISCHARGE GUARD: an occupied carrier still tilted
+    # this close (m) to the NEXT station's x is flattened to retain the
+    # load (missed-discharge fallback then re-routes it to REVIEW). The
+    # stuck-tilt TIMER alone let a low-friction box_l slide for 1.8 s and
+    # exit INSIDE station D's mouth (cross-delivery C->D). Lead = mouth
+    # west margin 0.42 + flatten travel at 160 dps (0.12) + latency+margin.
+    "late_flatten_lead_m": 0.66,
 }
 
 # ---------------------------------------------------------------- induction (physical, synchronized)

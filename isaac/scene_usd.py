@@ -917,6 +917,15 @@ class SceneBuilder:
                                    S["pan_z_top"] - 0.005),
                      ((S["pan_x1"] - S["pan_x0"]) / 2, S["pan_y_half"], 0.005),
                      color=(0.13, 0.14, 0.16), mat=mat_tray)
+        # east backstop fence (P.SORTER["pan_end_fence_*"]): a thin card
+        # sliding the pan at line speed once skidded off the east edge to
+        # the floor — the fence arrests it ON the pan for the watchdog
+        self.add_box("train_pan_fence",
+                     (S["pan_x1"] - S["pan_end_fence_t"] / 2, y,
+                      S["pan_z_top"] + S["pan_end_fence_h"] / 2),
+                     (S["pan_end_fence_t"] / 2, S["pan_y_half"],
+                      S["pan_end_fence_h"] / 2),
+                     color=(0.13, 0.14, 0.16), mat=mat_tray)
         # stepped south apron (P.SORTER["pan_apron"]): catches induction
         # misses that clear the pan's pinned south edge; only where no
         # chute mouth lies below
