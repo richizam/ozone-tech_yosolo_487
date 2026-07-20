@@ -926,6 +926,25 @@ class SceneBuilder:
                      (S["pan_end_fence_t"] / 2, S["pan_y_half"],
                       S["pan_end_fence_h"] / 2),
                      color=(0.13, 0.14, 0.16), mat=mat_tray)
+        # WRAP CATCH PAN (P.SORTER["wrap_pan"]): sub-blade stowaways riding
+        # a tray drop off the east wheel — flat plate + low lips, all under
+        # z 0.193 (return-leg clearance 42 mm; no sweep exposure)
+        wp = S["wrap_pan"]
+        wx, wy = (wp["x0"] + wp["x1"]) / 2, (wp["y0"] + wp["y1"]) / 2
+        self.add_box("wrap_pan", (wx, wy, wp["z_top"] - 0.003),
+                     ((wp["x1"] - wp["x0"]) / 2, (wp["y1"] - wp["y0"]) / 2,
+                      0.003), color=(0.13, 0.14, 0.16), mat=mat_tray)
+        for nm, cx, cy, hx, hy in (
+                ("e", wp["x1"] - wp["lip_t"] / 2, wy, wp["lip_t"] / 2,
+                 (wp["y1"] - wp["y0"]) / 2),
+                ("s", wx, wp["y0"] + wp["lip_t"] / 2,
+                 (wp["x1"] - wp["x0"]) / 2, wp["lip_t"] / 2),
+                ("n", wx, wp["y1"] - wp["lip_t"] / 2,
+                 (wp["x1"] - wp["x0"]) / 2, wp["lip_t"] / 2)):
+            self.add_box(f"wrap_pan_lip_{nm}",
+                         (cx, cy, wp["z_top"] + wp["lip_h"] / 2),
+                         (hx, hy, wp["lip_h"] / 2),
+                         color=(0.13, 0.14, 0.16), mat=mat_tray)
         # stepped south apron (P.SORTER["pan_apron"]): catches induction
         # misses that clear the pan's pinned south edge; only where no
         # chute mouth lies below

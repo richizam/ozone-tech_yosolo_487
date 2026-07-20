@@ -178,6 +178,18 @@ SORTER = {
     # exit INSIDE station D's mouth (cross-delivery C->D). Lead = mouth
     # west margin 0.42 + flatten travel at 160 dps (0.12) + latency+margin.
     "late_flatten_lead_m": 0.66,
+    # WRAP CATCH PAN under/past the east wheel: SUB-BLADE stowaway freight
+    # (the 2 mm card passes UNMETERED under the escapement) sometimes lands
+    # ON a tray instead of falling through an inter-tray gap onto the
+    # debris pan — it then rides untagged to the end of the line, wraps the
+    # east wheel and drops beside the return leg (landed x 9.526 z 0.217:
+    # naked floor, the matrix's one red gate). A flat catch plate with low
+    # lips turns that fall into a pan-callout terminal. EVERYTHING here
+    # stays at z <= 0.193: the lowest moving part of the train is the
+    # return-leg tray plate at ~0.235 — 42 mm clear at every x, so no
+    # sweep audit exposure at all.
+    "wrap_pan": {"x0": 9.40, "x1": 9.80, "y0": 2.75, "y1": 3.25,
+                 "z_top": 0.163, "lip_h": 0.030, "lip_t": 0.010},
 }
 
 # ---------------------------------------------------------------- induction (physical, synchronized)

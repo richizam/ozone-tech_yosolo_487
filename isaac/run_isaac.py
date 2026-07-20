@@ -718,7 +718,13 @@ def main():
                                                 else 0.56):
                     deliver(slug, dest, t)
                     continue
-                if (p[2] < 0.22 and dest is None
+                # wrap catch pan: resting there is a PAN terminal (watchdog
+                # below raises the call-out), never a floor drop
+                wp_ = P.SORTER["wrap_pan"]
+                in_wrap = (wp_["x0"] - 0.03 < p[0] < wp_["x1"] + 0.03
+                           and wp_["y0"] - 0.03 < p[1] < wp_["y1"] + 0.03
+                           and p[2] > wp_["z_top"] - 0.04)
+                if (p[2] < 0.22 and dest is None and not in_wrap
                         and not (abs(p[0] - 0.4) < 0.3 and p[1] < 0)):
                     deliver(slug, "FLOOR", t)
                     continue
@@ -733,11 +739,21 @@ def main():
                 # the pan box for seconds (false MANUAL corrupted a pouf's
                 # carrier state mid-discharge, stress s3 deadlock)
                 on_car = sorter.carrier_of(slug) is not None
+                wpz = S_["wrap_pan"]
                 on_pan = (not on_car
-                          and S_["pan_x0"] - 0.05 < p[0] < S_["pan_x1"] + 0.05
-                          and abs(p[1] - S_["y"]) < S_["pan_y_half"] - 0.02
-                          and S_["pan_z_top"] - 0.03 < p[2]
-                          < S_["pan_z_top"] + 0.08)
+                          and ((S_["pan_x0"] - 0.05 < p[0]
+                                < S_["pan_x1"] + 0.05
+                                and abs(p[1] - S_["y"])
+                                < S_["pan_y_half"] - 0.02
+                                and S_["pan_z_top"] - 0.03 < p[2]
+                                < S_["pan_z_top"] + 0.08)
+                               # wrap catch pan (east-wheel stowaway drop)
+                               or (wpz["x0"] - 0.03 < p[0]
+                                   < wpz["x1"] + 0.03
+                                   and wpz["y0"] - 0.03 < p[1]
+                                   < wpz["y1"] + 0.03
+                                   and wpz["z_top"] - 0.04 < p[2]
+                                   < wpz["z_top"] + 0.10)))
                 if on_pan and st.get("pan_since") is None:
                     st["pan_since"] = t
                 elif not on_pan:

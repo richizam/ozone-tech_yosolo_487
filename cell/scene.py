@@ -466,6 +466,28 @@ def _stations_xml():
              f'pos="{S["pan_x1"] - S["pan_end_fence_t"] / 2} {S["y"]} '
              f'{S["pan_z_top"] + S["pan_end_fence_h"] / 2}" '
              f'friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>')
+    # WRAP CATCH PAN (P.SORTER["wrap_pan"]): sub-blade stowaways riding a
+    # tray drop off the east wheel — flat plate + low lips, all under
+    # z 0.193 (return-leg clearance 42 mm; no sweep exposure)
+    wp = S["wrap_pan"]
+    wx, wy = (wp["x0"] + wp["x1"]) / 2, (wp["y0"] + wp["y1"]) / 2
+    g.append(f'<geom name="wrap_pan" type="box" '
+             f'size="{(wp["x1"] - wp["x0"]) / 2:.4f} '
+             f'{(wp["y1"] - wp["y0"]) / 2:.4f} 0.003" '
+             f'pos="{wx:.4f} {wy:.4f} {wp["z_top"] - 0.003}" '
+             f'friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>')
+    for nm, cx, cy, hx, hy in (
+            ("e", wp["x1"] - wp["lip_t"] / 2, wy, wp["lip_t"] / 2,
+             (wp["y1"] - wp["y0"]) / 2),
+            ("s", wx, wp["y0"] + wp["lip_t"] / 2,
+             (wp["x1"] - wp["x0"]) / 2, wp["lip_t"] / 2),
+            ("n", wx, wp["y1"] - wp["lip_t"] / 2,
+             (wp["x1"] - wp["x0"]) / 2, wp["lip_t"] / 2)):
+        g.append(f'<geom name="wrap_pan_lip_{nm}" type="box" '
+                 f'size="{hx:.4f} {hy:.4f} {wp["lip_h"] / 2}" '
+                 f'pos="{cx:.4f} {cy:.4f} '
+                 f'{wp["z_top"] + wp["lip_h"] / 2}" '
+                 f'friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>')
     # stepped south apron (see P.SORTER["pan_apron"]): catches induction
     # misses that clear the pan's pinned south edge; only where no chute
     # mouth lies below
