@@ -104,28 +104,61 @@ fi
 PHASE="unknown_clip"
 CUSTOM="$REPO/cell/assets/manifest_custom.json"
 UNK_SRC="/root/unkclip"                       # STLs + manifest staged here
+cp -f "$REPO/isaac/make_mp4.sh" /root/make_mp4.sh
 if [ -d "$UNK_SRC" ] && [ -f "$UNK_SRC/manifest_custom.json" ]; then
   restore_manifest() { rm -f "$CUSTOM"; }
   trap 'restore_manifest; on_exit' EXIT
   cp -f "$UNK_SRC"/*.stl "$REPO/cell/assets/meshes/" 2>/dev/null || true
   cp -f "$UNK_SRC/manifest_custom.json" "$CUSTOM"
-  stamp "PHASE unknown_clip: manifest isolated in place, rendering"
-  bash "$REPO/isaac/showcase5b.sh" unknown_shapes 2>&1 \
-      | tee "$LOG_ROOT/unknown_clip.log" || stamp "unknown_clip FAILED (non-fatal)"
+  UNK_SLUGS=$(python3 -c "import json; print(','.join(
+      e['slug'] for e in json.load(open('$UNK_SRC/manifest_custom.json'))))")
+  UNK_OUT="/root/sortmaster_out/unknown_clip"
+  mkdir -p "$UNK_OUT"; chmod 777 "$UNK_OUT"
+  stamp "PHASE unknown_clip: rendering 10 unknown shapes ($UNK_SLUGS)"
+  timeout --signal=KILL 2400 \
+  docker run --rm --name isaacrec-unknown --gpus all --network=host \
+    --ulimit nofile=1048576:1048576 \
+    --entrypoint /isaac-sim/python.sh \
+    -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
+    -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all \
+    -v /root/sortmaster:/workspace/sortmaster:ro \
+    -v /root/sortmaster_out:/workspace/sortmaster_out \
+    -v /tmp/sortmaster_signs:/tmp/sortmaster_signs \
+    -v /root/.cache/ov/hub:/var/cache/hub \
+    -v /root/docker/isaac-sim/cache/main:/isaac-sim/.cache \
+    -v /root/docker/isaac-sim/cache/computecache:/isaac-sim/.nv/ComputeCache \
+    -v /root/docker/isaac-sim/logs:/isaac-sim/.nvidia-omniverse/logs \
+    -v /root/docker/isaac-sim/config:/isaac-sim/.nvidia-omniverse/config \
+    -v /root/docker/isaac-sim/data:/isaac-sim/.local/share/ov/data \
+    -v /root/docker/isaac-sim/pkg:/isaac-sim/.local/share/ov/pkg \
+    nvcr.io/nvidia/isaac-sim:6.0.1 \
+    /workspace/sortmaster/isaac/run_isaac.py \
+    --out /workspace/sortmaster_out/unknown_clip/unknown_shapes \
+    --seed 42 --items "$UNK_SLUGS" --camera deck_front --depth-stills 4 \
+    --perception rtx --drive surface --record --fps 30 --max-sim-s 700 \
+    > "$LOG_ROOT/unknown_clip.log" 2>&1 \
+    || stamp "unknown_clip run FAILED (non-fatal, see log)"
   restore_manifest
   trap on_exit EXIT
+  if ls "$UNK_OUT/unknown_shapes/frames"/*.png >/dev/null 2>&1; then
+    bash /root/make_mp4.sh "$UNK_OUT/unknown_shapes" \
+        "$UNK_OUT/unknown_shapes.mp4" 30 \
+        >> "$LOG_ROOT/unknown_clip.log" 2>&1 \
+      && stamp "unknown_clip mp4 OK" || stamp "unknown_clip MP4 FAIL"
+  fi
 else
   stamp "PHASE unknown_clip: SKIPPED ($UNK_SRC not staged)"
 fi
 
-# ---- showcase re-render, priority order (lowest value last, safe to kill)
+# ---- showcase re-render (hardened v5b runner: per-clip timeout + retry,
+# resume guard skips finished mp4s — safe to kill when the window closes)
 PHASE="showcase"
-if [ -x "$REPO/isaac/showcase_priority.sh" ]; then
-  stamp "PHASE showcase: starting priority re-render"
-  bash "$REPO/isaac/showcase_priority.sh" 2>&1 \
+if [ -f "$REPO/isaac/showcase5b.sh" ]; then
+  stamp "PHASE showcase: starting showcase5b"
+  bash "$REPO/isaac/showcase5b.sh" /root/sortmaster_out/showcase5 2>&1 \
       | tee "$LOG_ROOT/showcase.log" || stamp "showcase FAILED (non-fatal)"
 else
-  stamp "PHASE showcase: SKIPPED (showcase_priority.sh not present)"
+  stamp "PHASE showcase: SKIPPED (showcase5b.sh not present)"
 fi
 
 STATE="DONE"
