@@ -142,7 +142,10 @@ def main():
             print(f"[rtxval] annotator warm after {warm} renders "
                   f"({_time.time() - t0:.1f}s)", flush=True)
             break
-        if warm >= 900 or _time.time() - t0 > 300:
+        # 1200 s cap: on a weak-CPU host the FIRST render call absorbs the
+        # whole cold shader compile (a 6-core box burned 337 s over 2
+        # renders); the cap only guards against a truly hung annotator
+        if warm >= 2000 or _time.time() - t0 > 1200:
             print(f"[rtxval] WARM-UP FAILED after {warm} renders "
                   f"({_time.time() - t0:.1f}s) — aborting", flush=True)
             sim_app.close()
