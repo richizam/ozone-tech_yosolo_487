@@ -114,6 +114,49 @@ def test_die_stays_below_circle_in_both_channels():
         f"bins on a die must stay under the criterion (got {bins:.3f})")
 
 
+def test_limbo_hex15_flags_in_macro_shape_channels():
+    """The pre-matrix probe's live catch: a 15 mm lying hex prism yields
+    ~112 OVERHEAD points (enough for the main path, far too few for shape
+    at 3 mm gsd) and read B. With the limbo merge, the macro cloud's shape
+    channels must flag it: hexagon bins ratio ~cos30 = 0.866 >= 0.8.
+    Synthetic dense cloud: resting hex, top facet + upper slants (what the
+    macro head sees)."""
+    gsd = 0.0004
+    a = 0.00866                       # side = flat-to-flat 15 mm / sqrt(3)
+    xs = np.arange(-0.015, 0.015, gsd)
+    pts = []
+    for x in xs:
+        for y in np.arange(-a / 2, a / 2, gsd):        # top facet, z = 15
+            pts.append((x, y, BELT_Z + 0.015))
+        for s in (-1, 1):                              # upper slant facets
+            for k in np.arange(0.0, 1.0, gsd / 0.0075):
+                y = s * (a / 2 + k * a / 2)
+                z = BELT_Z + 0.015 - k * 0.0075
+                pts.append((x, y, z))
+    pts = np.array(pts)
+    perc = RTXPerception([None], macro=None)
+    circ, hull, bins = perc._macro_shape_channels(pts[:, :2], pts)
+    assert bins >= P.CIRCLE_RATIO, (
+        f"limbo hex must flag in the bins channel (got {bins:.3f})")
+
+
+def test_limbo_die20_stays_safe_in_macro_shape_channels():
+    """A 20 mm cube (legal B, limbo band) must NOT flag in any merged
+    channel: square bins ~0.73-0.76, hull 0.707, circ ~0.7."""
+    gsd = 0.0004
+    xs = np.arange(-0.010, 0.010, gsd)
+    top = np.array([(x, y, BELT_Z + 0.020) for x in xs for y in xs])
+    wall_z = np.arange(BELT_Z + 0.006, BELT_Z + 0.020, gsd)
+    walls = np.array([(sx * 0.010, y, z)
+                      for sx in (-1, 1) for y in xs[::2] for z in wall_z])
+    pts = np.vstack([top, walls])
+    perc = RTXPerception([None], macro=None)
+    circ, hull, bins = perc._macro_shape_channels(pts[:, :2], pts)
+    assert circ < P.CIRCLE_RATIO
+    assert hull < 0.78
+    assert bins < P.CIRCLE_RATIO, f"die20 bins must stay safe ({bins:.3f})"
+
+
 @pytest.mark.skipif(
     not (NPY / "vision_macro_cloud_unkclip_05_hull.npy").exists(),
     reason="captured clouds not present")

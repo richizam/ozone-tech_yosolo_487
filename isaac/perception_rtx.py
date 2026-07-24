@@ -582,6 +582,58 @@ class RTXPerception:
         return obj[(obj[:, 0] >= lo - 1e-6) & (obj[:, 0] <= hi + 1e-6)]
 
     # ------------------------------------------------- close-range macro head
+    def _macro_shape_channels(self, mxy, mobj):
+        """Shape evidence from the dense macro cloud, for the LIMBO band:
+        15-25 mm freight yields ENOUGH overhead points to stay on the main
+        path (>= min_points) but far too few for legible shape at 3 mm gsd
+        (a 15 mm hex prism read sect 0.61 from 112 points -> B while its
+        macro dims were perfect — caught by the pre-matrix probe). Returns
+        (footprint_circ, hull_sweep, windowed_bins) computed exactly like
+        the macro branch. (Deliberate ~30-line duplication of the branch's
+        estimator loops — a shared-helper refactor of the branch itself is
+        queued for after the seal, not under deadline.)"""
+        circ = self._footprint_circularity(mxy)
+        mc = mxy.mean(axis=0)
+        _, _, mvt = np.linalg.svd(mxy - mc, full_matrices=False)
+        mh = mobj[:, 2] - self.belt_z
+        mxy_c = mxy - mc
+        ang0 = float(np.arctan2(mvt[0][1], mvt[0][0]))
+        hull = 0.0
+        for k_ax in range(6):
+            a_c = ang0 + k_ax * (np.pi / 6.0)
+            ua = mxy_c @ np.array([np.cos(a_c), np.sin(a_c)])
+            va = mxy_c @ np.array([-np.sin(a_c), np.cos(a_c)])
+            hull = max(hull, self._section_ratio(ua, va, mh))
+        bins = 0.0
+        b_edges = np.linspace(np.deg2rad(30), np.deg2rad(150), 9)
+        zc_m = 0.5 * float(np.percentile(mh, 99))
+        if zc_m > 0.003:
+            for k_ax in range(6):
+                a_c = ang0 + k_ax * (np.pi / 6.0)
+                ua = mxy_c @ np.array([np.cos(a_c), np.sin(a_c)])
+                va = mxy_c @ np.array([-np.sin(a_c), np.cos(a_c)])
+                u_min, u_max = float(ua.min()), float(ua.max())
+                span = u_max - u_min
+                if span < 0.008:
+                    continue
+                for s_st in np.linspace(u_min + 0.2 * span,
+                                        u_max - 0.2 * span, 5):
+                    band = np.abs(ua - s_st) < max(0.002, 0.08 * span)
+                    if int(band.sum()) < 12:
+                        continue
+                    vb2, hb2 = va[band], mh[band]
+                    vc2 = 0.5 * (float(vb2.min()) + float(vb2.max()))
+                    th = np.arctan2(hb2 - zc_m, vb2 - vc2)
+                    rho = np.hypot(vb2 - vc2, hb2 - zc_m)
+                    rho_out = []
+                    for lo_e, hi_e in zip(b_edges[:-1], b_edges[1:]):
+                        m_b = (th >= lo_e) & (th < hi_e)
+                        if m_b.any():
+                            rho_out.append(float(rho[m_b].max()))
+                    if len(rho_out) >= 6:
+                        bins = max(bins, min(rho_out) / max(rho_out))
+        return circ, hull, bins
+
     def _measure_macro(self, exclude_x=(), x_hint=None):
         """Small-item metrology from the close-range head: sub-millimetre
         ground sampling, edge-filtered + eroded cloud, extents with a
@@ -886,10 +938,19 @@ class RTXPerception:
         # the close-range head (sub-mm gsd). The fusion certifies them
         # against the macro guard band.
         dims_macro = None
+        sect_bins_main = 0.0
         if self.macro is not None and float(dims_mm.min()) < self.macro_engage_mm:
             m = self._measure_macro(exclude_x, x_hint)
             if m is not None:
                 dims_macro = [round(float(v), 2) for v in m[0]]
+                # LIMBO-BAND SHAPE MERGE: when the macro head engages, shape
+                # evidence must come from the dense cloud too — max-merge is
+                # one-directional (all channels are D-evidence thresholds),
+                # so it can only move borderline freight toward the safe side
+                c_m, hull_m, sect_bins_main = self._macro_shape_channels(
+                    m[1], m[2])
+                circ = max(circ, c_m)
+                sect_sweep = max(sect_sweep, hull_m)
 
         check_dims = np.array(dims_macro) if (
             dims_macro is not None and dims_mm[0] <= 240.0) else dims_mm
@@ -908,6 +969,11 @@ class RTXPerception:
             # trustworthy for prisms; domed shoulders inflate it (detergent)
             zone, reason = "D", ("circle: swept section "
                                  f"r_in/R={sect_sweep:.2f}")
+        elif sect_bins_main >= self.circle_ratio:
+            # limbo-band macro bins (smear-immune, D evidence only; no dome
+            # gate — the overhead dome is raster-garbage at this scale)
+            zone, reason = "D", ("circle (macro merge): binned section "
+                                 f"{sect_bins_main:.2f}")
         elif dome >= self.dome_tau:
             zone, reason = "D", f"dome={dome:.2f}"
         elif circ >= 0.78 and dome >= 0.40:
@@ -928,6 +994,7 @@ class RTXPerception:
             "footprint_circularity": round(circ, 3),
             "section_ratio": round(sect, 3),
             "section_sweep": round(sect_sweep, 3),
+            "section_bins": round(sect_bins_main, 3),
             "dome_score": round(dome, 3),
             "flank_mm": round(flank_mm, 1),
             "plateau_frac": round(plateau, 3),
