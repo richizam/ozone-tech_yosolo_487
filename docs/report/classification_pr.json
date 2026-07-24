@@ -38,34 +38,34 @@
   "table": [
    {
     "category": "B",
-    "tp": 40,
+    "tp": 42,
     "fp": 0,
     "fn": 5,
     "precision": 1.0,
-    "recall": 0.8889,
-    "diverted_to_exceptions": 0
+    "recall": 0.8936,
+    "diverted_to_exceptions": 1
    },
    {
     "category": "C",
-    "tp": 40,
-    "fp": 1,
+    "tp": 43,
+    "fp": 2,
     "fn": 1,
-    "precision": 0.9756,
-    "recall": 0.9756,
+    "precision": 0.9556,
+    "recall": 0.9773,
     "diverted_to_exceptions": 6
    },
    {
     "category": "D",
-    "tp": 64,
+    "tp": 67,
     "fp": 5,
-    "fn": 0,
-    "precision": 0.9275,
-    "recall": 1.0,
-    "diverted_to_exceptions": 2
+    "fn": 1,
+    "precision": 0.9306,
+    "recall": 0.9853,
+    "diverted_to_exceptions": 3
    }
   ],
-  "n_routine": 150,
-  "n_exceptions": 8
+  "n_routine": 159,
+  "n_exceptions": 10
  },
  "twin_nominal": {
   "table": [

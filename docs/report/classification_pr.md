@@ -10,13 +10,13 @@
 | C | 1.0 | 1.0 | 18 | 0 | 0 | 0 |
 | D | 1.0 | 1.0 | 30 | 0 | 0 | 0 |
 
-## isaac_all_runs  (routine 150, exceptions 8)
+## isaac_all_runs  (routine 159, exceptions 10)
 
 | cat | precision | recall | tp | fp | fn | → exceptions |
 |---|---|---|---|---|---|---|
-| B | 1.0 | 0.8889 | 40 | 0 | 5 | 0 |
-| C | 0.9756 | 0.9756 | 40 | 1 | 1 | 6 |
-| D | 0.9275 | 1.0 | 64 | 5 | 0 | 2 |
+| B | 1.0 | 0.8936 | 42 | 0 | 5 | 1 |
+| C | 0.9556 | 0.9773 | 43 | 2 | 1 | 6 |
+| D | 0.9306 | 0.9853 | 67 | 5 | 1 | 3 |
 
 ## twin_nominal  (routine 87, exceptions 1)
 
