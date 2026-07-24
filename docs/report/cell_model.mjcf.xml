@@ -1,0 +1,505 @@
+
+<mujoco model="sortmaster_cell_sorter">
+  <compiler meshdir="C:\Ricardo\ozone-tech_yosolo_487\cell\assets\meshes" texturedir="C:\Ricardo\ozone-tech_yosolo_487\cell\assets" angle="radian"/>
+  <option timestep="0.001" integrator="implicitfast"
+          cone="elliptic" noslip_iterations="3"
+          iterations="200" ls_iterations="100"/>
+  <visual>
+    <headlight ambient="0.45 0.45 0.45" diffuse="0.7 0.7 0.7"/>
+    <global offwidth="1280" offheight="720"/>
+  </visual>
+
+  <asset>
+    <texture type="2d" name="grid" builtin="checker" rgb1="0.90 0.90 0.92" rgb2="0.80 0.80 0.84" width="256" height="256"/>
+    <material name="floor" texture="grid" texrepeat="12 8"/>
+        <texture name="tex_a_infeed" type="2d" file="signs/a_infeed_cd456a53.png"/>
+    <material name="mat_a_infeed" texture="tex_a_infeed"/>
+    <texture name="tex_vision" type="2d" file="signs/vision_b38bae85.png"/>
+    <material name="mat_vision" texture="tex_vision"/>
+    <texture name="tex_sorter" type="2d" file="signs/sorter_4352dd32.png"/>
+    <material name="mat_sorter" texture="tex_sorter"/>
+    <texture name="tex_b_sorter" type="2d" file="signs/b_sorter_634b63cf.png"/>
+    <material name="mat_b_sorter" texture="tex_b_sorter"/>
+    <texture name="tex_c_oversize" type="2d" file="signs/c_oversize_7948cff3.png"/>
+    <material name="mat_c_oversize" texture="tex_c_oversize"/>
+    <texture name="tex_d_repack" type="2d" file="signs/d_repack_39bf90e9.png"/>
+    <material name="mat_d_repack" texture="tex_d_repack"/>
+    <texture name="tex_review" type="2d" file="signs/review_544abf39.png"/>
+    <material name="mat_review" texture="tex_review"/>
+    <texture name="tex_arm_exc" type="2d" file="signs/arm_exc_fecdffff.png"/>
+    <material name="mat_arm_exc" texture="tex_arm_exc"/>
+    <mesh name="m_bottle" file="bottle.stl" maxhullvert="64"/>
+    <mesh name="m_box_s" file="box_s.stl" maxhullvert="64"/>
+    <mesh name="m_box_l" file="box_l.stl" maxhullvert="64"/>
+    <mesh name="m_lunchbox" file="lunchbox.stl" maxhullvert="64"/>
+    <mesh name="m_sack" file="sack.stl" maxhullvert="64"/>
+    <mesh name="m_detergent" file="detergent.stl" maxhullvert="64"/>
+    <mesh name="m_pouf" file="pouf.stl" maxhullvert="64"/>
+    <mesh name="m_pen" file="pen.stl" maxhullvert="64"/>
+    <mesh name="m_plate" file="plate.stl" maxhullvert="64"/>
+    <mesh name="m_cylinder" file="cylinder.stl" maxhullvert="64"/>
+    <mesh name="m_helmet" file="helmet.stl" maxhullvert="64"/>
+    <mesh name="m_bl_box_b" file="bl_box_b.stl" maxhullvert="64"/>
+    <mesh name="m_bl_box_c" file="bl_box_c.stl" maxhullvert="64"/>
+    <mesh name="m_bl_pent_d" file="bl_pent_d.stl" maxhullvert="64"/>
+    <mesh name="m_bl_rsq_b" file="bl_rsq_b.stl" maxhullvert="64"/>
+    <mesh name="m_bl_rod_b" file="bl_rod_b.stl" maxhullvert="64"/>
+  </asset>
+
+  <worldbody>
+    <light dir="0 0 -1" pos="6 3 6" directional="true"/>
+
+    <!-- presentation cameras -->
+    <camera name="top_view" pos="7.7 3.0 6.5" xyaxes="1 0 0 0 1 0"/>
+    <camera name="overview" pos="2.4 -2.4 4.6" xyaxes="0.7006 -0.7136 0 0.3288 0.3229 0.8880"/>
+    <camera name="routing" pos="8.3 0.0 3.4" xyaxes="0.9999 0.0167 0 -0.0112 0.6688 0.7432"/>
+
+    <!-- look-ahead vision station: overhead depth + profile scanners; the
+         sensor hangs BELOW its crossbar so the mount never shadows the FOV -->
+    <camera name="lookahead" pos="5.55 3.0 2.2" xyaxes="1 0 0 0 1 0" fovy="45"/>
+    <geom name="cam_post" type="cylinder" size="0.04 1.175" pos="5.55 2.2 1.175"
+          rgba="0.45 0.25 0.55 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="cam_bar" type="box" size="0.03 0.42 0.03" pos="5.55 2.6 2.32"
+          rgba="0.45 0.25 0.55 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="cam_head" type="box" size="0.06 0.06 0.035" pos="5.55 3.0 2.255"
+          rgba="0.2 0.1 0.3 1" contype="0" conaffinity="0" group="2"/>
+
+    <geom name="floor" type="plane" size="12 8 0.1" pos="5 3 0" material="floor"/>
+
+    <!-- conveyor B: sorter infeed (FIXED) -->
+    <geom name="beltB" type="box" friction="0.06 0.004 0.0001" priority="1" size="0.25 0.8999999999999999 0.35"
+          pos="8.4 5.1 0.35" rgba="0.35 0.42 0.55 1"/>
+
+    <!-- executive architecture: tilt-tray sorter -->
+    <geom name="beltA" type="box" size="3.2 0.25 0.35" pos="3.2 3.0 0.35" friction="0.06 0.004 0.0001" priority="1" rgba="0.35 0.42 0.55 1"/>
+    <geom name="knife" type="box" size="0.25 0.25 0.0075" pos="6.65 3.0 0.6925" friction="0.06 0.004 0.0001" priority="1" rgba="0.38 0.45 0.58 1"/>
+    <geom name="beltA_guide_l" type="box" size="3.2 0.015 0.05" pos="3.2 3.265 0.74" rgba="0.55 0.57 0.62 1"/>
+    <geom name="knife_guide_l" type="box" size="0.25 0.015 0.045" pos="6.65 3.265 0.745" rgba="0.55 0.57 0.62 1"/>
+    <geom name="beltA_guide_r" type="box" size="3.2 0.015 0.05" pos="3.2 2.735 0.74" rgba="0.55 0.57 0.62 1"/>
+    <geom name="knife_guide_r" type="box" size="0.25 0.015 0.045" pos="6.65 2.735 0.745" rgba="0.55 0.57 0.62 1"/>
+    <body name="egate" pos="6.35 3.0 0.5939999999999999">
+      <joint name="egate_j" type="slide" axis="0 0 1" range="-0.002 0.20" damping="8"/>
+      <geom name="egate_panel" type="box" size="0.012 0.24 0.06" mass="2.0" contype="2" conaffinity="0" friction="0.1 0.005 0.0001" priority="1" solref="0.008 1" rgba="0.16 0.17 0.20 1"/>
+      <geom name="egate_strip" type="box" size="0.013 0.241 0.006" pos="0 0 0.06" rgba="0.95 0.78 0.06 1" contype="0" conaffinity="0" group="2"/>
+    </body>
+    <geom name="egate_postl" type="cylinder" size="0.02 0.35" pos="6.35 2.69 0.35" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="egate_postr" type="cylinder" size="0.02 0.35" pos="6.35 3.31 0.35" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <body name="hold2" pos="5.35 3.0 0.5939999999999999">
+      <joint name="hold2_j" type="slide" axis="0 0 1" range="-0.002 0.20" damping="8"/>
+      <geom name="hold2_panel" type="box" size="0.012 0.24 0.06" mass="2.0" contype="2" conaffinity="0" friction="0.1 0.005 0.0001" priority="1" solref="0.008 1" rgba="0.16 0.17 0.20 1"/>
+      <geom name="hold2_strip" type="box" size="0.013 0.241 0.006" pos="0 0 0.06" rgba="0.95 0.78 0.06 1" contype="0" conaffinity="0" group="2"/>
+    </body>
+    <geom name="hold2_postl" type="cylinder" size="0.02 0.35" pos="5.35 2.69 0.35" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="hold2_postr" type="cylinder" size="0.02 0.35" pos="5.35 3.31 0.35" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <body name="car0" pos="6.720000 3.0 0.557000">
+      <joint name="cjx0" type="slide" axis="1 0 0"/>
+      <joint name="cjz0" type="slide" axis="0 0 1"/>
+      <geom name="shuttle0" type="box" size="0.27 0.27 0.025" mass="40" contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>
+      <body name="tray0" pos="0 0 0.059000">
+        <joint name="tj0" type="hinge" axis="-1 0 0" range="-0.80285 0.80285" damping="3" armature="0.05"/>
+                <geom name="tray0_pn" type="box" size="0.295 0.155094 0.012" pos="0 0.155 0.017413" euler="0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray0_ps" type="box" size="0.295 0.155094 0.012" pos="0 -0.155 0.017413" euler="-0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray0_le" type="box" size="0.006 0.31 0.015" pos="0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+        <geom name="tray0_lw" type="box" size="0.006 0.31 0.015" pos="-0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+      </body>
+    </body>
+    <body name="car1" pos="7.320000 3.0 0.557000">
+      <joint name="cjx1" type="slide" axis="1 0 0"/>
+      <joint name="cjz1" type="slide" axis="0 0 1"/>
+      <geom name="shuttle1" type="box" size="0.27 0.27 0.025" mass="40" contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>
+      <body name="tray1" pos="0 0 0.059000">
+        <joint name="tj1" type="hinge" axis="-1 0 0" range="-0.80285 0.80285" damping="3" armature="0.05"/>
+                <geom name="tray1_pn" type="box" size="0.295 0.155094 0.012" pos="0 0.155 0.017413" euler="0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray1_ps" type="box" size="0.295 0.155094 0.012" pos="0 -0.155 0.017413" euler="-0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray1_le" type="box" size="0.006 0.31 0.015" pos="0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+        <geom name="tray1_lw" type="box" size="0.006 0.31 0.015" pos="-0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+      </body>
+    </body>
+    <body name="car2" pos="7.920000 3.0 0.557000">
+      <joint name="cjx2" type="slide" axis="1 0 0"/>
+      <joint name="cjz2" type="slide" axis="0 0 1"/>
+      <geom name="shuttle2" type="box" size="0.27 0.27 0.025" mass="40" contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>
+      <body name="tray2" pos="0 0 0.059000">
+        <joint name="tj2" type="hinge" axis="-1 0 0" range="-0.80285 0.80285" damping="3" armature="0.05"/>
+                <geom name="tray2_pn" type="box" size="0.295 0.155094 0.012" pos="0 0.155 0.017413" euler="0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray2_ps" type="box" size="0.295 0.155094 0.012" pos="0 -0.155 0.017413" euler="-0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray2_le" type="box" size="0.006 0.31 0.015" pos="0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+        <geom name="tray2_lw" type="box" size="0.006 0.31 0.015" pos="-0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+      </body>
+    </body>
+    <body name="car3" pos="8.520000 3.0 0.557000">
+      <joint name="cjx3" type="slide" axis="1 0 0"/>
+      <joint name="cjz3" type="slide" axis="0 0 1"/>
+      <geom name="shuttle3" type="box" size="0.27 0.27 0.025" mass="40" contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>
+      <body name="tray3" pos="0 0 0.059000">
+        <joint name="tj3" type="hinge" axis="-1 0 0" range="-0.80285 0.80285" damping="3" armature="0.05"/>
+                <geom name="tray3_pn" type="box" size="0.295 0.155094 0.012" pos="0 0.155 0.017413" euler="0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray3_ps" type="box" size="0.295 0.155094 0.012" pos="0 -0.155 0.017413" euler="-0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray3_le" type="box" size="0.006 0.31 0.015" pos="0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+        <geom name="tray3_lw" type="box" size="0.006 0.31 0.015" pos="-0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+      </body>
+    </body>
+    <body name="car4" pos="9.120000 3.0 0.557000">
+      <joint name="cjx4" type="slide" axis="1 0 0"/>
+      <joint name="cjz4" type="slide" axis="0 0 1"/>
+      <geom name="shuttle4" type="box" size="0.27 0.27 0.025" mass="40" contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>
+      <body name="tray4" pos="0 0 0.059000">
+        <joint name="tj4" type="hinge" axis="-1 0 0" range="-0.80285 0.80285" damping="3" armature="0.05"/>
+                <geom name="tray4_pn" type="box" size="0.295 0.155094 0.012" pos="0 0.155 0.017413" euler="0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray4_ps" type="box" size="0.295 0.155094 0.012" pos="0 -0.155 0.017413" euler="-0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray4_le" type="box" size="0.006 0.31 0.015" pos="0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+        <geom name="tray4_lw" type="box" size="0.006 0.31 0.015" pos="-0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+      </body>
+    </body>
+    <body name="car5" pos="9.120000 3.0 0.190000">
+      <joint name="cjx5" type="slide" axis="1 0 0"/>
+      <joint name="cjz5" type="slide" axis="0 0 1"/>
+      <geom name="shuttle5" type="box" size="0.27 0.27 0.025" mass="40" contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>
+      <body name="tray5" pos="0 0 0.059000">
+        <joint name="tj5" type="hinge" axis="-1 0 0" range="-0.80285 0.80285" damping="3" armature="0.05"/>
+                <geom name="tray5_pn" type="box" size="0.295 0.155094 0.012" pos="0 0.155 0.017413" euler="0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray5_ps" type="box" size="0.295 0.155094 0.012" pos="0 -0.155 0.017413" euler="-0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray5_le" type="box" size="0.006 0.31 0.015" pos="0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+        <geom name="tray5_lw" type="box" size="0.006 0.31 0.015" pos="-0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+      </body>
+    </body>
+    <body name="car6" pos="8.520000 3.0 0.190000">
+      <joint name="cjx6" type="slide" axis="1 0 0"/>
+      <joint name="cjz6" type="slide" axis="0 0 1"/>
+      <geom name="shuttle6" type="box" size="0.27 0.27 0.025" mass="40" contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>
+      <body name="tray6" pos="0 0 0.059000">
+        <joint name="tj6" type="hinge" axis="-1 0 0" range="-0.80285 0.80285" damping="3" armature="0.05"/>
+                <geom name="tray6_pn" type="box" size="0.295 0.155094 0.012" pos="0 0.155 0.017413" euler="0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray6_ps" type="box" size="0.295 0.155094 0.012" pos="0 -0.155 0.017413" euler="-0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray6_le" type="box" size="0.006 0.31 0.015" pos="0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+        <geom name="tray6_lw" type="box" size="0.006 0.31 0.015" pos="-0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+      </body>
+    </body>
+    <body name="car7" pos="7.920000 3.0 0.190000">
+      <joint name="cjx7" type="slide" axis="1 0 0"/>
+      <joint name="cjz7" type="slide" axis="0 0 1"/>
+      <geom name="shuttle7" type="box" size="0.27 0.27 0.025" mass="40" contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>
+      <body name="tray7" pos="0 0 0.059000">
+        <joint name="tj7" type="hinge" axis="-1 0 0" range="-0.80285 0.80285" damping="3" armature="0.05"/>
+                <geom name="tray7_pn" type="box" size="0.295 0.155094 0.012" pos="0 0.155 0.017413" euler="0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray7_ps" type="box" size="0.295 0.155094 0.012" pos="0 -0.155 0.017413" euler="-0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray7_le" type="box" size="0.006 0.31 0.015" pos="0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+        <geom name="tray7_lw" type="box" size="0.006 0.31 0.015" pos="-0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+      </body>
+    </body>
+    <body name="car8" pos="7.320000 3.0 0.190000">
+      <joint name="cjx8" type="slide" axis="1 0 0"/>
+      <joint name="cjz8" type="slide" axis="0 0 1"/>
+      <geom name="shuttle8" type="box" size="0.27 0.27 0.025" mass="40" contype="0" conaffinity="0" group="2" rgba="0.24 0.26 0.30 1"/>
+      <body name="tray8" pos="0 0 0.059000">
+        <joint name="tj8" type="hinge" axis="-1 0 0" range="-0.80285 0.80285" damping="3" armature="0.05"/>
+                <geom name="tray8_pn" type="box" size="0.295 0.155094 0.012" pos="0 0.155 0.017413" euler="0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray8_ps" type="box" size="0.295 0.155094 0.012" pos="0 -0.155 0.017413" euler="-0.034907 0 0" mass="3.0" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.16 0.17 0.19 1"/>
+        <geom name="tray8_le" type="box" size="0.006 0.31 0.015" pos="0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+        <geom name="tray8_lw" type="box" size="0.006 0.31 0.015" pos="-0.289 0 0.03900000000000002" mass="0.3" friction="0.3 0.005 0.0025" condim="6" priority="1" solref="0.01 1" rgba="0.42 0.30 0.10 1"/>
+      </body>
+    </body>
+    <geom name="chuteC" type="box" size="0.35 0.22173188998898335 0.015" pos="7.45 2.5619606928376766 0.2625" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.55 0.55 0.6 1"/>
+    <geom name="chuteC_chamfer" type="box" size="0.35 0.0135 0.002" pos="7.45 2.7450 0.4035" euler="1.024007 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.50 0.50 0.55 1"/>
+    <geom name="chuteC_chamfill" type="box" size="0.35 0.0040 0.014" pos="7.45 2.7440 0.3780" friction="0.28 0.005 0.0001" priority="1" rgba="0.50 0.50 0.55 1"/>
+    <geom name="chuteC_cheek_l" type="box" size="0.015 0.0240 0.034" pos="7.815 2.7220 0.3940" friction="0.28 0.005 0.0001" priority="1" rgba="0.950 0.550 0.150 1.0"/>
+    <geom name="chuteC_cheek_r" type="box" size="0.015 0.0240 0.034" pos="7.085 2.7220 0.3940" friction="0.28 0.005 0.0001" priority="1" rgba="0.950 0.550 0.150 1.0"/>
+    <geom name="chuteC_rail_l" type="box" size="0.015 0.11791784033620974 0.07" pos="7.815 2.58 0.3587722101754144" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.950 0.550 0.150 1.0"/>
+    <geom name="chuteC_guard_l" type="box" size="0.015 0.0160 0.030" pos="7.815 2.6910 0.3881" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.950 0.550 0.150 1.0"/>
+    <geom name="chuteC_rail_r" type="box" size="0.015 0.11791784033620974 0.07" pos="7.085 2.58 0.3587722101754144" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.950 0.550 0.150 1.0"/>
+    <geom name="chuteC_guard_r" type="box" size="0.015 0.0160 0.030" pos="7.085 2.6910 0.3881" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.950 0.550 0.150 1.0"/>
+    <geom name="chuteC_pad" type="box" size="0.35 0.125 0.015" pos="7.45 2.248921385675353 0.14" friction="0.45 0.01 0.0001" priority="1" solref="0.008 1" rgba="0.30 0.31 0.35 1"/>
+    <geom name="flowC_0" type="box" size="0.035 0.055 0.001" pos="7.45 2.6873202309458923 0.35983333333333334" euler="0.558505 0 0" rgba="0.950 0.550 0.150 0.85" contype="0" conaffinity="0" group="2"/>
+    <geom name="flowC_1" type="box" size="0.035 0.055 0.001" pos="7.45 2.5619606928376766 0.28150000000000003" euler="0.558505 0 0" rgba="0.950 0.550 0.150 0.85" contype="0" conaffinity="0" group="2"/>
+    <geom name="flowC_2" type="box" size="0.035 0.055 0.001" pos="7.45 2.436601154729461 0.20316666666666666" euler="0.558505 0 0" rgba="0.950 0.550 0.150 0.85" contype="0" conaffinity="0" group="2"/>
+    <geom name="chuteD" type="box" size="0.35 0.22173188998898335 0.015" pos="8.75 2.5619606928376766 0.2625" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.55 0.55 0.6 1"/>
+    <geom name="chuteD_chamfer" type="box" size="0.35 0.0135 0.002" pos="8.75 2.7450 0.4035" euler="1.024007 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.50 0.50 0.55 1"/>
+    <geom name="chuteD_chamfill" type="box" size="0.35 0.0040 0.014" pos="8.75 2.7440 0.3780" friction="0.28 0.005 0.0001" priority="1" rgba="0.50 0.50 0.55 1"/>
+    <geom name="chuteD_cheek_l" type="box" size="0.015 0.0240 0.034" pos="9.115 2.7220 0.3940" friction="0.28 0.005 0.0001" priority="1" rgba="0.200 0.780 0.350 1.0"/>
+    <geom name="chuteD_cheek_r" type="box" size="0.015 0.0240 0.034" pos="8.385 2.7220 0.3940" friction="0.28 0.005 0.0001" priority="1" rgba="0.200 0.780 0.350 1.0"/>
+    <geom name="chuteD_rail_l" type="box" size="0.015 0.11791784033620974 0.07" pos="9.115 2.58 0.3587722101754144" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.200 0.780 0.350 1.0"/>
+    <geom name="chuteD_guard_l" type="box" size="0.015 0.0160 0.030" pos="9.115 2.6910 0.3881" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.200 0.780 0.350 1.0"/>
+    <geom name="chuteD_rail_r" type="box" size="0.015 0.11791784033620974 0.07" pos="8.385 2.58 0.3587722101754144" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.200 0.780 0.350 1.0"/>
+    <geom name="chuteD_guard_r" type="box" size="0.015 0.0160 0.030" pos="8.385 2.6910 0.3881" euler="0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.200 0.780 0.350 1.0"/>
+    <geom name="chuteD_pad" type="box" size="0.35 0.125 0.015" pos="8.75 2.248921385675353 0.14" friction="0.45 0.01 0.0001" priority="1" solref="0.008 1" rgba="0.30 0.31 0.35 1"/>
+    <geom name="flowD_0" type="box" size="0.035 0.055 0.001" pos="8.75 2.6873202309458923 0.35983333333333334" euler="0.558505 0 0" rgba="0.200 0.780 0.350 0.85" contype="0" conaffinity="0" group="2"/>
+    <geom name="flowD_1" type="box" size="0.035 0.055 0.001" pos="8.75 2.5619606928376766 0.28150000000000003" euler="0.558505 0 0" rgba="0.200 0.780 0.350 0.85" contype="0" conaffinity="0" group="2"/>
+    <geom name="flowD_2" type="box" size="0.035 0.055 0.001" pos="8.75 2.436601154729461 0.20316666666666666" euler="0.558505 0 0" rgba="0.200 0.780 0.350 0.85" contype="0" conaffinity="0" group="2"/>
+    <geom name="chuteREVIEW" type="box" size="0.31 0.22173188998898335 0.015" pos="9.05 3.4380393071623234 0.2625" euler="-0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.55 0.55 0.6 1"/>
+    <geom name="chuteREVIEW_chamfer" type="box" size="0.31 0.0135 0.002" pos="9.05 3.2550 0.4035" euler="-1.024007 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.50 0.50 0.55 1"/>
+    <geom name="chuteREVIEW_chamfill" type="box" size="0.31 0.0040 0.014" pos="9.05 3.2560 0.3780" friction="0.28 0.005 0.0001" priority="1" rgba="0.50 0.50 0.55 1"/>
+    <geom name="chuteREVIEW_cheek_l" type="box" size="0.015 0.0240 0.034" pos="9.375 3.2780 0.3940" friction="0.28 0.005 0.0001" priority="1" rgba="0.720 0.250 0.600 1.0"/>
+    <geom name="chuteREVIEW_cheek_r" type="box" size="0.015 0.0240 0.034" pos="8.725000000000001 3.2780 0.3940" friction="0.28 0.005 0.0001" priority="1" rgba="0.720 0.250 0.600 1.0"/>
+    <geom name="chuteREVIEW_rail_l" type="box" size="0.015 0.10612605630258878 0.07" pos="9.375 3.41 0.3650209036945075" euler="-0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.720 0.250 0.600 1.0"/>
+    <geom name="chuteREVIEW_guard_l" type="box" size="0.015 0.0160 0.030" pos="9.375 3.3090 0.3881" euler="-0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.720 0.250 0.600 1.0"/>
+    <geom name="chuteREVIEW_rail_r" type="box" size="0.015 0.10612605630258878 0.07" pos="8.725000000000001 3.41 0.3650209036945075" euler="-0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.720 0.250 0.600 1.0"/>
+    <geom name="chuteREVIEW_guard_r" type="box" size="0.015 0.0160 0.030" pos="8.725000000000001 3.3090 0.3881" euler="-0.558505 0 0" friction="0.28 0.005 0.0001" priority="1" rgba="0.720 0.250 0.600 1.0"/>
+    <geom name="chuteREVIEW_pad" type="box" size="0.31 0.125 0.015" pos="9.05 3.751078614324647 0.14" friction="0.45 0.01 0.0001" priority="1" solref="0.008 1" rgba="0.30 0.31 0.35 1"/>
+    <geom name="flowREVIEW_0" type="box" size="0.035 0.055 0.001" pos="9.05 3.3126797690541077 0.35983333333333334" euler="-0.558505 0 0" rgba="0.720 0.250 0.600 0.85" contype="0" conaffinity="0" group="2"/>
+    <geom name="flowREVIEW_1" type="box" size="0.035 0.055 0.001" pos="9.05 3.4380393071623234 0.28150000000000003" euler="-0.558505 0 0" rgba="0.720 0.250 0.600 0.85" contype="0" conaffinity="0" group="2"/>
+    <geom name="flowREVIEW_2" type="box" size="0.035 0.055 0.001" pos="9.05 3.563398845270539 0.20316666666666666" euler="-0.558505 0 0" rgba="0.720 0.250 0.600 0.85" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageC_floor" type="box" size="0.43000000000000005 0.63 0.015" pos="7.45 1.865 0.015" rgba="0.522 0.303 0.083 1.0"/>
+    <geom name="cageC_fla" type="box" size="0.025000000000000022 0.015 0.4" pos="7.855 2.48 0.43000000000000005" rgba="0.855 0.495 0.135 0.45"/>
+    <geom name="cageC_flb" type="box" size="0.025000000000000022 0.015 0.4" pos="7.045 2.48 0.43000000000000005" rgba="0.855 0.495 0.135 0.45"/>
+    <geom name="cageC_skirt" type="box" size="0.38 0.015 0.085" pos="7.45 2.48 0.115" rgba="0.855 0.495 0.135 0.45"/>
+    <geom name="cageC_w-y" type="box" size="0.43000000000000005 0.015 0.4" pos="7.45 1.25 0.43000000000000005" rgba="0.855 0.495 0.135 0.45"/>
+    <geom name="cageC_w+x" type="box" size="0.015 0.6 0.4" pos="7.865 1.865 0.43000000000000005" rgba="0.855 0.495 0.135 0.45"/>
+    <geom name="cageC_w-x" type="box" size="0.015 0.6 0.4" pos="7.035 1.865 0.43000000000000005" rgba="0.855 0.495 0.135 0.45"/>
+    <geom name="cageC_mat" type="box" size="0.4 0.6 0.004" pos="7.45 1.865 0.034" friction="0.9 0.01 0.0001" priority="2" solref="0.008 1" rgba="0.15 0.15 0.17 1"/>
+    <geom name="cageC_p-1-1" type="cylinder" size="0.022 0.41500000000000004" pos="7.0200000000000005 1.2349999999999999 0.41500000000000004" rgba="0.950 0.550 0.150 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageC_p-11" type="cylinder" size="0.022 0.41500000000000004" pos="7.0200000000000005 2.495 0.41500000000000004" rgba="0.950 0.550 0.150 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageC_p1-1" type="cylinder" size="0.022 0.41500000000000004" pos="7.88 1.2349999999999999 0.41500000000000004" rgba="0.950 0.550 0.150 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageC_p11" type="cylinder" size="0.022 0.41500000000000004" pos="7.88 2.495 0.41500000000000004" rgba="0.950 0.550 0.150 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageC_tx-1" type="box" size="0.43000000000000005 0.012 0.012" pos="7.45 1.2349999999999999 0.8300000000000001" rgba="0.950 0.550 0.150 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageC_tx1" type="box" size="0.43000000000000005 0.012 0.012" pos="7.45 2.495 0.8300000000000001" rgba="0.950 0.550 0.150 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageC_ty-1" type="box" size="0.012 0.63 0.012" pos="7.0200000000000005 1.865 0.8300000000000001" rgba="0.950 0.550 0.150 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageC_ty1" type="box" size="0.012 0.63 0.012" pos="7.88 1.865 0.8300000000000001" rgba="0.950 0.550 0.150 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageD_floor" type="box" size="0.43000000000000005 0.63 0.015" pos="8.75 1.865 0.015" rgba="0.110 0.429 0.193 1.0"/>
+    <geom name="cageD_fla" type="box" size="0.025000000000000022 0.015 0.4" pos="9.155 2.48 0.43000000000000005" rgba="0.180 0.702 0.315 0.45"/>
+    <geom name="cageD_flb" type="box" size="0.025000000000000022 0.015 0.4" pos="8.345 2.48 0.43000000000000005" rgba="0.180 0.702 0.315 0.45"/>
+    <geom name="cageD_skirt" type="box" size="0.38 0.015 0.085" pos="8.75 2.48 0.115" rgba="0.180 0.702 0.315 0.45"/>
+    <geom name="cageD_w-y" type="box" size="0.43000000000000005 0.015 0.4" pos="8.75 1.25 0.43000000000000005" rgba="0.180 0.702 0.315 0.45"/>
+    <geom name="cageD_w+x" type="box" size="0.015 0.6 0.4" pos="9.165 1.865 0.43000000000000005" rgba="0.180 0.702 0.315 0.45"/>
+    <geom name="cageD_w-x" type="box" size="0.015 0.6 0.4" pos="8.335 1.865 0.43000000000000005" rgba="0.180 0.702 0.315 0.45"/>
+    <geom name="cageD_mat" type="box" size="0.4 0.6 0.004" pos="8.75 1.865 0.034" friction="0.9 0.01 0.0001" priority="2" solref="0.008 1" rgba="0.15 0.15 0.17 1"/>
+    <geom name="cageD_p-1-1" type="cylinder" size="0.022 0.41500000000000004" pos="8.32 1.2349999999999999 0.41500000000000004" rgba="0.200 0.780 0.350 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageD_p-11" type="cylinder" size="0.022 0.41500000000000004" pos="8.32 2.495 0.41500000000000004" rgba="0.200 0.780 0.350 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageD_p1-1" type="cylinder" size="0.022 0.41500000000000004" pos="9.18 1.2349999999999999 0.41500000000000004" rgba="0.200 0.780 0.350 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageD_p11" type="cylinder" size="0.022 0.41500000000000004" pos="9.18 2.495 0.41500000000000004" rgba="0.200 0.780 0.350 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageD_tx-1" type="box" size="0.43000000000000005 0.012 0.012" pos="8.75 1.2349999999999999 0.8300000000000001" rgba="0.200 0.780 0.350 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageD_tx1" type="box" size="0.43000000000000005 0.012 0.012" pos="8.75 2.495 0.8300000000000001" rgba="0.200 0.780 0.350 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageD_ty-1" type="box" size="0.012 0.63 0.012" pos="8.32 1.865 0.8300000000000001" rgba="0.200 0.780 0.350 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageD_ty1" type="box" size="0.012 0.63 0.012" pos="9.18 1.865 0.8300000000000001" rgba="0.200 0.780 0.350 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageREVIEW_floor" type="box" size="0.32999999999999996 0.38 0.015" pos="9.05 3.865 0.015" rgba="0.396 0.138 0.330 1.0"/>
+    <geom name="cageREVIEW_w+y" type="box" size="0.32999999999999996 0.015 0.25" pos="9.05 4.23 0.28" rgba="0.648 0.225 0.540 0.45"/>
+    <geom name="cageREVIEW_fla" type="box" size="0.009999999999999981 0.015 0.25" pos="9.370000000000001 3.5 0.28" rgba="0.648 0.225 0.540 0.45"/>
+    <geom name="cageREVIEW_flb" type="box" size="0.009999999999999981 0.015 0.25" pos="8.73 3.5 0.28" rgba="0.648 0.225 0.540 0.45"/>
+    <geom name="cageREVIEW_skirt" type="box" size="0.31 0.015 0.085" pos="9.05 3.5 0.115" rgba="0.648 0.225 0.540 0.45"/>
+    <geom name="cageREVIEW_w+x" type="box" size="0.015 0.35 0.25" pos="9.365 3.865 0.28" rgba="0.648 0.225 0.540 0.45"/>
+    <geom name="cageREVIEW_w-x" type="box" size="0.015 0.35 0.25" pos="8.735000000000001 3.865 0.28" rgba="0.648 0.225 0.540 0.45"/>
+    <geom name="cageREVIEW_mat" type="box" size="0.3 0.35 0.004" pos="9.05 3.865 0.034" friction="0.9 0.01 0.0001" priority="2" solref="0.008 1" rgba="0.15 0.15 0.17 1"/>
+    <geom name="cageREVIEW_p-1-1" type="cylinder" size="0.022 0.265" pos="8.72 3.4850000000000003 0.265" rgba="0.720 0.250 0.600 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageREVIEW_p-11" type="cylinder" size="0.022 0.265" pos="8.72 4.245 0.265" rgba="0.720 0.250 0.600 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageREVIEW_p1-1" type="cylinder" size="0.022 0.265" pos="9.38 3.4850000000000003 0.265" rgba="0.720 0.250 0.600 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageREVIEW_p11" type="cylinder" size="0.022 0.265" pos="9.38 4.245 0.265" rgba="0.720 0.250 0.600 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageREVIEW_tx-1" type="box" size="0.32999999999999996 0.012 0.012" pos="9.05 3.4850000000000003 0.53" rgba="0.720 0.250 0.600 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageREVIEW_tx1" type="box" size="0.32999999999999996 0.012 0.012" pos="9.05 4.245 0.53" rgba="0.720 0.250 0.600 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageREVIEW_ty-1" type="box" size="0.012 0.38 0.012" pos="8.72 3.865 0.53" rgba="0.720 0.250 0.600 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="cageREVIEW_ty1" type="box" size="0.012 0.38 0.012" pos="9.38 3.865 0.53" rgba="0.720 0.250 0.600 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="bconnect" type="box" size="0.31 0.4904079934095693 0.015" pos="8.4 3.73 0.5449999999999999" euler="0.289504 0 0" friction="0.06 0.004 0.0001" priority="1" rgba="0.35 0.42 0.55 1"/>
+    <geom name="bconnect_rail_l" type="box" size="0.015 0.45389 0.07" pos="8.725 3.7649999999999997 0.65543" euler="0.289504 0 0" rgba="0.9 0.75 0.4 1"/>
+    <geom name="bconnect_rail_r" type="box" size="0.015 0.45389 0.07" pos="8.075000000000001 3.7649999999999997 0.65543" euler="0.289504 0 0" rgba="0.9 0.75 0.4 1"/>
+    <geom name="claneB_0" type="box" size="0.026 0.048 0.001" pos="8.4 3.360 0.4538" euler="0.289504 0 0" rgba="0.125 0.275 0.475 0.9" contype="0" conaffinity="0" group="2"/>
+    <geom name="claneB_1" type="box" size="0.026 0.048 0.001" pos="8.4 3.520 0.5014" euler="0.289504 0 0" rgba="0.125 0.275 0.475 0.9" contype="0" conaffinity="0" group="2"/>
+    <geom name="claneB_2" type="box" size="0.026 0.048 0.001" pos="8.4 3.680 0.5491" euler="0.289504 0 0" rgba="0.125 0.275 0.475 0.9" contype="0" conaffinity="0" group="2"/>
+    <geom name="claneB_3" type="box" size="0.026 0.048 0.001" pos="8.4 3.840 0.5968" euler="0.289504 0 0" rgba="0.125 0.275 0.475 0.9" contype="0" conaffinity="0" group="2"/>
+    <geom name="claneB_4" type="box" size="0.026 0.048 0.001" pos="8.4 4.000 0.6444" euler="0.289504 0 0" rgba="0.125 0.275 0.475 0.9" contype="0" conaffinity="0" group="2"/>
+    <geom name="claneB_5" type="box" size="0.026 0.048 0.001" pos="8.4 4.160 0.6921" euler="0.289504 0 0" rgba="0.125 0.275 0.475 0.9" contype="0" conaffinity="0" group="2"/>
+    <geom name="spill_s_w" type="box" size="0.0360 0.3450 0.01" pos="7.9060 2.2950 0.2900" friction="1.2 0.005 0.0001" priority="1" solref="0.008 1" rgba="0.58 0.60 0.63 1"/>
+    <geom name="spill_s_e" type="box" size="0.0360 0.3450 0.01" pos="8.2940 2.2950 0.2900" friction="1.2 0.005 0.0001" priority="1" solref="0.008 1" rgba="0.58 0.60 0.63 1"/>
+    <geom name="spill_s_n" type="box" size="0.1580 0.0310 0.01" pos="8.1000 2.6090 0.2900" friction="1.2 0.005 0.0001" priority="1" solref="0.008 1" rgba="0.58 0.60 0.63 1"/>
+    <geom name="spill_s_s" type="box" size="0.1580 0.1560 0.01" pos="8.1000 2.1060 0.2900" friction="1.2 0.005 0.0001" priority="1" solref="0.008 1" rgba="0.58 0.60 0.63 1"/>
+    <geom name="spill_s_fw" type="box" size="0.0350 0.0700 0.01" pos="7.8350 2.5700 0.2900" friction="1.2 0.005 0.0001" priority="1" solref="0.008 1" rgba="0.58 0.60 0.63 1"/>
+    <geom name="spill_s_fe" type="box" size="0.0350 0.0700 0.01" pos="8.3650 2.5700 0.2900" friction="1.2 0.005 0.0001" priority="1" solref="0.008 1" rgba="0.58 0.60 0.63 1"/>
+    <geom name="spill_lip_s" type="box" size="0.2300 0.006 0.0600" pos="8.1000 1.9440 0.3600" rgba="0.50 0.52 0.55 1"/>
+    <geom name="spill_n" type="box" size="0.1850 0.1650 0.01" pos="7.9050 3.5350 0.2900" friction="1.2 0.005 0.0001" priority="1" solref="0.008 1" rgba="0.58 0.60 0.63 1"/>
+    <geom name="spill_lip_n_n" type="box" size="0.1850 0.006 0.0225" pos="7.9050 3.7060 0.3225" rgba="0.50 0.52 0.55 1"/>
+    <geom name="spill_lip_n_w" type="box" size="0.006 0.1650 0.0225" pos="7.7140 3.5350 0.3225" rgba="0.50 0.52 0.55 1"/>
+    <geom name="stC_posta" type="box" size="0.02 0.02 0.50" pos="7.15 2.54 0.50" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stC_postb" type="box" size="0.02 0.02 0.50" pos="7.75 2.54 0.50" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stC_beam" type="box" size="0.32 0.02 0.02" pos="7.45 2.54 1.02" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stC_lamp" type="box" size="0.10 0.025 0.025" pos="7.45 2.54 1.08" rgba="0.950 0.550 0.150 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="stB_posta" type="box" size="0.02 0.02 0.50" pos="8.1 3.46 0.50" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stB_postb" type="box" size="0.02 0.02 0.50" pos="8.700000000000001 3.46 0.50" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stB_beam" type="box" size="0.32 0.02 0.02" pos="8.4 3.46 1.02" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stB_lamp" type="box" size="0.10 0.025 0.025" pos="8.4 3.46 1.08" rgba="0.250 0.550 0.950 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="stD_posta" type="box" size="0.02 0.02 0.50" pos="8.45 2.54 0.50" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stD_postb" type="box" size="0.02 0.02 0.50" pos="9.05 2.54 0.50" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stD_beam" type="box" size="0.32 0.02 0.02" pos="8.75 2.54 1.02" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stD_lamp" type="box" size="0.10 0.025 0.025" pos="8.75 2.54 1.08" rgba="0.200 0.780 0.350 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="stREVIEW_posta" type="box" size="0.02 0.02 0.50" pos="8.75 3.46 0.50" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stREVIEW_postb" type="box" size="0.02 0.02 0.50" pos="9.350000000000001 3.46 0.50" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stREVIEW_beam" type="box" size="0.32 0.02 0.02" pos="9.05 3.46 1.02" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="stREVIEW_lamp" type="box" size="0.10 0.025 0.025" pos="9.05 3.46 1.08" rgba="0.720 0.250 0.600 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="train_pan" type="box" size="1.2499999999999996 0.18 0.005" pos="8.03 3.0 0.385" friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>
+    <geom name="train_pan_fence" type="box" size="0.006 0.18 0.0225" pos="9.274 3.0 0.41250000000000003" friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>
+    <geom name="wrap_pan" type="box" size="0.3350 0.7500 0.003" pos="9.7150 2.8500 0.16" friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>
+    <geom name="wrap_pan_lip_e" type="box" size="0.0050 0.7500 0.015" pos="10.0450 2.8500 0.178" friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>
+    <geom name="wrap_pan_lip_s" type="box" size="0.3350 0.0050 0.015" pos="9.7150 2.1050 0.178" friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>
+    <geom name="wrap_pan_lip_n" type="box" size="0.3350 0.0050 0.015" pos="9.7150 3.5950 0.178" friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>
+    <geom name="train_pan_apron0" type="box" size="0.1500 0.0400 0.005" pos="6.9300 2.7800 0.355" friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>
+    <geom name="train_pan_apron1" type="box" size="0.2800 0.0400 0.005" pos="8.1000 2.7800 0.355" friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>
+    <geom name="train_pan_apron2" type="box" size="0.0800 0.0400 0.005" pos="9.2000 2.7800 0.355" friction="0.8 0.01 0.0001" rgba="0.13 0.14 0.16 1"/>
+    <geom name="seam_guard_fin" type="box" size="0.003 0.3075 0.2100" pos="8.725 3.6425 0.5100" rgba="0.50 0.52 0.55 1"/>
+    <geom name="train_end_e" type="box" size="0.15 0.40 0.28" pos="9.57 3.0 0.46" rgba="0.22 0.24 0.28 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="train_end_w" type="box" size="0.15 0.40 0.21" pos="6.59 3.0 0.40" rgba="0.22 0.24 0.28 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="manual_station" type="box" size="0.35 0.55 0.01" pos="10.4 0.6 0.01" rgba="0.62 0.30 0.10 0.8" contype="0" conaffinity="0" group="2"/>
+    <geom name="beaconB_pole" type="cylinder" size="0.02 0.66" pos="8.85 4.95 0.66" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="beaconB" type="sphere" size="0.058" pos="8.85 4.95 1.40" rgba="0.087 0.193 0.332 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="beaconC_pole" type="cylinder" size="0.02 0.66" pos="6.7 1.35 0.66" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="beaconC" type="sphere" size="0.058" pos="6.7 1.35 1.40" rgba="0.332 0.193 0.052 1.0" contype="0" conaffinity="0" group="2"/>
+    <geom name="beaconD_pole" type="cylinder" size="0.02 0.66" pos="9.55 1.35 0.66" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="beaconD" type="sphere" size="0.058" pos="9.55 1.35 1.40" rgba="0.070 0.273 0.122 1.0" contype="0" conaffinity="0" group="2"/>
+
+    <!-- vision markers + signage -->
+    <geom name="vis_window" type="box" size="0.19999999999999973 0.25 0.001" pos="5.85 3.0 0.702" rgba="0.45 0.25 0.55 0.25" contype="0" conaffinity="0" group="2"/>
+    <geom name="vis_sheet" type="box" size="0.002 0.25 0.26" pos="5.55 3.0 0.96" rgba="0.75 0.35 0.95 0.16" contype="0" conaffinity="0" group="2"/>
+    <geom name="line_hold" type="box" size="0.008 0.25 0.0012" pos="5.35 3.0 0.702" rgba="0.85 0.75 0.2 0.8" contype="0" conaffinity="0" group="2"/>
+    <geom name="line_gate" type="box" size="0.008 0.25 0.0012" pos="6.35 3.0 0.702" rgba="0.9 0.55 0.1 0.9" contype="0" conaffinity="0" group="2"/>
+    <geom name="tower_pole" type="cylinder" size="0.022 0.78" pos="6.0 3.55 0.78" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="tower_g" type="cylinder" size="0.05 0.055" pos="6.0 3.55 1.62" rgba="0.1 0.65 0.2 0.35" contype="0" conaffinity="0" group="2"/>
+    <geom name="tower_a" type="cylinder" size="0.05 0.055" pos="6.0 3.55 1.74" rgba="0.85 0.6 0.05 0.35" contype="0" conaffinity="0" group="2"/>
+    <geom name="tower_r" type="cylinder" size="0.05 0.055" pos="6.0 3.55 1.86" rgba="0.75 0.1 0.1 0.35" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_a_infeed" type="plane" size="0.70 0.175 0.05" pos="1.3 3.8 1.75" euler="1.5708 0 0.6504" material="mat_a_infeed" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_a_infeed_post" type="cylinder" size="0.028 0.7875" pos="1.2757791267006695 3.831833147764834 0.7875" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_vision" type="plane" size="0.70 0.175 0.05" pos="5.85 3.8 1.95" euler="1.5708 0 -0.2244" material="mat_vision" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_vision_post" type="cylinder" size="0.028 0.8875" pos="5.858901482126809 3.8389969693174493 0.8875" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_sorter" type="plane" size="0.70 0.175 0.05" pos="7.35 3.75 1.7" euler="1.5708 0 -0.5108" material="mat_sorter" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_sorter_post" type="cylinder" size="0.028 0.7625" pos="7.369555809889205 3.784893699998385 0.7625" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_b_sorter" type="plane" size="0.70 0.175 0.05" pos="8.42 5.55 1.75" euler="1.5708 0 -0.5181" material="mat_b_sorter" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_b_sorter_post" type="cylinder" size="0.028 0.7875" pos="8.439810186948197 5.584749913569352 0.7875" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_c_oversize" type="plane" size="0.70 0.175 0.05" pos="7.45 0.95 1.55" euler="1.5708 0 -0.9872" material="mat_c_oversize" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_c_oversize_post" type="cylinder" size="0.028 0.6875" pos="7.48337858439007 0.9720424613896683 0.6875" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_d_repack" type="plane" size="0.70 0.175 0.05" pos="8.75 0.95 1.55" euler="1.5708 0 -1.1537" material="mat_d_repack" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_d_repack_post" type="cylinder" size="0.028 0.6875" pos="8.7865715266349 0.9662025750914113 0.6875" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_review" type="plane" size="0.70 0.175 0.05" pos="9.75 4.45 1.55" euler="1.5708 0 -0.7560" material="mat_review" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_review_post" type="cylinder" size="0.028 0.6875" pos="9.77744051474756 4.479103576247413 0.6875" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_arm_exc" type="plane" size="0.70 0.175 0.05" pos="8.1 1.42 1.75" euler="1.5708 0 -0.9786" material="mat_arm_exc" contype="0" conaffinity="0" group="2"/>
+    <geom name="sign_arm_exc_post" type="cylinder" size="0.028 0.7875" pos="8.133188884408 1.4423270676926547 0.7875" rgba="0.55 0.57 0.62 1" contype="0" conaffinity="0" group="2"/>
+    <geom name="decal_a_infeed" type="plane" size="0.55 0.22 0.05" pos="1.3 2.3 0.004" euler="0 0 0.0000" material="mat_a_infeed" contype="0" conaffinity="0" group="2"/>
+    <geom name="decal_vision" type="plane" size="0.55 0.22 0.05" pos="5.6 2.2 0.004" euler="0 0 0.0000" material="mat_vision" contype="0" conaffinity="0" group="2"/>
+    <geom name="decal_b_sorter" type="plane" size="0.55 0.22 0.05" pos="7.75 5.05 0.004" euler="0 0 1.5708" material="mat_b_sorter" contype="0" conaffinity="0" group="2"/>
+    <geom name="decal_c_oversize" type="plane" size="0.5 0.22 0.05" pos="6.35 1.45 0.004" euler="0 0 1.5708" material="mat_c_oversize" contype="0" conaffinity="0" group="2"/>
+    <geom name="decal_d_repack" type="plane" size="0.5 0.22 0.05" pos="9.65 1.45 0.004" euler="0 0 1.5708" material="mat_d_repack" contype="0" conaffinity="0" group="2"/>
+
+    <!-- 4-axis palletizer arm (exception-recovery station) -->
+    <geom name="pedestal" type="cylinder" size="0.15 0.325"
+          pos="8.1 2.42 0.325" rgba="0.25 0.25 0.28 1"/>
+    <body name="yawcol" pos="8.1 2.42 0.65">
+      <joint name="j1" type="hinge" axis="0 0 1" range="-7 7" damping="2"/>
+      <geom type="cylinder" size="0.09 0.125" pos="0 0 0.125"
+            rgba="0.85 0.55 0.1 1" contype="0" conaffinity="0" group="2"/>
+      <body name="upper" pos="0 0 0.25">
+        <joint name="j2" type="hinge" axis="0 1 0" range="-2.4 2.4" damping="2"/>
+        <geom type="capsule" size="0.06" fromto="0 0 0 0.7 0 0" rgba="0.85 0.55 0.1 1"
+              contype="0" conaffinity="0" group="2"/>
+        <body name="fore" pos="0.7 0 0">
+          <joint name="j3" type="hinge" axis="0 1 0" range="-2.8 2.8" damping="2"/>
+          <geom type="capsule" size="0.05" fromto="0 0 0 0.6 0 0" rgba="0.85 0.55 0.1 1"
+                contype="0" conaffinity="0" group="2"/>
+          <body name="wrist" pos="0.6 0 0">
+            <joint name="j4" type="hinge" axis="0 1 0" range="-3.0 3.0" damping="1"/>
+            <geom type="cylinder" size="0.05 0.02" pos="0 0 -0.02" rgba="0.3 0.3 0.32 1"
+                  contype="0" conaffinity="0" group="2"/>
+            <geom name="tool" type="cylinder" size="0.04 0.1" pos="0 0 -0.148"
+                  rgba="0.2 0.2 0.22 1" contype="0" conaffinity="0" group="2"/>
+            <site name="tcp" pos="0 0 -0.25" size="0.012" rgba="1 0 0 1"/>
+          </body>
+        </body>
+      </body>
+    </body>
+
+    <!-- items (parked off-cell until spawned) -->
+        <body name="item_bottle" pos="0.6 -1.2 0.0466">
+      <freejoint name="fj_bottle"/>
+      <geom name="g_bottle" type="mesh" mesh="m_bottle" mass="0.305" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_box_s" pos="1.45 -1.2 0.101">
+      <freejoint name="fj_box_s"/>
+      <geom name="g_box_s" type="mesh" mesh="m_box_s" mass="3.0" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_box_l" pos="2.3 -1.2 0.15125">
+      <freejoint name="fj_box_l"/>
+      <geom name="g_box_l" type="mesh" mesh="m_box_l" mass="6.0" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_lunchbox" pos="3.15 -1.2 0.03215">
+      <freejoint name="fj_lunchbox"/>
+      <geom name="g_lunchbox" type="mesh" mesh="m_lunchbox" mass="0.412" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_sack" pos="4.0 -1.2 0.0858">
+      <freejoint name="fj_sack"/>
+      <geom name="g_sack" type="mesh" mesh="m_sack" mass="0.817" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_detergent" pos="4.85 -1.2 0.0906">
+      <freejoint name="fj_detergent"/>
+      <geom name="g_detergent" type="mesh" mesh="m_detergent" mass="2.002" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_pouf" pos="5.699999999999999 -1.2 0.133">
+      <freejoint name="fj_pouf"/>
+      <geom name="g_pouf" type="mesh" mesh="m_pouf" mass="6.0" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_pen" pos="6.55 -1.2 0.0055">
+      <freejoint name="fj_pen"/>
+      <geom name="g_pen" type="mesh" mesh="m_pen" mass="0.05" friction="0.9 0.02 0.0005" conaffinity="3" solref="0.004 2" margin="0.001" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_plate" pos="7.3999999999999995 -1.2 0.014249999999999999">
+      <freejoint name="fj_plate"/>
+      <geom name="g_plate" type="mesh" mesh="m_plate" mass="0.175" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_cylinder" pos="8.25 -1.2 0.0225">
+      <freejoint name="fj_cylinder"/>
+      <geom name="g_cylinder" type="mesh" mesh="m_cylinder" mass="0.187" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_helmet" pos="9.1 -1.2 0.1418">
+      <freejoint name="fj_helmet"/>
+      <geom name="g_helmet" type="mesh" mesh="m_helmet" mass="4.323" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_bl_box_b" pos="9.95 -1.2 0.1585">
+      <freejoint name="fj_bl_box_b"/>
+      <geom name="g_bl_box_b" type="mesh" mesh="m_bl_box_b" mass="6.0" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_bl_box_c" pos="10.799999999999999 -1.2 0.166">
+      <freejoint name="fj_bl_box_c"/>
+      <geom name="g_bl_box_c" type="mesh" mesh="m_bl_box_c" mass="6.0" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_bl_pent_d" pos="11.649999999999999 -1.2 0.05075">
+      <freejoint name="fj_bl_pent_d"/>
+      <geom name="g_bl_pent_d" type="mesh" mesh="m_bl_pent_d" mass="0.468" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_bl_rsq_b" pos="12.5 -1.2 0.051000000000000004">
+      <freejoint name="fj_bl_rsq_b"/>
+      <geom name="g_bl_rsq_b" type="mesh" mesh="m_bl_rsq_b" mass="0.538" friction="0.9 0.02 0.0005" conaffinity="3" rgba="0.75 0.72 0.65 1"/>
+    </body>
+    <body name="item_bl_rod_b" pos="13.35 -1.2 0.007">
+      <freejoint name="fj_bl_rod_b"/>
+      <geom name="g_bl_rod_b" type="mesh" mesh="m_bl_rod_b" mass="0.05" friction="0.9 0.02 0.0005" conaffinity="3" solref="0.004 2" margin="0.001" rgba="0.75 0.72 0.65 1"/>
+    </body>
+  </worldbody>
+
+  <equality>
+        <weld name="w_bottle" body1="wrist" body2="item_bottle" active="false" solref="0.004 1"/>
+    <weld name="w_box_s" body1="wrist" body2="item_box_s" active="false" solref="0.004 1"/>
+    <weld name="w_box_l" body1="wrist" body2="item_box_l" active="false" solref="0.004 1"/>
+    <weld name="w_lunchbox" body1="wrist" body2="item_lunchbox" active="false" solref="0.004 1"/>
+    <weld name="w_sack" body1="wrist" body2="item_sack" active="false" solref="0.004 1"/>
+    <weld name="w_detergent" body1="wrist" body2="item_detergent" active="false" solref="0.004 1"/>
+    <weld name="w_pouf" body1="wrist" body2="item_pouf" active="false" solref="0.004 1"/>
+    <weld name="w_pen" body1="wrist" body2="item_pen" active="false" solref="0.004 1"/>
+    <weld name="w_plate" body1="wrist" body2="item_plate" active="false" solref="0.004 1"/>
+    <weld name="w_cylinder" body1="wrist" body2="item_cylinder" active="false" solref="0.004 1"/>
+    <weld name="w_helmet" body1="wrist" body2="item_helmet" active="false" solref="0.004 1"/>
+    <weld name="w_bl_box_b" body1="wrist" body2="item_bl_box_b" active="false" solref="0.004 1"/>
+    <weld name="w_bl_box_c" body1="wrist" body2="item_bl_box_c" active="false" solref="0.004 1"/>
+    <weld name="w_bl_pent_d" body1="wrist" body2="item_bl_pent_d" active="false" solref="0.004 1"/>
+    <weld name="w_bl_rsq_b" body1="wrist" body2="item_bl_rsq_b" active="false" solref="0.004 1"/>
+    <weld name="w_bl_rod_b" body1="wrist" body2="item_bl_rod_b" active="false" solref="0.004 1"/>
+  </equality>
+
+  <actuator>
+    <position name="a1" joint="j1" kp="6000" kv="500" forcerange="-900 900" ctrlrange="-7 7"/>
+    <position name="a2" joint="j2" kp="12000" kv="900" forcerange="-1600 1600" ctrlrange="-2.4 2.4"/>
+    <position name="a3" joint="j3" kp="12000" kv="900" forcerange="-1600 1600" ctrlrange="-2.8 2.8"/>
+    <position name="a4" joint="j4" kp="2000" kv="120" forcerange="-250 250" ctrlrange="-3 3"/>
+    <position name="egate_a" joint="egate_j" kp="2200" kv="140" forcerange="-900 900" ctrlrange="0 0.169"/>
+    <position name="hold2_a" joint="hold2_j" kp="2200" kv="140" forcerange="-900 900" ctrlrange="0 0.169"/>
+    <position name="ta0" joint="tj0" kp="600" kv="40" forcerange="-150.0 150.0" ctrlrange="-0.80285 0.80285"/>
+    <position name="ta1" joint="tj1" kp="600" kv="40" forcerange="-150.0 150.0" ctrlrange="-0.80285 0.80285"/>
+    <position name="ta2" joint="tj2" kp="600" kv="40" forcerange="-150.0 150.0" ctrlrange="-0.80285 0.80285"/>
+    <position name="ta3" joint="tj3" kp="600" kv="40" forcerange="-150.0 150.0" ctrlrange="-0.80285 0.80285"/>
+    <position name="ta4" joint="tj4" kp="600" kv="40" forcerange="-150.0 150.0" ctrlrange="-0.80285 0.80285"/>
+    <position name="ta5" joint="tj5" kp="600" kv="40" forcerange="-150.0 150.0" ctrlrange="-0.80285 0.80285"/>
+    <position name="ta6" joint="tj6" kp="600" kv="40" forcerange="-150.0 150.0" ctrlrange="-0.80285 0.80285"/>
+    <position name="ta7" joint="tj7" kp="600" kv="40" forcerange="-150.0 150.0" ctrlrange="-0.80285 0.80285"/>
+    <position name="ta8" joint="tj8" kp="600" kv="40" forcerange="-150.0 150.0" ctrlrange="-0.80285 0.80285"/>
+  </actuator>
+</mujoco>
