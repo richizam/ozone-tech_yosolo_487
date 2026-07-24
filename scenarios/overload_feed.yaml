@@ -1,0 +1,28 @@
+# OFFICIAL VERIFICATION CADENCE (expert answer 21-07): belt 1 m/s, item
+# spacing 1 m, continuous feed — i.e. ~1 item/second sustained, ~7x the
+# cell's 7.3 s/item tact. The experts explicitly bless accumulation as the
+# designed overload response ("возможное накопление товаров в зоне
+# накопителя как нештатный или перегрузочный сценарий").
+#
+# Expected: the pre-gate hold keeps the measurement window single-item, the
+# queue accumulates upstream against the hold blades (belt slips under held
+# freight, never stops), items process in order at the cell's tact. Zero
+# unsafe, zero floor; conservative diversions allowed for crowded reads.
+seed: 42
+perception: camera
+executive: sorter
+allow_conservative: true
+items:
+  box_s: 1
+  bottle: 1
+  lunchbox: 1
+  plate: 1
+  pen: 1
+  detergent: 1
+  helmet: 1
+  cylinder: 1
+  box_l: 1
+  sack: 1
+  pouf: 1
+spawn_gap_s: [0.9, 1.1]
+max_sim_s: 420
