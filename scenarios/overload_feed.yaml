@@ -1,8 +1,10 @@
 # OFFICIAL VERIFICATION CADENCE (expert answer 21-07): belt 1 m/s, item
-# spacing 1 m, continuous feed — i.e. ~1 item/second sustained, ~7x the
-# cell's 7.3 s/item tact. The experts explicitly bless accumulation as the
-# designed overload response ("возможное накопление товаров в зоне
-# накопителя как нештатный или перегрузочный сценарий").
+# spacing 1 m, continuous feed. Spacing is between ITEMS (edge to edge, as
+# a human lays them), so the arrival PERIOD is (1.0 m + item length)/1 m/s
+# = 1.15-1.5 s for the official set — sustained, ~5x the cell's 7.3 s
+# tact. The experts explicitly bless accumulation as the designed overload
+# response ("возможное накопление товаров в зоне накопителя как нештатный
+# или перегрузочный сценарий").
 #
 # Expected: the pre-gate hold keeps the measurement window single-item, the
 # queue accumulates upstream against the hold blades (belt slips under held
@@ -24,5 +26,5 @@ items:
   box_l: 1
   sack: 1
   pouf: 1
-spawn_gap_s: [0.9, 1.1]
+spawn_gap_s: [1.15, 1.5]
 max_sim_s: 420

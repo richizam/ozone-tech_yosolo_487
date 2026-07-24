@@ -188,7 +188,13 @@ SORTER = {
     # stays at z <= 0.193: the lowest moving part of the train is the
     # return-leg tray plate at ~0.235 — 42 mm clear at every x, so no
     # sweep audit exposure at all.
-    "wrap_pan": {"x0": 9.40, "x1": 9.80, "y0": 2.75, "y1": 3.25,
+    # (overload drill at the official verification cadence: three unmetered
+    # items rode wrapping carriers and fell at x 9.83-9.94, y 2.22-3.15 —
+    # past the first pan's east edge and outside its y-span. The apron now
+    # covers the full end-of-line scatter fan; everything still under
+    # z 0.193 — the lowest moving part anywhere in this x-range is the
+    # return-leg tray plate at ~0.235, and the REVIEW pen floor is 0.359.)
+    "wrap_pan": {"x0": 9.38, "x1": 10.05, "y0": 2.10, "y1": 3.60,
                  "z_top": 0.163, "lip_h": 0.030, "lip_t": 0.010},
 }
 

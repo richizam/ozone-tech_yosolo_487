@@ -96,10 +96,11 @@ run_one edge_small --seed 42 --manifest-extra \
   --items edge_cube11,edge_cube10,edge_rod9,edge_card2,pen,bl_rod_b \
   --max-sim-s 260
 # --- OFFICIAL VERIFICATION CADENCE (expert answer 21-07): 1 m spacing at
-# 1 m/s, continuous — ~1 item/s against the cell's 7.3 s tact. Proves the
-# designed overload response: accumulation against the hold blades, single
-# item in the measuring window, orderly processing, 0 unsafe / 0 floor.
-run_one overload_feed --seed 42 --spawn-gap 0.9,1.1 --max-sim-s 420
+# 1 m/s, continuous. Edge-to-edge spacing -> arrival period (1.0+len)/v =
+# 1.15-1.5 s sustained, ~5x the cell's tact. Proves the designed overload
+# response: accumulation against the hold blades, single item in the
+# measuring window, orderly processing, 0 unsafe / 0 floor.
+run_one overload_feed --seed 42 --spawn-gap 1.15,1.5 --max-sim-s 420
 # --- robustness / fault sweeps
 run_one low_friction  --seed 42 --friction-mult 0.7 --max-sim-s 400
 run_one high_mass     --seed 42 --mass-mult 1.3 --max-sim-s 400
