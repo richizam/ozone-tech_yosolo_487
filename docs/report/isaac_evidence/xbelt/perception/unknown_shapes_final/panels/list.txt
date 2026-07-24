@@ -1,0 +1,9 @@
+file 'perception_unkclip_04_cyl.png'
+duration 2.5
+file 'perception_unkclip_05_hull.png'
+duration 2.5
+file 'perception_unkclip_06_thin_plate.png'
+duration 2.5
+file 'perception_unkclip_25_hex.png'
+duration 2.5
+file 'perception_unkclip_25_hex.png'
