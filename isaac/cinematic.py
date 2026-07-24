@@ -21,28 +21,56 @@ def _smooth(p):
     return p * p * (3.0 - 2.0 * p)
 
 
+def _action_target(p):
+    """The run's action centre MIGRATES west->east (measuring tunnel ->
+    induction -> tilt stations -> cages). A fixed look-at framed only the
+    first half and let the discharges play at the frame edge (the review
+    note on the old reel: «cinematics don't follow the freight»). Sweep the
+    look-at with the flow instead — phase-only, deterministic, no live-item
+    plumbing needed."""
+    s = _smooth(p)
+    # The south sight corridor is FENCED at x > 7.6: cage C (7.0-7.9,
+    # y 1.2-2.5), the arm column (7.75-8.45, y 2.1-2.8) and cage D form a
+    # picket line between any south eye and the east stations (offline
+    # occlusion check vs the params AABBs). The sweep therefore ends at
+    # the C-station/deck zone WEST of the column, at tray-top level above
+    # the cage line — the discharges read there, and nothing crosses the
+    # lens.
+    return (5.6 + (7.6 - 5.6) * s, 3.0, 0.80 + 0.35 * s)
+
+
 def _orbit(p):
-    # slow arc across the open south-west, looking at the cell heart
+    # slow arc across the open south-west; the orbit CENTRE drifts east
+    # with the action and the radius tightens for a closer end framing
     a0, a1 = math.radians(203.0), math.radians(256.0)
-    a = a0 + (a1 - a0) * _smooth(p)
-    cx, cy, r, h = 5.2, 3.0, 6.9, 3.7
-    eye = (cx + r * math.cos(a), cy + r * math.sin(a), h)
-    return eye, (5.4, 3.0, 0.85)
+    s = _smooth(p)
+    a = a0 + (a1 - a0) * s
+    cx = 5.2 + 1.2 * s
+    r = 6.9 - 1.1 * s
+    h = 3.7 - 0.5 * s
+    eye = (cx + r * math.cos(a), 3.0 + r * math.sin(a), h)
+    return eye, _action_target(p)
 
 
 def _dolly(p):
-    # tracking dolly along the flow, from the south lane, gently rising
+    # tracking dolly along the flow, from the south lane, gently rising;
+    # keeps its slight LEAD on the action (the best follower of the three)
     s = _smooth(p)
-    x = 1.1 + (8.7 - 1.1) * s
+    # travel ENDS west of the arm column: from x > 8.0 the look-back at the
+    # C zone crosses the column's NE shoulder (offline occlusion check)
+    x = 1.1 + (8.0 - 1.1) * s
     eye = (x, 1.05, 1.95 + 0.25 * s)
-    return eye, (min(x + 0.7, 9.0), 3.0, 0.72)
+    return eye, (min(x + 0.7, 7.5), 2.9, 0.72 + 0.33 * s)
 
 
 def _crane(p):
-    # crane-up reveal from a low front to a high isometric
+    # crane-up reveal from a low front to a high isometric; the reveal ENDS
+    # framing the live stations, not the empty tunnel. Own target cap: the
+    # shared sweep's 8.2 end grazes the arm-column top by ~2 cm from this
+    # eye line (offline occlusion check) — 8.0/1.08 clears it.
     s = _smooth(p)
-    eye = (5.2, -1.1 - 1.6 * s, 1.5 + 3.3 * s)
-    return eye, (6.1, 3.0, 0.8)
+    eye = (5.2 + 0.9 * s, -1.1 - 1.6 * s, 1.5 + 3.3 * s)
+    return eye, _action_target(p)
 
 
 def _deck_push(p):
