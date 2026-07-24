@@ -1,0 +1,136 @@
+{
+ "metric": "precision/recall per category (expert answer 21-07)",
+ "exception_accounting": "REVIEW/MANUAL deliveries are the designed exception stream, reported separately — never booked as routine C/D classifications",
+ "isaac_nominal": {
+  "table": [
+   {
+    "category": "B",
+    "tp": 18,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "diverted_to_exceptions": 0
+   },
+   {
+    "category": "C",
+    "tp": 18,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "diverted_to_exceptions": 0
+   },
+   {
+    "category": "D",
+    "tp": 30,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "diverted_to_exceptions": 0
+   }
+  ],
+  "n_routine": 66,
+  "n_exceptions": 0
+ },
+ "isaac_all_runs": {
+  "table": [
+   {
+    "category": "B",
+    "tp": 40,
+    "fp": 0,
+    "fn": 5,
+    "precision": 1.0,
+    "recall": 0.8889,
+    "diverted_to_exceptions": 0
+   },
+   {
+    "category": "C",
+    "tp": 40,
+    "fp": 1,
+    "fn": 1,
+    "precision": 0.9756,
+    "recall": 0.9756,
+    "diverted_to_exceptions": 6
+   },
+   {
+    "category": "D",
+    "tp": 64,
+    "fp": 5,
+    "fn": 0,
+    "precision": 0.9275,
+    "recall": 1.0,
+    "diverted_to_exceptions": 2
+   }
+  ],
+  "n_routine": 150,
+  "n_exceptions": 8
+ },
+ "twin_nominal": {
+  "table": [
+   {
+    "category": "B",
+    "tp": 23,
+    "fp": 0,
+    "fn": 1,
+    "precision": 1.0,
+    "recall": 0.9583,
+    "diverted_to_exceptions": 0
+   },
+   {
+    "category": "C",
+    "tp": 23,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "diverted_to_exceptions": 1
+   },
+   {
+    "category": "D",
+    "tp": 40,
+    "fp": 1,
+    "fn": 0,
+    "precision": 0.9756,
+    "recall": 1.0,
+    "diverted_to_exceptions": 0
+   }
+  ],
+  "n_routine": 87,
+  "n_exceptions": 1
+ },
+ "twin_all_runs": {
+  "table": [
+   {
+    "category": "B",
+    "tp": 55,
+    "fp": 0,
+    "fn": 24,
+    "precision": 1.0,
+    "recall": 0.6962,
+    "diverted_to_exceptions": 2
+   },
+   {
+    "category": "C",
+    "tp": 55,
+    "fp": 9,
+    "fn": 0,
+    "precision": 0.8594,
+    "recall": 1.0,
+    "diverted_to_exceptions": 2
+   },
+   {
+    "category": "D",
+    "tp": 97,
+    "fp": 15,
+    "fn": 0,
+    "precision": 0.8661,
+    "recall": 1.0,
+    "diverted_to_exceptions": 0
+   }
+  ],
+  "n_routine": 231,
+  "n_exceptions": 4
+ }
+}
