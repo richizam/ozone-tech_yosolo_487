@@ -51,4 +51,9 @@ YOSOLO_stage1_pitch_ru.pptx
 SortMaster_pitch_script_ru.txt
 # kit de grabación del video (material de trabajo, no entregable)
 video_kit/
+# notas internas de trabajo (prompts de agentes, planes de sesión) — no entregables
+CROSS_BELT_REBUILD_PROMPT.md
+GATED_ACTUATOR_TEST_PLAN.md
+SUPER_REALISTIC_HACKATHON_PLAN.md
+champion_level_improvement_agent.md
 .cache/
