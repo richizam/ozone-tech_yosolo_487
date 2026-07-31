@@ -1,4 +1,11 @@
-# `isaac/` — SortMaster cell in NVIDIA Isaac Sim (PhysX 5 + RTX)
+# `isaac/` — ячейка SortMaster в NVIDIA Isaac Sim (PhysX 5 + RTX)
+
+> **RU.** Высокоточный цифровой твин ячейки трека 3: та же геометрия из
+> `cell/params.py`, что и у MuJoCo-твина, но с настоящими рендеренными
+> сенсорами в контуре и физически приводимым tilt-tray сортером. Команды
+> проверки жюри на русском — в корневом [README, §8](../README.md); ниже —
+> техническая документация пакета (EN): точный набор монтирований контейнера
+> `isaac-sim:6.0.1`, CLI всех прогонов, структура артефактов.
 
 The high-fidelity digital twin of the Track-3 sorting cell: the same
 `cell/params.py` geometry as the MuJoCo validation twin, rebuilt on the

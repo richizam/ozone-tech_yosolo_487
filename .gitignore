@@ -49,4 +49,6 @@ YOSOLO_stage1_pitch_ru.pptx
 ~$*.pptx
 # guion viejo; el vigente es docs/report/video_script.md (también ignorado)
 SortMaster_pitch_script_ru.txt
+# kit de grabación del video (material de trabajo, no entregable)
+video_kit/
 .cache/

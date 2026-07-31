@@ -1,380 +1,387 @@
-# SortMaster — Intelligent Robotic Product Sorting System
+# SortMaster — интеллектуальная роботизированная система сортировки товаров
 
-**Ozon Tech Hackathon — Track 3: «Интеллектуальная роботизированная система сортировки товаров»**
+**Хакатон Ozon Tech — Трек 3: «Интеллектуальная роботизированная система сортировки товаров»** · команда **YOLOSOLO**
 
-A software–hardware complex (ПАК), delivered **entirely in simulation**, that detects a product on the infeed conveyor, classifies it into one of three categories, and physically routes it to the correct processing zone — perception, decision and actuation working as one closed loop.
+Программно-аппаратный комплекс (ПАК), выполненный **полностью в симуляции**: обнаруживает товар на подающем конвейере, относит его к одной из трёх категорий и физически доставляет в нужную зону обработки — перцепция, решение и исполнение работают одним замкнутым контуром.
 
-> **Status: FINAL — both validation matrices green, all gates PASS ✅** — the cell runs closed-loop on sensor data in BOTH engines. **Isaac Sim + RTX (14-run matrix): GATES PASS** — nominal classification **1.0** (66/66 over 6 seeds), nominal routing **1.0**, **zero unsafe misroutes, zero floor drops across all 14 runs** (incl. friction/mass/spacing/offset sweeps and both fault drills), containment **1.0**, min command margin **0.95 s**, zero scripted freight motion (`direct_velocity_writes_nominal = 0` is a hard gate). **MuJoCo twin: 22/22 scenario runs, 235 items, zero failures** (72/72 unit/design tests). Items travel conveyor A at 1 m/s, classify **in motion** on the dual-range RTX depth station (verdict committed **before the escapement**, belt never stops), release synchronized onto their own tilt tray, and discharge by gravity — C/D into aperture-walled roll-cages via 32° brake chutes, B over a powered incline onto the fixed sorter infeed, uncertain freight into a dedicated REVIEW pen. The divert is **size-independent**: the smallest certified parcel is an **11 mm cube**, measured at 11.0 mm by the close-range macro head (certification floor 10.8 mm) and physically delivered to B; a 2 mm card that slips under the escapement's 3 mm skim lands on the debris pan and raises an operator call-out — every failure mode has a designed safe terminal, and the run's exit code proves the outcome. Reproduce: `python -m cell.validate` (any machine) / `bash isaac/run_matrix.sh` (GPU server). This README is the root navigation document required by the submission rules. See [isaac/README.md](isaac/README.md), [docs/report/final_report_ru.md](docs/report/final_report_ru.md) (итоговый отчет) and [docs/report/calculations_vs_simulation.md](docs/report/calculations_vs_simulation.md).
+> **Статус: ФИНАЛ — обе валидационные матрицы зелёные, все гейты PASS ✅.** Ячейка работает по замкнутому контуру на данных сенсоров в ОБОИХ движках. **Isaac Sim + RTX (матрица из 14 прогонов): GATES PASS** — номинальная классификация **1,0** (66/66 на 6 сидах), номинальная маршрутизация **1,0**, **ноль опасных ошибок маршрута и ноль падений на пол во всех 14 прогонах** (включая свипы трения/массы/интервала/смещения и обе аварийные дрели), удержание в таре **1,0**, минимальный запас команды **0,95 с**, ноль «скриптовых» перемещений груза (`direct_velocity_writes_nominal = 0` — жёсткий гейт). **MuJoCo-твин: 22/22 сценарных прогона, 235 товаров, ноль отказов** (72/72 модульных/конструкторских теста). Товары едут по ленте A со скоростью 1 м/с, классифицируются **в движении** на двухдиапазонной RTX-станции глубины (вердикт фиксируется **до эскейпмента**, лента не останавливается), синхронно выпускаются каждый на свой поворотный лоток и сходят гравитацией — C/D в ролл-кейджи с апертурными стенками по тормозным желобам 32°, B через приводной подъём на вход штатного сортировщика, сомнительный груз — в отдельный загон REVIEW. Сброс **не зависит от размера**: минимальный сертифицированный товар — **куб 11 мм**, измеренный макро-головкой ближнего диапазона как 11,0 мм (порог сертификации 10,8 мм) и физически доставленный в B; карта 2 мм, проскользнувшая под ножом эскейпмента (съём 3 мм), падает на защитный поддон и вызывает оператора — у каждого вида отказа есть спроектированный безопасный терминал, а код выхода прогона доказывает результат. Воспроизведение: `python -m cell.validate` (любая машина) / `bash isaac/run_matrix.sh` (GPU-сервер). Этот README — корневой навигационный документ комплекта сдачи. См. также [isaac/README.md](isaac/README.md), [docs/report/final_report_ru.md](docs/report/final_report_ru.md) (итоговый отчёт) и [docs/report/calculations_vs_simulation.md](docs/report/calculations_vs_simulation.md).
 
-## 1. The task in one page
+## 1. Задача на одной странице
 
-Items travel on a feed conveyor (**A**, fixed, belt speed **1 m/s**, belt never stops in the base scenario, max item size 500×500×500 mm) and accumulate in a buffer (накопитель) at its end. The complex must take each item from the accumulator and route it to:
+Товары едут по подающему конвейеру (**A**, фиксированный, скорость ленты **1 м/с**, в базовом сценарии лента не останавливается, максимальный габарит товара 500×500×500 мм) и накапливаются в накопителе в его конце. Комплекс должен принимать каждый товар и направлять его:
 
-| Zone | Category (official) | Meaning |
+| Зона | Категория (официально) | Смысл |
 |---|---|---|
-| **B** — main sorter infeed (fixed conveyor, 500 mm wide, h=700) | «Подходит для сортировки» | Fits the sorter: dims > 10×10×10 mm, fits 450×320×320 mm, **no circular cross-section** |
-| **C** — oversize cage (roll-cage 1200×800×800, free placement) | «Не подходит для сортировки по габаритам» | Under- or over-size |
-| **D** — repack cage (roll-cage 1200×800×800, free placement) | «Не подходит для сортировки без доупаковки» | Has a **circle in some cross-section** |
+| **B** — вход основного сортировщика (фиксированный конвейер, ширина 500 мм, h = 700) | «Подходит для сортировки» | Проходит в сортировщик: габариты > 10×10×10 мм, укладывается в 450×320×320 мм, **нет круга в сечении** |
+| **C** — кейдж негабарита (ролл-кейдж 1200×800×800, размещение свободное) | «Не подходит для сортировки по габаритам» | Меньше или больше допустимого размера |
+| **D** — кейдж доупаковки (ролл-кейдж 1200×800×800, размещение свободное) | «Не подходит для сортировки без доупаковки» | Есть **круг в каком-либо сечении** |
 
-**Classification rules (priority order matters and is scored):**
-1. **Dimensions gate first:** any dimension ≤ 10 mm (undersize) or exceeding 450×320×320 mm (oversize) → **C**. *An oversized cylinder goes to C, not D.*
-2. **Then shape:** circle-in-cross-section, formally `r_inscribed / R_circumscribed ≥ 0.8` for a cross-section → **D**.
-3. Otherwise → **B**.
+**Правила классификации (порядок приоритета важен и оценивается):**
+1. **Сначала габариты:** любой размер ≤ 10 мм (слишком мал) или выход за 450×320×320 мм (негабарит) → **C**. *Круглый негабаритный цилиндр идёт в C, а не в D.*
+2. **Затем форма:** круг в сечении, формально `r_вписанной / R_описанной ≥ 0,8` для какого-либо сечения → **D**.
+3. Иначе → **B**.
 
-Work zone: 6000×10000 mm; A and B positions fixed, C/D cages and everything else placed by us (see the official layout, [doc-1783009942.pdf](doc-1783009942.pdf)).
+Рабочая зона: 6000×10000 мм; позиции A и B фиксированы, кейджи C/D и всё остальное размещаем мы (официальная схема: [doc-1783009942.pdf](doc-1783009942.pdf)).
 
-**A physical prototype is NOT required.** The rules explicitly accept an engineering solution proven by digital models, simulation and calculations — and the readiness matrix (УГТ) awards its maximum (Executive axis level 4) to a *validated simulation cross-checked against calculations*. That is exactly what we build.
+**Физический прототип НЕ требуется.** Правила прямо допускают инженерное решение, доказанное цифровыми моделями, симуляцией и расчётами, — а матрица готовности (УГТ) присваивает максимум (уровень 4 исполнительной оси) именно *валидированной симуляции, сверенной с расчётами*. Ровно это мы и строим.
 
-> ✅ **Confirmed by the organizers' experts (Q&A, July 2026):** a physical prototype is not required for the final; the maximum level is "either a strong validated simulation / digital model, or a physical prototype". What matters is depth of engineering, realism, and how convincingly workability is proven. Our roadmap climbs exactly that ladder: working sim (min) → detailed engineering: layout, calculations, 3D models, fault handling (mid) → validated sim cross-checked against calculations (max).
+> ✅ **Подтверждено экспертами организаторов (Q&A, июль 2026):** физический прототип для финала не обязателен; максимальный уровень — «либо сильная валидированная симуляция / цифровая модель, либо физический прототип». Важна глубина инженерной проработки, реализм и убедительность доказательства работоспособности. Наш план идёт ровно по этой лестнице: работающая симуляция (минимум) → детальная инженерия: компоновка, расчёты, 3D-модели, обработка отказов (середина) → валидированная симуляция, сверенная с расчётами (максимум).
 
-## 2. Architecture (one closed loop, not two components)
+## 2. Архитектура (один замкнутый контур, а не два компонента)
 
 ```mermaid
 flowchart LR
-    A[Conveyor A<br/>1 m/s] -->|items| VS[Vision station<br/>multi-head depth sensing<br/>+ escapement gates]
-    VS -->|measured geometry| PC[Perception core<br/>dims + section-circularity<br/>multi-read fusion]
-    PC -->|category + confidence| DE[Decision engine<br/>official rule order<br/>+ safe-side policies]
-    DE -->|route command| CTRL[Cell controller<br/>watchdogs, exceptions]
-    A --> TT[Tilt-tray sorter train<br/>synchronized induction<br/>one item per tray]
+    A[Лента A<br/>1 м/с] -->|товары| VS[Станция измерения<br/>многоголовочная глубина<br/>+ предгейт/эскейпмент]
+    VS -->|измеренная геометрия| PC[Ядро перцепции<br/>габариты + круглость сечений<br/>фьюжн многих чтений]
+    PC -->|категория + уверенность| DE[Движок решения<br/>официальный порядок правил<br/>+ политика безопасной стороны]
+    DE -->|команда маршрута| CTRL[Контроллер ячейки<br/>вотчдоги, исключения]
+    A --> TT[Сортер поворотных лотков<br/>синхронная посадка<br/>один товар — один лоток]
     CTRL --> TT
-    TT -->|B tilt + powered incline| B[Zone B: sorter infeed]
-    TT -->|C tilt + guided brake chute| C[Zone C: oversize cage<br/>aperture-walled, contained]
-    TT -->|D tilt + guided brake chute| D[Zone D: repack cage<br/>aperture-walled, contained]
-    TT -->|fallback tilt| R[REVIEW pen<br/>uncertain / double occupancy]
-    CTRL -.zero-displacement jam watchdog.-> ARM[Exception arm<br/>chute snags only<br/>route-correct into the cage]
+    TT -->|наклон B + приводной подъём| B[Зона B: вход сортировщика]
+    TT -->|наклон C + желоб с тормозами| C[Зона C: кейдж негабарита<br/>апертура, удержание]
+    TT -->|наклон D + желоб с тормозами| D[Зона D: кейдж доупаковки<br/>апертура, удержание]
+    TT -->|резервный наклон| R[Загон REVIEW<br/>сомнение / двойная посадка]
+    CTRL -.вотчдог затора по нулевому смещению.-> ARM[Манипулятор исключений<br/>только съём с желоба<br/>маршрутно-корректно в кейдж]
 ```
 
-Key design decisions (each is defended in the report):
+Ключевые проектные решения (каждое защищается в отчёте):
 
-- **Look-ahead classification.** The camera sits upstream: an item is classified *while still travelling* toward the accumulator, so inference latency (~tens of ms) is hidden and the arm receives its command *before* the item arrives — this addresses the scored "Синхронизация по времени" criterion directly.
-- **Geometry-first perception (built, validated).** The official rules are purely geometric, so the pipeline measures geometry and implements the *formal* 0.8 criterion — not a black-box class label. The virtual sensor suite mirrors a standard DWS dimensioning tunnel: an overhead depth grid plus a light-section profile scanner with side heads (ray-cast — deterministic, zero OpenGL/GPU dependency, identical headless and in the jury's server). Analysis: min-area-rect dims + pose-robust minor axis from section radii; transverse slices along the item's main axis, densified at both ends; per-slice radial circularity + surface-of-revolution test; end-cap circles must be confirmed by several nearby slices. Multi-read fusion during belt transit follows the official decision order, and uncertain shapes divert to D — never to the sorter. **Validated: 100/99.1/99.1% categories over 330 randomized poses (3 seeds); closed-loop 8-seed campaign: 97.7% end-to-end, 100% executive, zero unsafe errors.** A learned detector (YOLO on synthetic renders) is a Phase-3+ add-on for tracking only; the category never comes from a network. This makes borderline behaviour explainable — worth points in three rubric lines.
-- **A tilt-tray sorter routes, the arm recovers.** The executive is a **linear tilt-tray sorter** («поворотные лотки» — one of the mechanism classes named in the official brief): after classification the escapement releases each item synchronized to an inbound EMPTY tray (landing offset measured per item), and the tray's revolute-joint tilt drive discharges it by gravity at its station — C/D south into 32° brake chutes and roll-cages, B north over a powered incline onto the fixed sorter infeed, REVIEW north into a dedicated manual-review pen for uncertain freight. The divert is **size-independent** (an 11 mm cube and a 489 mm pouf ride and discharge identically) — the engineering reason this executive replaced the roller/ARB deck, which cannot divert products under ~50–75 mm. The exception arm handles exactly one thing: a chute snag (watchdog + jam camera) is lifted route-correct into its own cage while that station is locked out; a stuck tray needs no arm at all — its freight rides to the REVIEW fallback / end-line operator call-out by design.
-- **Containment by design (перекладка без брака).** The item is guided and bounded at every hop, never thrown and never in free fall: side guides on belt A → dished trays with central end fences (rounds self-centre and cannot roll off; a long box's corners clear the fence ends at discharge) → **deep-drop discharge** (the chute starts 50 mm under the tilted tray lip, so freight can never bridge tray→chute and wedge) → side-railed **single-slope chutes** (32°, μ < tan 32° — physically no stall points, even for recovery drops) with **brake pads** just above the cage floor → roll cages whose receiving wall carries a chute-sized **aperture with flanks and header** plus a full-floor landing mat; the slope crosses the aperture at z ≈ 0.22 m, low and slow. Measured cage-entry speeds ≈ 2 m/s; every delivery is then tracked to the end of the run — the containment metric (below) proves items **stay** in the correct container.
-- **The cell shows what it is doing (jury-readable executive).** Every station carries bilingual signage (EN/RU billboards + floor decals): A-infeed, vision station, tilt-tray sorter, B-sorter, C-oversize, D-repack, manual review, exception arm. Route state is live: the item is tinted with its perceived category the moment classification commits; zone-coloured lane markings, chevrons and chute flow-arrows pulse along the active route; destination beacons and station lamps track the active route; an andon tower reads green/amber/red (idle / routing / jam-recovery); the escapement is a visible pop-up stop. All presentation geoms are non-colliding, live in a sensor-invisible geom group (a depth camera does not image painted lines either), and are animated by [cell/visuals.py](cell/visuals.py) — physics and perception results are bit-identical with the layer on or off.
-- **Safety by design.** Fenced cell, light curtain across the human access side, e-stop chain, reduced-speed service mode — modelled in the layout and described per the "Безопасность эксплуатации" criterion.
+- **Классификация с упреждением.** Камера стоит выше по потоку: товар классифицируется, *пока ещё едет* к накопителю, поэтому латентность распознавания (десятки мс) скрыта, и исполнение получает команду *до* прибытия товара — это прямой ответ на оцениваемый критерий «Синхронизация по времени».
+- **Перцепция «геометрия прежде всего» (построена, провалидирована).** Официальные правила чисто геометрические, поэтому пайплайн меряет геометрию и реализует *формальный* критерий 0,8 — а не «чёрный ящик» с меткой класса. Виртуальный сенсорный комплект повторяет стандартный измерительный DWS-туннель: верхняя сетка глубины плюс профильный сканер светового сечения с боковыми головками (ray-cast — детерминированный, без OpenGL/GPU, одинаковый headless и на сервере жюри). Анализ: габариты по min-area-rect + устойчивая к позе малая ось по радиусам сечений; поперечные срезы вдоль главной оси с уплотнением на торцах; по-срезная радиальная круглость + тест поверхности вращения; торцевые круги должны подтверждаться несколькими соседними срезами. Фьюжн многих чтений за время проезда следует официальному порядку решения, а неоднозначная форма уходит в D — никогда в сортировщик. **Валидировано: 100/99,1/99,1 % категорий на 330 случайных позах (3 сида); замкнутый контур на 8 сидах: 97,7 % конец-в-конец, 100 % исполнение, ноль опасных ошибок.** Обученный детектор (YOLO на синтетических рендерах) — дополнение фазы 3+ только для трекинга; категория никогда не берётся из сети. Это делает пограничное поведение объяснимым — и приносит баллы сразу в трёх строках рубрики.
+- **Маршрутизирует сортер поворотных лотков, манипулятор — восстанавливает.** Исполнительная часть — **линейный tilt-tray сортер** («поворотные лотки» — один из классов механизмов, названных в официальном брифе): после классификации эскейпмент выпускает каждый товар синхронно на подходящий ПУСТОЙ лоток (посадочное смещение меряется на каждом товаре), и привод наклона на шарнире сбрасывает его гравитацией на своей станции — C/D на юг в 32° тормозные желоба и ролл-кейджи, B на север через приводной подъём на вход штатного сортировщика, REVIEW на север в отдельный загон ручного разбора. Сброс **не зависит от размера** (куб 11 мм и пуф 489 мм едут и сходят одинаково) — инженерная причина, по которой этот механизм заменил роликовый/ARB-дек, неспособный сбрасывать товары меньше ~50–75 мм. Манипулятор исключений делает ровно одно: застревание на желобе (вотчдог + джем-камера) снимается маршрутно-корректно в свой же кейдж при заблокированной станции; застрявшему лотку манипулятор не нужен вовсе — его груз по конструкции доезжает до резерва REVIEW / вызова оператора в конце линии.
+- **Удержание по конструкции (перекладка без брака).** Товар направляется и ограничен на каждом переходе, никогда не бросается и не бывает в свободном падении: боковые направляющие на ленте A → лотки с бортами и центральными торцевыми упорами (круглое самоцентрируется и не может скатиться; углы длинной коробки на сходе минуют торцы упора) → **глубокий сход** (желоб начинается на 50 мм ниже кромки наклонённого лотка, поэтому груз не может «замостить» лоток→желоб и заклинить) → **однонаклонные желоба** с бортами (32°, μ < tg 32° — физически нет точек остановки даже для аварийных сбросов) с **тормозными накладками** прямо над полом кейджа → ролл-кейджи, принимающая стенка которых несёт **апертуру под желоб с боковинами и козырьком** плюс посадочный мат на весь пол; спуск пересекает апертуру на z ≈ 0,22 м — низко и медленно. Измеренные скорости входа в кейдж ≈ 2 м/с; каждая доставка затем отслеживается до конца прогона — метрика удержания (ниже) доказывает, что товары **остаются** в правильной таре.
+- **Ячейка показывает, что делает (читаемая жюри исполнительная часть).** На каждой станции двуязычные вывески (EN/RU щиты + напольная разметка): подача A, станция измерения, сортер, B-сортировщик, C-негабарит, D-доупаковка, ручной разбор, манипулятор исключений. Состояние маршрута — живое: товар подкрашивается своей категорией в момент фиксации вердикта; зонная разметка, шевроны и стрелки желобов пульсируют вдоль активного маршрута; маяки назначений и лампы станций ведут маршрут; андон-башня показывает зелёный/жёлтый/красный (простой / маршрутизация / разбор затора); эскейпмент — видимый выдвижной стопор. Вся презентационная геометрия неколлизионная, живёт в невидимой для сенсоров группе геомов (камера глубины не видит и нарисованные линии) и анимируется [cell/visuals.py](cell/visuals.py) — физика и результаты перцепции бит-в-бит совпадают со слоем и без него.
+- **Безопасность по конструкции.** Огороженная ячейка, световая завеса на стороне доступа человека, цепь аварийного останова, сервисный режим пониженной скорости — смоделировано в компоновке и описано по критерию «Безопасность эксплуатации».
 
-### 2.1 Containment validation — routed ≠ done
+### 2.1 Валидация удержания — «доехал» ≠ «готово»
 
-Reaching the right zone is necessary, not sufficient: the item must **stay inside the correct container**. Every C/D delivery is therefore tracked from the moment it crosses the cage aperture until the end of the run:
+Достичь правильной зоны необходимо, но недостаточно: товар должен **остаться в правильной таре**. Поэтому каждая доставка C/D отслеживается от пересечения апертуры кейджа до конца прогона:
 
-| Metric (per item → aggregated in `summary.json`) | Meaning | Gate |
+| Метрика (на товар → агрегат в `summary.json`) | Смысл | Гейт |
 |---|---|---|
-| `contained` / `containment_rate` | never left the cage envelope (walls + aperture zone) after delivery | **must be 1.0 — the run exits non-zero otherwise, same as a misroute** |
-| `containment_violations` | count of escape events (`cell_event: containment_violation` with position) | 0 |
-| `v_entry` / `cage_entry_speed_max_mps` | speed crossing into the cage — evidence of guided, non-thrown transfer | ≤ 2.2 m/s measured (≈ a 25 cm drop equivalent) |
-| `cage_settle_s` | time from cage entry to rest (< 0.1 m/s for 0.5 s) | ~1–2 s measured |
-| `cage_max_z` | highest point reached inside the cage — bounce headroom under the 0.8 m wall | ≤ 0.55 m measured |
+| `contained` / `containment_rate` | после доставки не покидал габарит кейджа (стенки + зона апертуры) | **обязана быть 1,0 — иначе прогон выходит с ненулевым кодом, как и при ошибке маршрута** |
+| `containment_violations` | число событий «побега» (`cell_event: containment_violation` с позицией) | 0 |
+| `v_entry` / `cage_entry_speed_max_mps` | скорость на входе в кейдж — доказательство направляемой, а не «брошенной» передачи | ≤ 2,2 м/с измерено (≈ эквивалент падения с 25 см) |
+| `cage_settle_s` | время от входа в кейдж до покоя (< 0,1 м/с в течение 0,5 с) | ~1–2 с измерено |
+| `cage_max_z` | максимальная точка внутри кейджа — запас по отскоку под стенкой 0,8 м | ≤ 0,55 м измерено |
 
-Latest campaign (`scenarios/base.yaml`, all 11 official items per run): **6/6 oracle seeds and camera-perception runs at 100% routing + 100% containment, zero violations**; the fault drill (`fault_jam.yaml`) recovers an injected snag and still books 100% containment. Full numbers: [docs/report/containment_validation.md](docs/report/containment_validation.md).
+Последняя кампания (`scenarios/base.yaml`, все 11 официальных товаров в каждом прогоне): **6/6 оракульных сидов и прогоны с камерной перцепцией на 100 % маршрутизации + 100 % удержания, ноль нарушений**; аварийная дрель (`fault_jam.yaml`) восстанавливает внесённое застревание и всё равно фиксирует 100 % удержания. Полные числа: [docs/report/containment_validation.md](docs/report/containment_validation.md).
 
-### 2.2 Virtual sensor model (what `--perception camera` actually simulates)
+### 2.2 Модель виртуального сенсора (что на самом деле симулирует `--perception camera`)
 
-The `camera` mode is a **virtual multi-head depth/dimensioning station** (DWS-tunnel class), not a hidden ground-truth feed. One visible config — `VIRTUAL_SENSOR` in [cell/params.py](cell/params.py) — holds every parameter, and each value is consumed by the implementation ([perception/pipeline.py](perception/pipeline.py)); a test suite ([tests/test_sensor_config.py](tests/test_sensor_config.py)) locks config↔implementation equality:
+Режим `camera` — это **виртуальная многоголовочная станция глубины/обмера** (класс DWS-туннеля), а не скрытая подача ground truth. Один видимый конфиг — `VIRTUAL_SENSOR` в [cell/params.py](cell/params.py) — держит каждый параметр, и каждое значение потребляется реализацией ([perception/pipeline.py](perception/pipeline.py)); тест-набор ([tests/test_sensor_config.py](tests/test_sensor_config.py)) фиксирует равенство конфиг↔реализация:
 
-| Parameter | Value | Meaning |
+| Параметр | Значение | Смысл |
 |---|---|---|
-| Sensing heads | **4 viewpoints** | overhead depth grid + light-section profilers: top fan + two side heads |
-| Overhead head | (5.55, 3.0, 2.2) m | ray-cast depth grid, **3 mm** ground sampling |
-| Profiler fans | 0.1° top / 0.2° side, planes every **4 mm** | swept along the belt (physically: one scanner + belt motion at 1 m/s) |
-| Measurement window | x ∈ 5.65–6.05 m | items measured **in motion**; every verdict commits before the escapement |
-| Capture cadence | 0.12 s (~8 Hz) | multi-read evidence per item, fused per the official rule order |
-| Depth noise | σ = 0 mm default, **scenario-tunable** | `sensor: {depth_noise_mm: 2.0}`; 0 = ideal-optics baseline |
-| Processing latency | 80 ms | fusion verdict → route command (logged per item as `perception_latency_ms`) |
+| Измерительные головки | **4 точки обзора** | верхняя сетка глубины + профилографы светового сечения: верхний веер + две боковые головки |
+| Верхняя головка | (5,55, 3,0, 2,2) м | ray-cast сетка глубины, разрешение по земле **3 мм** |
+| Веера профилографов | 0,1° верх / 0,2° бок, плоскости каждые **4 мм** | развёртка вдоль ленты (физически: один сканер + движение ленты 1 м/с) |
+| Окно измерения | x ∈ 5,65–6,05 м | товары меряются **в движении**; каждый вердикт фиксируется до эскейпмента |
+| Каденция съёма | 0,12 с (~8 Гц) | многократные чтения на товар, фьюжн по официальному порядку правил |
+| Шум глубины | σ = 0 мм по умолчанию, **настраивается сценарием** | `sensor: {depth_noise_mm: 2.0}`; 0 = базовая линия идеальной оптики |
+| Латентность обработки | 80 мс | вердикт фьюжна → команда маршрута (логируется на товар как `perception_latency_ms`) |
 
-What the pipeline does with the returns: calibrated **background subtraction** (3σ empty-belt depth map) → morphological denoise → instance isolation with an **identity gate** (a measurement must cover the tracked item's position, else it is a sensor miss — a neighbor's cloud can never be committed under another item's identity) → min-area-rect dims (robust percentile extents under noise) → per-slice radial circularity + surface-of-revolution test → multi-read fusion with **guard bands**: a measurement within the sensor's uncertainty of the 10 mm / 450×320×320 mm limits or the 0.8 circle threshold **cannot take the permissive branch** — it diverts to the safe side (legal-metrology practice). A dimension below the certification floor (10 mm + 2× ground sampling) always diverts to C. Result: at σ = 2 mm the official set still routes **11/11 with zero unsafe errors**.
+Что пайплайн делает с данными: калиброванное **вычитание фона** (3σ-карта глубины пустой ленты) → морфологическая очистка → изоляция экземпляра с **гейтом идентичности** (измерение обязано накрывать позицию отслеживаемого товара, иначе это промах сенсора — облако соседа никогда не будет зачтено под чужой идентичностью) → габариты min-area-rect (устойчивые перцентильные экстенты под шумом) → по-срезная радиальная круглость + тест поверхности вращения → фьюжн многих чтений с **охранными полосами**: измерение в пределах неопределённости сенсора от порогов 10 мм / 450×320×320 мм / 0,8 **не может взять разрешающую ветку** — оно уходит на безопасную сторону (практика законодательной метрологии). Размер ниже пола сертификации (10 мм + 2× разрешение) всегда уходит в C. Результат: при σ = 2 мм официальный набор всё равно маршрутизируется **11/11 с нулём опасных ошибок**.
 
-`camera` vs `oracle` is explicit everywhere: CLI banner, run folder name, `summary.json` (`perception_mode`, `sensor_model`, `oracle_used_for_classification: false` in camera mode) and `events.csv` per item. Oracle mode injects ground truth after a configured latency and exists only as a debugging/regression baseline.
+`camera` против `oracle` — явно всюду: баннер CLI, имя папки прогона, `summary.json` (`perception_mode`, `sensor_model`, `oracle_used_for_classification: false` в режиме camera) и `events.csv` по каждому товару. Режим oracle подставляет ground truth после заданной латентности и существует только как отладочная/регрессионная база.
 
-**Why not more cameras? (multi-view trade study.)** The station already fuses 4 viewpoints, and every failure the scenario suite ever produced was a *flow/dynamics* problem, not a coverage problem: tailgaters merging into a cloud (fixed by slug-spaced accumulation + the identity gate), a thin item shoved *onto* a neighbor in a contact queue (fixed by no-contact queue lines), rocking items smearing their multi-read dims (temporal — any number of heads samples the same rocking pose). Extra heads would add ~33% ray cost each and force re-validation of the whole tuned stack while attacking none of the observed failure modes; the one genuinely resolution-limited case (9 mm pen barrel at 3 mm sampling) is neutralized by the certification floor, which routes "cannot certify > 10 mm" to C — exactly what the rules' priority demands. The documented upgrade path, if future evidence demands it: denser ground sampling (3→2 mm) first, a second along-belt overhead head second, 5-sided end-view heads last.
+**Почему не больше камер? (трейд-стади мульти-обзора.)** Станция уже сшивает 4 точки обзора, и каждый отказ, который когда-либо дала сценарная матрица, был проблемой *потока/динамики*, а не покрытия: «хвостовые» товары, сливающиеся в одно облако (закрыто слаг-интервалами накопления + гейтом идентичности), тонкий товар, задвинутый *на* соседа в контактной очереди (закрыто бесконтактными линиями очереди), качающиеся товары, размазывающие мультиread-габариты (временна́я проблема — любое число головок семплирует ту же качающуюся позу). Дополнительные головки добавили бы ~33 % стоимости лучей каждая и заставили бы перевалидировать весь настроенный стек, не атакуя ни один наблюдавшийся вид отказа; единственный действительно ограниченный разрешением случай (стержень ручки 9 мм при семплинге 3 мм) нейтрализован полом сертификации, который отправляет «не могу сертифицировать > 10 мм» в C — ровно как требует приоритет правил. Задокументированный путь апгрейда, если будущие данные потребуют: плотнее семплинг (3→2 мм) сначала, вторая верхняя головка вдоль ленты — потом, торцевые головки 5-стороннего обзора — в последнюю очередь.
 
-## 3. Ground truth for the official test set (computed, reproducible)
+## 3. Ground truth для официального тест-набора (вычислен, воспроизводим)
 
-We analysed the 11 official STL models with the reference classifier ([tools/classify_mesh.py](tools/classify_mesh.py)). Dimensions are oriented-bounding-box extents; ratio is max over cross-sections along principal axes of `r_in/R_circ`:
+Мы проанализировали 11 официальных STL-моделей референсным классификатором ([tools/classify_mesh.py](tools/classify_mesh.py)). Габариты — экстенты ориентированного bounding box; отношение — максимум по сечениям вдоль главных осей `r_in/R_circ`:
 
-| Item | OBB dims, mm | max r_in/R | Verdict | Why |
+| Товар | Габариты OBB, мм | max r_in/R | Вердикт | Почему |
 |---|---|---|---|---|
-| Короб 300×200×200 (box) | 301×200×200 | 0.72 | **B** | fits, square section 0.72 < 0.8 |
-| ЛанчБокс (lunchbox) | 201×152×62 | 0.66 | **B** | fits, rectangular |
-| Моющее средство (detergent) | 280×260×179 | 0.73 | **B** | oval but below 0.8 — near-borderline |
-| Короб 400×400×300 (box) | 401×400×300 | 0.72 | **C** | 400 > 320 → oversize |
-| Пуфик (pouf) | 489×489×264 | ≈1.0 | **C** | circular **but oversize — priority rule** |
-| Ручка (pen) | 148×13×**9** | ≈1.0 | **C** | 9 mm < 10 mm → undersize — priority rule |
-| Бутылка (bottle) | 305×91×91 | 0.997 | **D** | circular section |
-| Тарелка (plate) | 209×209×27 | 0.999 | **D** | circular |
-| Шлем (helmet) | 352×298×282 | 0.89 | **D** | dome sections circular |
-| Мешок (sack) | 202×176×170 | 0.886 | **D** | rounded blob (borderline; see note) |
-| Цилиндр («cylinder») | 435×50×43 | **0.867** | **D** | actually a **hexagonal prism**: cos 30° = 0.866 ≥ 0.8, and 435 mm is just under the 450 limit — a designed double-borderline trap |
+| Короб 300×200×200 | 301×200×200 | 0,72 | **B** | помещается, квадратное сечение 0,72 < 0,8 |
+| ЛанчБокс | 201×152×62 | 0,66 | **B** | помещается, прямоугольный |
+| Моющее средство | 280×260×179 | 0,73 | **B** | овал, но ниже 0,8 — близко к границе |
+| Короб 400×400×300 | 401×400×300 | 0,72 | **C** | 400 > 320 → негабарит |
+| Пуфик | 489×489×264 | ≈1,0 | **C** | круглый, **но негабарит — правило приоритета** |
+| Ручка | 148×13×**9** | ≈1,0 | **C** | 9 мм < 10 мм → мал — правило приоритета |
+| Бутылка | 305×91×91 | 0,997 | **D** | круглое сечение |
+| Тарелка | 209×209×27 | 0,999 | **D** | круглая |
+| Шлем | 352×298×282 | 0,89 | **D** | купольные сечения круглые |
+| Мешок | 202×176×170 | 0,886 | **D** | скруглённый «блоб» (граница; см. примечание) |
+| Цилиндр («cylinder») | 435×50×43 | **0,867** | **D** | на самом деле **шестигранная призма**: cos 30° = 0,866 ≥ 0,8, а 435 мм — чуть меньше лимита 450: спроектированная двойная граница-ловушка |
 
-Machine-readable: [docs/ground_truth/item_ground_truth.json](docs/ground_truth/item_ground_truth.json).
+Машиночитаемо: [docs/ground_truth/item_ground_truth.json](docs/ground_truth/item_ground_truth.json).
 
-**Documented interpretation choices** (flagged for organizer Q&A, analysed in the report's borderline-cases section):
-- *Undersize* is triggered by **any** dimension < 10 mm (a 9 mm-thin pen falls through sorter gaps). Alternative reading (all dims < 10 mm) would flip the pen to D.
-- The sack's ratio (0.886) is computed on the convex outer contour; physically a soft sack belongs in repack regardless — both readings agree on D.
-- Sections are taken perpendicular to the item's principal axes (an arbitrary oblique cut through a cube can look hexagonal — clearly not the rule's intent).
+**Задокументированные выборы трактовки** (помечены для Q&A организаторов, разобраны в разделе пограничных случаев отчёта):
+- *Undersize* срабатывает от **любого** размера < 10 мм (ручка толщиной 9 мм проваливается в щели сортировщика). Альтернативное чтение (все размеры < 10 мм) перевело бы ручку в D.
+- Отношение мешка (0,886) посчитано по выпуклому внешнему контуру; физически мягкий мешок в любом случае идёт в доупаковку — оба чтения дают D.
+- Сечения берутся перпендикулярно главным осям товара (произвольный косой срез куба может выглядеть шестиугольным — очевидно не смысл правила).
 
-## 4. Repository structure
+## 4. Структура репозитория
 
 ```
 .
-├── README.md                    ← you are here (root navigation document)
-├── ROADMAP.md                   ← phased winning plan mapped to the scoring rubric
-├── STEP_BY_STEP.md              ← concrete execution guide (commands, order, gates)
+├── README.md                    ← вы здесь (корневой навигационный документ, RU)
+├── README_EN.md                 ← английская инженерная версия этого документа
+├── ROADMAP.md                   ← пофазный план, привязанный к рубрике оценки
+├── STEP_BY_STEP.md              ← конкретный порядок работ (команды, порядок, гейты)
 ├── docs/
-│   ├── ground_truth/            ← computed expected categories for the official test set
-│   ├── report/                  ← final report: final_report_ru.md +
-│   │                              ГОСТ 7.32 print set (final_report_gost.docx/.pdf,
-│   │                              generated by tools/make_report_docx.py)
-├── YOSOLO_stage1_pitch_ru_FINAL.pptx ← defence deck (14 slides, official РОБОЗОН template)
+│   ├── ground_truth/            ← вычисленные ожидаемые категории официального набора
+│   ├── report/                  ← итоговый отчёт: final_report_ru.md +
+│   │                              печатный комплект ГОСТ 7.32 (final_report_gost.docx/.pdf,
+│   │                              генерируется tools/make_report_docx.py)
+├── YOSOLO_stage1_pitch_ru_FINAL.pptx ← дек защиты (14 слайдов, официальный шаблон РОБОЗОН)
 ├── tools/
-│   ├── classify_mesh.py         ← reference classifier: STL/STEP → category (CLI)
-│   ├── make_borderline_items.py ← designed threshold attacks (GT computed, not asserted)
-│   ├── make_edge_items.py       ← §edge set: 11/10 mm cubes, 9 mm rod, 2 mm card
-│   ├── consolidate_isaac_matrix.py ← matrix → matrix_summary.json + §8 gates
-│   ├── make_perception_panels.py / make_endcard.py ← jury-facing visuals
-│   └── fetch_evidence.sh        ← pull videos/logs from the render server
+│   ├── classify_mesh.py         ← референсный классификатор: STL/STEP → категория (CLI)
+│   ├── expert_check.py          ← проверка ЛЮБОГО стороннего STL: правила + физический контур
+│   ├── make_borderline_items.py ← спроектированные атаки на пороги (GT вычислен, не постулирован)
+│   ├── make_edge_items.py       ← крайний набор: кубы 11/10 мм, стержень 9 мм, карта 2 мм
+│   ├── consolidate_isaac_matrix.py ← матрица → matrix_summary.json + гейты §8
+│   ├── make_perception_panels.py / make_endcard.py ← визуальные материалы для жюри
+│   └── fetch_evidence.sh        ← выгрузка видео/журналов с рендер-сервера
 ├── cad/
-│   ├── layout_v0.py             ← parametric cell layout (single source of truth for all dims)
-│   └── out/                     ← generated: top-view PNG, 3D GLB scene, reach_check.json
-├── cell/                        ← MuJoCo twin: scene gen, belts + tilt-tray sorter, arm IK,
-│   │                              controller, metrics (cell/sorter.py = the executive)
-│   ├── run_sim.py               ← entrypoint (--perception camera|oracle, --viewer, --record MP4)
-│   ├── validate.py              ← batch validation runner → validation_report.md (one command)
-│   ├── visuals.py               ← live presentation state: route lights, lane pulse, andon tower
-│   ├── signs.py                 ← bilingual EN/RU signage textures (rendered on demand)
-│   └── assets/                  ← true-surface meshes (official + synthetic borderline) + manifests
+│   ├── layout_v0.py             ← параметрическая компоновка ячейки (единый источник размеров)
+│   └── out/                     ← генерируется: план сверху PNG, 3D-сцена GLB, reach_check.json
+├── cell/                        ← MuJoCo-твин: генерация сцены, ленты + сортер лотков, IK руки,
+│   │                              контроллер, метрики (cell/sorter.py = исполнительная часть)
+│   ├── run_sim.py               ← точка входа (--perception camera|oracle, --viewer, --record MP4)
+│   ├── validate.py              ← пакетный валидатор → validation_report.md (одна команда)
+│   ├── visuals.py               ← живая индикация: маршрутные огни, пульс разметки, андон
+│   ├── signs.py                 ← двуязычные EN/RU вывески (рендер по требованию)
+│   └── assets/                  ← точные меши (официальные + синтетические пограничные) + манифесты
 ├── configs/
-│   └── validation_matrix.yaml   ← scenario × seed matrix with pass/fail expectations
-├── isaac/                       ← Isaac Sim digital twin: USD scene from cell/params.py,
-│                                  PhysX closed loop, RTX video + depth captures (§5.1)
-├── flow/                        ← SimPy flow model: capacity, queues (physics-measured times)
+│   └── validation_matrix.yaml   ← матрица сценарий × сид с ожиданиями pass/fail
+├── isaac/                       ← цифровой твин Isaac Sim: USD-сцена из cell/params.py,
+│                                  замкнутый контур PhysX, RTX-видео и кадры глубины (§5.1)
+├── flow/                        ← потоковая модель SimPy: пропускная способность, очереди
 ├── scenarios/                   ← base, borderline, close_spacing, low_confidence,
 │                                  fault_jam, failed_transfer, stress_mix
-├── tests/                       ← rules + kinematics + containment invariants + sensor-config
-│                                  truth + end-to-end smoke (pytest, 72 tests)
-├── perception/                  ← ray-cast multi-head sensing + geometric classification
-│   ├── pipeline.py              ← DWS sensor suite → dims, sections, category, confidence
-│   ├── geometry.py              ← min-area rect, circle fit, envelope primitives
-│   └── validate.py              ← randomized-pose campaign → docs/metrics/
-├── extracted/                   ← official STL/STEP test-set models (from organizer archives)
-├── requirements.txt             ← pinned dependencies
-└── Dockerfile + docker-compose.yml ← one-command reproduction (CPU twin, tested)
+├── tests/                       ← правила + кинематика + инварианты удержания + истинность
+│                                  сенсор-конфига + сквозной smoke (pytest, 72 теста)
+├── perception/                  ← ray-cast многоголовочный обмер + геометрическая классификация
+│   ├── pipeline.py              ← DWS-комплект → габариты, сечения, категория, уверенность
+│   ├── geometry.py              ← min-area rect, вписанная окружность, примитивы огибающей
+│   └── validate.py              ← кампания случайных поз → docs/metrics/
+├── extracted/                   ← официальные STL/STEP модели тест-набора (из архивов организаторов)
+├── requirements.txt             ← зафиксированные зависимости
+└── Dockerfile + docker-compose.yml ← воспроизведение одной командой (CPU-твин, проверено)
 ```
 
-Original organizer documents kept at repo root: task statement ([doc-1783095831.pdf](doc-1783095831.pdf)), scoring rubric ([doc-1783011400.pdf](doc-1783011400.pdf)), allowed software ([doc-1783009063.pdf](doc-1783009063.pdf)), layout scheme ([doc-1783009942.pdf](doc-1783009942.pdf)), STL/STEP archives.
+Оригинальные документы организаторов лежат в корне репозитория: постановка задачи ([doc-1783095831.pdf](doc-1783095831.pdf)), рубрика оценки ([doc-1783011400.pdf](doc-1783011400.pdf)), допустимое ПО ([doc-1783009063.pdf](doc-1783009063.pdf)), схема зоны ([doc-1783009942.pdf](doc-1783009942.pdf)), архивы STL/STEP.
 
-## 5. Quickstart
+## 5. Быстрый старт
 
 ```bash
-# Python 3.12 venv (PyBullet has no Windows wheels; we use MuJoCo — wheels everywhere)
-uv venv --python 3.12 .venv          # or: py -3.12 -m venv .venv
+# venv на Python 3.12 (у PyBullet нет колёс под Windows; мы используем MuJoCo — колёса везде)
+uv venv --python 3.12 .venv          # или: py -3.12 -m venv .venv
 uv pip install --python .venv -r requirements.txt
 
-# Classify any mesh — the reference implementation of the official rules
+# Классифицировать любой меш — референсная реализация официальных правил
 .venv/Scripts/python tools/classify_mesh.py "extracted/doc-1782987733/Stl/Бутылка.stl"
-# → category D («Не подходит для сортировки без доупаковки»), r_in/R = 0.997
+# → категория D («Не подходит для сортировки без доупаковки»), r_in/R = 0.997
 
-# Recompute the full ground-truth table
+# Пересчитать полную таблицу ground truth
 .venv/Scripts/python tools/classify_mesh.py --all "extracted/doc-1782987733/Stl" --json docs/ground_truth/item_ground_truth.json
 
-# Prepare sim assets (official STLs + synthetic borderline items)
+# Подготовить ассеты симуляции (официальные STL + синтетические пограничные)
 .venv/Scripts/python cell/prep_assets.py
 .venv/Scripts/python tools/make_borderline_items.py
 
-# Run the FULL CELL end to end (headless), sensing included
+# Прогнать ПОЛНУЮ ЯЧЕЙКУ конец-в-конец (headless), с сенсорикой
 .venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --seed 42 --perception camera --executive table
-# → runs/<stamp>_seed42_camera_table/events.csv + summary.json: classification /
-#   executive / end-to-end accuracy, unsafe vs conservative errors, containment,
-#   cycle_mean/p95/max, perception_latency_ms, command_margin_s, throughput,
-#   arm interventions & recovery success
-# --executive arm = the preserved arm-primary baseline;
-# --perception oracle = ground-truth debug baseline; --viewer to watch live
+# → runs/<штамп>_seed42_camera_table/events.csv + summary.json: точность
+#   классификации / исполнения / конец-в-конец, опасные и консервативные ошибки,
+#   удержание, cycle_mean/p95/max, perception_latency_ms, command_margin_s,
+#   производительность, вмешательства руки и успех восстановления
+# --executive arm = сохранённая базовая линия с рукой;
+# --perception oracle = отладочная база на ground truth; --viewer — смотреть вживую
 .venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --seed 42 --perception camera --executive table --viewer
 
-# ONE COMMAND, ALL EVIDENCE: every scenario x seed with pass/fail gates
+# ОДНА КОМАНДА — ВСЕ ДОКАЗАТЕЛЬСТВА: каждый сценарий × сид с гейтами pass/fail
 .venv/Scripts/python -m cell.validate --matrix configs/validation_matrix.yaml
-# → runs/validation_<stamp>/validation_report.md + validation_matrix.csv
-#   (+ full events.csv/summary.json per run); exits non-zero on any failure
-.venv/Scripts/python -m cell.validate --quick     # first seed of each entry
+# → runs/validation_<штамп>/validation_report.md + validation_matrix.csv
+#   (+ полные events.csv/summary.json на прогон); ненулевой выход при любом провале
+.venv/Scripts/python -m cell.validate --quick     # первый сид каждой строки
 
-# Scenario suite (each also runs standalone):
+# Сценарный набор (каждый запускается и отдельно):
 #   base | borderline | close_spacing | low_confidence | fault_jam |
 #   failed_transfer | stress_mix
 .venv/Scripts/python -m cell.run_sim --scenario scenarios/fault_jam.yaml
 
-# Record a demo MP4 of any run (cameras: overview | top_view | routing | lookahead)
+# Записать демо-MP4 любого прогона (камеры: overview | top_view | routing | lookahead)
 .venv/Scripts/python -m cell.run_sim --scenario scenarios/base.yaml --record demo.mp4 --camera overview --fps 30
 
-# Perception validation campaign: official + borderline items x N randomized
-# poses, camera data only. Gates: official-set accuracy >=95% (currently 1.0)
-# AND zero permissive errors — nothing the rules exclude may be seen as
-# sorter-bound. Borderline bl_* items sit within 0.02 of a threshold, so their
-# conservative verdicts are reported, not scored as misses.
+# Кампания валидации перцепции: официальные + пограничные товары × N случайных
+# поз, только камерные данные. Гейты: точность на официальном наборе ≥95 %
+# (сейчас 1,0) И ноль разрешающих ошибок — ничто из исключённого правилами
+# не может быть увидено как «в сортировщик». Пограничные bl_* лежат в 0,02
+# от порога, их консервативные вердикты репортятся, но не считаются промахами.
 .venv/Scripts/python -m perception.validate --poses 10 --seed 5
 # → docs/metrics/perception_validation.{csv,json}
 
-# Unknown-shape robustness: 30 procedural solids the cell has never seen,
-# measured against the official rules computed from the mesh (the private-set
-# question, answered with numbers — incl. the two permissive classes we found)
+# Устойчивость на незнакомых формах: 30 процедурных тел, которых ячейка не видела,
+# против официальных правил, вычисленных из меша (вопрос «приватного набора»,
+# отвеченный числами — включая два найденных разрешающих класса)
 .venv/Scripts/python tools/unknown_shape_campaign.py --n 30 --poses 2 --seed 11
 # → docs/report/unknown_shape_campaign.{md,json}
 
-# Flow model: capacity & queueing from measured cycle times
+# Потоковая модель: пропускная способность и очереди из измеренных тактов
 .venv/Scripts/python -m flow.model    # → flow/out/sweep.csv + flow_sweep.png
 
-# Test suite: rules + kinematics + containment invariants + sensor-config
-# truth + end-to-end smoke (cycle metrics non-null, margins positive, fault
-# drill produces a recovered intervention)
+# Тесты: правила + кинематика + инварианты удержания + истинность сенсор-конфига
+# + сквозной smoke (метрики цикла не пустые, запасы положительные, аварийная
+# дрель даёт восстановленное вмешательство)
 .venv/Scripts/python -m pytest tests -q
 ```
 
-`docker compose up` — builds the CPU-only twin image and runs the full
-22-run validation matrix with hard gates (non-zero exit on any failure);
-`docker compose run demo` records a nominal-run MP4 into `./out/`. Tested
-end-to-end on Docker Desktop (build + in-container run).
+`docker compose up` — собирает CPU-образ твина и запускает полную матрицу из
+22 прогонов с жёсткими гейтами (ненулевой выход при любом провале);
+`docker compose run demo` пишет MP4 номинального прогона в `./out/`. Проверено
+конец-в-конец на Docker Desktop (сборка + прогон в контейнере).
 
-### 5.1 Isaac Sim digital twin (`isaac/`) — the same cell, real sensors, real drives
+### 5.1 Цифровой твин Isaac Sim (`isaac/`) — та же ячейка, настоящие сенсоры, настоящие приводы
 
-The full closed loop also runs in **NVIDIA Isaac Sim 6.0.1** (PhysX 5 physics,
-RTX rendering) — a port from the same single source of truth
-(`cell/params.py`) that goes a step *beyond* the MuJoCo twin on sensor and
-actuator realism:
+Полный замкнутый контур также работает в **NVIDIA Isaac Sim 6.0.1** (физика
+PhysX 5, рендер RTX) — порт из того же единого источника истины
+(`cell/params.py`), который идёт на шаг *дальше* MuJoCo-твина по реализму
+сенсоров и приводов:
 
-- **Classification comes from a real rendered sensor — dual-range.** The RTX
-  depth station (overhead metrology head + two side profiler heads + a
-  close-range MACRO head for small freight) measures each item **in motion**;
-  multi-read fusion with frame-completeness gating and legal-metrology guard
-  bands applies the official rule order. The guard band scales with the
-  measuring head (undersize certification floor = 10 mm + 2×GSD → 16 mm
-  overhead, **10.8 mm macro**): the **11 mm cube certifies honestly as
-  sortable and is physically delivered to B**, while the 10 mm cube and the
-  9 mm pen stay conservatively C.
-- **The executive is contact physics with real actuators.** Conveyors carry
-  items via PhysX surface velocity (the Isaac Conveyor-Belt-utility
-  mechanism) at the designed speeds (belt A at the official 1.0 m/s —
-  probe-verified). The **tilt-tray train** carries each item on its own
-  dynamic tray (revolute joint + angular position drive, 40 ms command
-  pipeline, 160°/s ramp, gain noise, torque saturation); the discharge is
-  position-triggered off the chain encoder and confirmed against the item's
-  actual departure; every command is logged and `summary.json` certifies
-  `direct_velocity_writes_nominal: 0`. Flow discipline is physical pop-up
-  stop blades; induction is a synchronized release over a knife-edge nose
-  with the landing offset measured per item. Items carry material-class
-  physics (cardboard/PET/HDPE/ABS/soft-sack friction, restitution, damping)
-  swept ×0.7/×1.3 in validation.
-- **Faults are handled on camera data.** A chute-zone depth camera localizes
-  a stuck item by background subtraction; the exception arm picks at the
-  camera fix (odometry-refined) and places it **route-correct into its own
-  cage** while the station is locked out; a dead tilt actuator needs no arm —
-  its freight rides to the REVIEW fallback / end-line operator call-out by
-  design (`--inject-tray-fault` proves it).
+- **Классификация идёт с настоящего рендеренного сенсора — двухдиапазонного.**
+  RTX-станция глубины (верхняя метрологическая головка + две боковые
+  профильные + МАКРО-головка ближнего диапазона для мелкого груза) меряет
+  каждый товар **в движении**; фьюжн многих чтений с гейтом полноты кадра
+  и охранными полосами законодательной метрологии применяет официальный
+  порядок правил. Охранная полоса масштабируется с головкой (пол сертификации
+  «мал» = 10 мм + 2×GSD → 16 мм верхняя, **10,8 мм макро**): **куб 11 мм
+  честно сертифицируется как сортируемый и физически доставляется в B**,
+  а куб 10 мм и ручка 9 мм консервативно остаются в C.
+- **Исполнение — контактная физика с настоящими приводами.** Конвейеры несут
+  товары поверхностной скоростью PhysX (механизм Isaac Conveyor-Belt-utility)
+  на проектных скоростях (лента A на официальной 1,0 м/с — проверено пробой).
+  **Поезд поворотных лотков** несёт каждый товар на своём динамическом лотке
+  (шарнир + угловой позиционный привод, конвейер команды 40 мс, рампа 160°/с,
+  шум усиления, насыщение по моменту); сход триггерится по позиции с энкодера
+  цепи и подтверждается фактическим уходом товара; каждая команда логируется,
+  и `summary.json` сертифицирует `direct_velocity_writes_nominal: 0`.
+  Дисциплина потока — физические выдвижные стопоры; посадка — синхронный
+  выпуск через нож-кромку с измерением посадочного смещения на каждом товаре.
+  Товары несут физику класса материала (картон/ПЭТ/HDPE/ABS/мягкий мешок:
+  трение, реституция, демпфирование), свипованную ×0,7/×1,3 в валидации.
+- **Отказы обрабатываются по камерным данным.** Камера глубины зоны желобов
+  локализует застрявший товар вычитанием фона; манипулятор исключений берёт
+  по фиксу камеры (уточнённому одометрией) и кладёт **маршрутно-корректно
+  в его же кейдж** при заблокированной станции; мёртвому приводу наклона рука
+  не нужна — его груз по конструкции едет в резерв REVIEW / вызов оператора
+  в конце линии (`--inject-tray-fault` это доказывает).
 
 ```bash
-# on the GPU server, inside the official isaac-sim:6.0.1 container
+# на GPU-сервере, внутри официального контейнера isaac-sim:6.0.1
 /isaac-sim/python.sh isaac/run_isaac.py --seed 42 --record --camera overview \
     --out /tmp/sortmaster_out/final_seed42
-# → summary.json + events.csv (same metric vocabulary as the MuJoCo runs),
-#   frames/*.png -> MP4, vision_rgb/depth stills, jam_located events
+# → summary.json + events.csv (тот же словарь метрик, что и в MuJoCo),
+#   frames/*.png -> MP4, кадры vision_rgb/depth, события jam_located
 ```
 
-Cross-engine agreement on the physics envelope (zero unsafe errors,
-containment 1.0, cage-entry speed and bounce height inside the MuJoCo-measured
-bounds, command margin ≥ 0.5 s) is exactly the «validated simulation
-cross-checked» УГТ bar — and the Isaac twin adds the sensor-in-the-loop proof.
-Evidence: [docs/report/isaac_evidence/](docs/report/isaac_evidence/); package
-details: [isaac/README.md](isaac/README.md).
+Междвижковое согласие по физической огибающей (ноль опасных ошибок,
+удержание 1,0, скорость входа в кейдж и высота отскока внутри измеренных
+MuJoCo границ, запас команды ≥ 0,5 с) — это ровно планка УГТ «валидированная
+симуляция, сверенная с расчётами», а твин Isaac добавляет доказательство
+«сенсор в контуре». Доказательства: [docs/report/isaac_evidence/](docs/report/isaac_evidence/);
+детали пакета: [isaac/README.md](isaac/README.md).
 
-## 6. Toolchain (all from the organizers' allowed list)
+## 6. Инструментарий (всё из допустимого перечня организаторов)
 
-| Purpose | Tool |
+| Назначение | Инструмент |
 |---|---|
-| Physics simulation of the cell | **Two engines, one cell** (both on the organizers' allowed list). **MuJoCo 3** — the deterministic validation engine (22/22 scenario matrix, headless, identical on any jury box). **NVIDIA Isaac Sim 6.0.1 (PhysX 5 + RTX)** — the high-fidelity digital twin of the SAME cell, built from the same `cell/params.py` single source of truth and run on the team GPU server (RTX 5090); cross-engine agreement of the physics envelope is itself validation evidence (see §5.1). PyBullet was the original pick but publishes **no Windows wheels** — verified empirically; decision documented in the report |
-| Discrete-event flow & cycle time | **SimPy** (+ pandas, matplotlib for metrics) |
-| Perception | **OpenCV**, **Open3D**, **Trimesh**, **Shapely**; **Ultralytics YOLO** for belt detection (synthetic training data rendered in **Blender**) |
-| CAD / layout | **FreeCAD** (reads the official STEP models), exports STEP/STL |
-| Packaging & reproducibility | **Python 3.11+**, **Docker**, **Git**; models exported to ONNX; scenes as URDF |
-| Deliverable formats | PDF (report), MP4 (video), CSV/JSON (metrics), URDF/STL/STEP (models) |
+| Физическая симуляция ячейки | **Два движка, одна ячейка** (оба из допустимого перечня). **MuJoCo 3** — детерминированный валидационный движок (матрица 22/22 сценариев, headless, одинаково на любой машине жюри). **NVIDIA Isaac Sim 6.0.1 (PhysX 5 + RTX)** — высокоточный цифровой твин ТОЙ ЖЕ ячейки, собранный из того же единого источника `cell/params.py` и запускаемый на GPU-сервере команды (RTX 5090); междвижковое согласие физической огибающей — само по себе валидационное доказательство (см. §5.1). Изначально был выбран PyBullet, но он **не публикует колёса под Windows** — проверено эмпирически; решение задокументировано в отчёте |
+| Дискретно-событийный поток и такт | **SimPy** (+ pandas, matplotlib для метрик) |
+| Перцепция | **OpenCV**, **Open3D**, **Trimesh**, **Shapely**; **Ultralytics YOLO** для детекции на ленте (синтетические данные — рендер в **Blender**) |
+| CAD / компоновка | **FreeCAD** (читает официальные STEP-модели), экспорт STEP/STL |
+| Упаковка и воспроизводимость | **Python 3.11+**, **Docker**, **Git**; модели — в ONNX; сцены — в URDF |
+| Форматы сдачи | PDF (отчёт), MP4 (видео), CSV/JSON (метрики), URDF/STL/STEP (модели) |
 
-## 7. Scoring map — where the 130 points live
+## 7. Карта баллов — где живут 130 баллов
 
-| Rubric section | Max | Our vehicle |
+| Раздел рубрики | Макс | Наш инструмент |
 |---|---|---|
-| 1. Presentation | 10 | 7-min deck + rehearsed demo narrative |
-| 2. Readiness matrix (УГТ 4×4) | 20 | CV L4 × Executive L4 = validated sim vs calculations |
-| 3. Category correctness | 20 | Formal-rule classifier + borderline analysis + test-set demo |
-| 4. Executive part & manipulation | 30 | Tilt-tray sorter in real physics: full cycle (signal → tilt → discharge → tray re-flattens), size-independent divert incl. 11 mm cube, per-shape behaviour swept, safety concept |
-| 5. Performance & timing | 20 | Measured cycle_mean/p95/max + perception_latency_ms + command_margin_s per item; look-ahead sync (verdict committed before the escapement; **min command margin 0.95 s** across the whole matrix; belt never stops); fault/overload scenario suite |
-| 6. Integration & realism | 15 | One message bus, category → command trace, industrially plausible cell |
-| 7. Report, reproducibility, README | 15 | This README, Docker one-command run, full report |
+| 1. Презентация | 10 | Дек на 7 минут + отрепетированный демо-нарратив |
+| 2. Матрица готовности (УГТ 4×4) | 20 | CV L4 × Исполнение L4 = валидированная симуляция против расчётов |
+| 3. Корректность категорий | 20 | Классификатор по формальным правилам + анализ границ + демо на тест-наборе |
+| 4. Исполнительная часть и манипуляции | 30 | Tilt-tray сортер в настоящей физике: полный цикл (сигнал → наклон → сход → лоток снова горизонтален), сброс независим от размера вкл. куб 11 мм, поведение по формам свиповано, концепция безопасности |
+| 5. Производительность и тайминги | 20 | Измеренные cycle_mean/p95/max + perception_latency_ms + command_margin_s на товар; упреждающая синхронизация (вердикт зафиксирован до эскейпмента; **мин. запас команды 0,95 с** по всей матрице; лента не останавливается); набор сценариев отказов/перегруза |
+| 6. Связность и реализм | 15 | Одна шина сообщений, трасса «категория → команда», индустриально правдоподобная ячейка |
+| 7. Отчёт, воспроизводимость, README | 15 | Этот README, запуск одной командой в Docker, полный отчёт |
 
-## 8. For the expert jury (проверка решения)
+## 8. Экспертам жюри (проверка решения)
 
-> **Быстрый старт (RU).** Всё решение проверяется двумя командами.
+> **Быстрый старт.** Всё решение проверяется двумя командами.
 > MuJoCo-твин (любая машина, CPU): `python -m cell.validate` — полная матрица
-> 22 прогонов с гейтами, отчет в `runs/validation_*/validation_report.md`.
+> 22 прогонов с гейтами, отчёт в `runs/validation_*/validation_report.md`.
 > Isaac-твин (GPU, официальный контейнер `isaac-sim:6.0.1`):
 > `bash isaac/run_matrix.sh /out/m && python3 tools/consolidate_isaac_matrix.py /out/m`
-> — 14 прогонов + консолидация с жесткими гейтами (ненулевой выход при любом
+> — 14 прогонов + консолидация с жёсткими гейтами (ненулевой выход при любом
 > провале). Одиночный прогон с видео и кадрами сенсоров:
 > `/isaac-sim/python.sh isaac/run_isaac.py --seed 42 --record --depth-stills 3`.
-> Итоговый отчет: [docs/report/final_report_ru.md](docs/report/final_report_ru.md).
+> Итоговый отчёт: [docs/report/final_report_ru.md](docs/report/final_report_ru.md).
 
-- **Run instructions with pinned versions** — `requirements.txt`; Isaac runs inside the official `nvcr.io/nvidia/isaac-sim:6.0.1` container (exact mount set in [isaac/README.md](isaac/README.md)).
-- **One-command evidence:** `python -m cell.validate` (MuJoCo, 22 runs × gates) and `bash isaac/run_matrix.sh <out>` + `tools/consolidate_isaac_matrix.py <out>` (Isaac, 14 runs + hard gates). Both exit non-zero on any failure.
-- **Tunable input parameters — MuJoCo** (per scenario YAML or CLI): item mix and spawn order (`items`, `--seed`), arrival intensity (`spawn_gap_s`), sensor noise (`sensor: {depth_noise_mm}`), classification policy (`classification: {...}`), fault injection (`inject_jam: {slug, at_x}`), perception mode (`--perception camera|oracle`).
-- **Tunable input parameters — Isaac** (CLI of `isaac/run_isaac.py`): `--seed`, `--items <subset>`, `--manifest-extra` (adds the edge set incl. the 11/10 mm cubes, Ø9 mm rod, 2 mm card), `--spawn-gap A,B`, `--spawn-offset-y`, `--friction-mult`, `--mass-mult`, `--inject-jam SLUG@Y` (chute snag → arm recovery), `--inject-tray-fault ZONE` (dead tilt actuator → end-line call-out), `--perception rtx|oracle`, `--record --camera ... --fps`, `--depth-stills N` (sensor's-eye RGB/depth/macro frames).
-- **Prepared scenarios:** nominal (`base`), borderline threshold attacks (`borderline`), close-spaced arrivals (`close_spacing`), degraded sensing (`low_confidence`), jam recovery (`fault_jam`), failed transfer (`failed_transfer`), 1.3× overload (`stress_mix`); the Isaac matrix additionally sweeps friction ×0.7, mass ×1.3, close spacing, off-centre feed and runs both fault drills.
-- **Bring your own STL (требование экспертов):** любой свой тестовый STL можно
+- **Инструкции запуска с зафиксированными версиями** — `requirements.txt`; Isaac работает в официальном контейнере `nvcr.io/nvidia/isaac-sim:6.0.1` (точный набор монтирований — в [isaac/README.md](isaac/README.md)).
+- **Доказательства одной командой:** `python -m cell.validate` (MuJoCo, 22 прогона × гейты) и `bash isaac/run_matrix.sh <out>` + `tools/consolidate_isaac_matrix.py <out>` (Isaac, 14 прогонов + жёсткие гейты). Обе выходят с ненулевым кодом при любом провале.
+- **Настраиваемые входные параметры — MuJoCo** (YAML сценария или CLI): состав и порядок подачи товаров (`items`, `--seed`), интенсивность подачи (`spawn_gap_s`), шум сенсора (`sensor: {depth_noise_mm}`), политика классификации (`classification: {...}`), внесение отказов (`inject_jam: {slug, at_x}`), режим перцепции (`--perception camera|oracle`).
+- **Настраиваемые входные параметры — Isaac** (CLI `isaac/run_isaac.py`): `--seed`, `--items <подмножество>`, `--manifest-extra` (добавляет крайний набор вкл. кубы 11/10 мм, стержень Ø9 мм, карту 2 мм), `--spawn-gap A,B`, `--spawn-offset-y`, `--friction-mult`, `--mass-mult`, `--inject-jam SLUG@Y` (застревание на желобе → восстановление рукой), `--inject-tray-fault ZONE` (мёртвый привод наклона → вызов в конце линии), `--perception rtx|oracle`, `--record --camera ... --fps`, `--depth-stills N` (кадры RGB/глубины/макро «глазами сенсора»).
+- **Готовые сценарии:** номинал (`base`), пограничные атаки на пороги (`borderline`), плотная подача (`close_spacing`), деградированная сенсорика (`low_confidence`), восстановление из затора (`fault_jam`), сорванная передача (`failed_transfer`), перегруз 1,3× (`stress_mix`); матрица Isaac дополнительно свипует трение ×0,7, массу ×1,3, плотную подачу, смещённую подачу и обе аварийные дрели.
+- **Свой STL (требование экспертов / приватный набор):** любой сторонний тестовый STL можно
   прогнать через официальные правила и через ФИЗИЧЕСКИЙ контур:
   `python tools/expert_check.py path/to/model.stl` — класс + полная трасса
-  решения (габариты OBB, r/R по секциям, категория, причина);
+  решения (габариты OBB, r/R по сечениям, категория, причина);
   `python tools/expert_check.py model.stl --register --mass 0.4` — регистрирует
   товар для симуляторов и печатает готовые команды запуска (CPU-твин без GPU
-  или Isaac с RTX-перцепцией). Сводка прогона показывает, как ЖИВАЯ перцепция
-  измерила товар, какой класс назначила и куда физически доставила.
-- **GPU fallback:** если тестовый стенд отличается от нашей среды, полный
+  или Isaac с RTX-перцепцией). Правила меряют геометрию, а не запоминают
+  выданный набор, поэтому решение по построению переносится на новые товары.
+  Сводка прогона показывает, как ЖИВАЯ перцепция измерила товар, какой класс
+  назначила и куда физически доставила.
+- **Резерв без GPU:** если тестовый стенд отличается от нашей среды, полный
   контур проверяется БЕЗ GPU цифровым двойником MuJoCo
   (`python -m cell.validate`, детерминированный, 22 прогона × гейты), а
   RTX-результаты приложены как видео + матричные артефакты
   ([docs/report/isaac_evidence/](docs/report/isaac_evidence/)).
-- **Engineering pack:** [архитектура ПАК](docs/report/architecture.md) ·
+- **Инженерный пакет:** [архитектура ПАК](docs/report/architecture.md) ·
   [схема компоновки](docs/report/figures/layout_plan.png) (генерируется из
   `cell/params.py`) · [кинематика каретки](docs/report/figures/carrier_kinematics.png) ·
   [спецификация узлов](docs/report/node_spec.md) ·
   [before/after доказательства механики](docs/report/isaac_evidence/xbelt/proof_pack/README.md).
-- **Perception evidence (jury panels):** side-by-side «RGB + RTX depth +
-  segmentation + fused dims + route decision» panels built from real sensor
-  frames by `tools/make_perception_panels.py` —
+- **Доказательства перцепции (панели для жюри):** панели «RGB + RTX-глубина +
+  сегментация + сшитые габариты + решение маршрута», собранные из настоящих
+  кадров сенсора скриптом `tools/make_perception_panels.py` —
   [panels](docs/report/isaac_evidence/xbelt/perception/panels/) ·
-  [edge-case panels](docs/report/isaac_evidence/xbelt/perception/panels_edge/)
-  (11 mm cube→B vs 10 mm cube→C at the 10.8 mm certification floor) ·
+  [пограничные панели](docs/report/isaac_evidence/xbelt/perception/panels_edge/)
+  (куб 11 мм→B против куба 10 мм→C на полу сертификации 10,8 мм) ·
   [perception_demo.mp4](docs/report/isaac_evidence/xbelt/perception/perception_demo.mp4) ·
-  final [metrics end card](docs/report/isaac_evidence/xbelt/videos_final/endcard.png).
-  The overlaid segmentation masks and item point clouds are the measuring
-  pipeline's OWN export (`RTXPerception.export_masks` → `vision_mask_*.png`,
-  `vision_cloud_*.npy`, incl. the close-range macro head), pixel-aligned with
-  the saved stills — not a visualization-side re-derivation.
-- **Where the binaries live.** Everything needed to judge this entry is **in
-  this repository** — no download required: the 14-run Isaac matrix with
-  per-run raw artifacts, the 22-run twin matrix
-  ([docs/report/validation/](docs/report/validation/)), the machine audits,
-  the sensor stills + exported masks/clouds, and the video set
-  ([docs/report/isaac_evidence/](docs/report/isaac_evidence/), ~520 MB). The
-  submission rules allow large binaries to sit in cloud storage with links
-  here; we kept them in-repo instead so the evidence is versioned with the
-  code that produced it — one `git clone` gives an expert the complete,
-  self-contained submission with no external dependencies.
+  финальная [карточка метрик](docs/report/isaac_evidence/xbelt/videos_final/endcard.png).
+  Наложенные маски сегментации и облака точек — СОБСТВЕННЫЙ экспорт
+  измерительного пайплайна (`RTXPerception.export_masks` → `vision_mask_*.png`,
+  `vision_cloud_*.npy`, вкл. макро-головку ближнего диапазона), пиксельно
+  совмещённый с сохранёнными кадрами — не пересчёт на стороне визуализации.
+- **Где лежат бинарные материалы.** Всё, что нужно для оценки решения, —
+  **в этом репозитории**, скачивать ничего не нужно: матрица Isaac из 14
+  прогонов с сырыми артефактами по каждому, матрица твина из 22 прогонов
+  ([docs/report/validation/](docs/report/validation/)), машинные аудиты,
+  кадры сенсоров + экспортированные маски/облака и набор видео
+  ([docs/report/isaac_evidence/](docs/report/isaac_evidence/), ~520 МБ).
+  Правила сдачи допускают вынос крупных бинарников в облако со ссылками —
+  мы вместо этого держим их в репозитории, чтобы доказательства были
+  версионированы вместе с кодом, который их произвёл: один `git clone` даёт
+  эксперту полный автономный комплект без внешних зависимостей.
 
-## 9. Team YOLOSOLO
+## 9. Команда YOLOSOLO
 
-| Person | Role | Contribution |
+| Участник | Роль | Вклад |
 |---|---|---|
-| **Ricardo Zambrano** | Mechatronics engineer | Cell mechanics and the tilt-tray executive part; the two physics twins (Isaac Sim + MuJoCo) built from the single `cell/params.py` source of truth; perception-to-actuation integration |
-| **Uliana Nazarenko** | Data analyst | Validation matrices and gates; metrics pipeline (cycle time, command margin, precision/recall per category); evidence curation — sealed logs, panels, and the video set |
+| **Рикардо Замбрано (Ricardo Zambrano)** | Инженер-мехатроник | Механика ячейки и исполнительная часть tilt-tray; оба физических твина (Isaac Sim + MuJoCo) из единого источника `cell/params.py`; интеграция перцепции с исполнением |
+| **Ульяна Назаренко (Uliana Nazarenko)** | Аналитик данных | Валидационные матрицы и гейты; конвейер метрик (такт, запас команды, precision/recall по категориям); курирование доказательств — запечатанные журналы, панели, набор видео |
 
-A two-person team shipped both engines, the sealed 15-run Isaac matrix, the
-22-run CPU twin, and a bring-your-own-STL check tool — everything in this
-repository is reproducible by the jury without contacting us.
+Команда из двух человек довела до сдачи оба движка, запечатанную матрицу
+Isaac из 15 прогонов, CPU-твин из 22 прогонов и инструмент проверки на
+собственных STL — всё в этом репозитории воспроизводится жюри без обращения
+к команде.
 
 ---
 
-*Language note: working docs are in English; the submitted README/report/presentation will be delivered in Russian (the jury's language) — translation is a scheduled roadmap step, not an afterthought.*
+*Примечание о языках: комплект сдачи — README, отчёт, презентация — на русском
+(язык жюри). Английская инженерная версия этого документа сохранена как
+[README_EN.md](README_EN.md); рабочие документы разработки (ROADMAP,
+STEP_BY_STEP) остаются на английском.*
