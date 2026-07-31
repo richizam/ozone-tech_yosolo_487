@@ -30,6 +30,8 @@ docs/report/isaac_evidence/xbelt/videos/
 
 # guion de trabajo del video (documento interno, no entregable)
 docs/report/video_script.md
+# texto hablado de la defensa (interno, no entregable)
+docs/report/speech_ru.md
 
 # debug scratch de contenedor (reproducciones puntuales)
 out_dbg/
