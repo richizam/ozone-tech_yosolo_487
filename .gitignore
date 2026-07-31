@@ -33,3 +33,20 @@ docs/report/video_script.md
 
 # debug scratch de contenedor (reproducciones puntuales)
 out_dbg/
+
+# ---- deck build scratch -------------------------------------------------
+# entregable = YOSOLO_stage1_pitch_ru_FINAL.pptx (en la raíz, SÍ se sube).
+# Todo lo demás alrededor del deck es material de trabajo:
+# composición intermedia (~525 MB) + copia del script de build
+deck_work/
+# plantilla de los organizadores (entrada, 106 MB)
+Шаблон_Задача_3.pptx
+# borrador anterior del deck
+YOSOLO_stage1_pitch_ru.pptx
+# volcado de inspección del deck
+*.pptx.inspect.ndjson
+# lock temporal de PowerPoint
+~$*.pptx
+# guion viejo; el vigente es docs/report/video_script.md (también ignorado)
+SortMaster_pitch_script_ru.txt
+.cache/
