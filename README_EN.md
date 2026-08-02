@@ -364,7 +364,7 @@ details: [isaac/README.md](isaac/README.md).
   code that produced it — one `git clone` gives an expert the complete,
   self-contained submission with no external dependencies.
 
-## 9. Team YOLOSOLO
+## 9. Team YOSOLO
 
 | Person | Role | Contribution |
 |---|---|---|

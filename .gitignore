@@ -31,7 +31,7 @@ docs/report/isaac_evidence/xbelt/videos/
 # guion de trabajo del video (documento interno, no entregable)
 docs/report/video_script.md
 # texto hablado de la defensa (interno, no entregable)
-docs/report/speech_ru.md
+docs/report/speech_ru*.md
 
 # debug scratch de contenedor (reproducciones puntuales)
 out_dbg/
@@ -53,9 +53,17 @@ YOSOLO_stage1_pitch_ru.pptx
 SortMaster_pitch_script_ru.txt
 # kit de grabación del video (material de trabajo, no entregable)
 video_kit/
+# copias renombradas para subir a Nextcloud + checklist (no van al repo)
+submission/
+Преза_final_final.BACKUP.pptx
+Videopresentation_YOSOLO_SORTMASTER.mov
+Преза_final_final.pptx
+YOSOLO_final_presentation.pptx
 # notas internas de trabajo (prompts de agentes, planes de sesión) — no entregables
 CROSS_BELT_REBUILD_PROMPT.md
 GATED_ACTUATOR_TEST_PLAN.md
 SUPER_REALISTIC_HACKATHON_PLAN.md
 champion_level_improvement_agent.md
 .cache/
+# lock temporal de Word
+~$*.docx
