@@ -8,7 +8,7 @@ parameter source ([`cell/params.py`](../../../cell/params.py)):
 | Folder | Engine | What it is |
 |---|---|---|
 | [`xbelt/`](xbelt/) | **NVIDIA Isaac Sim 6.0.1** (PhysX 5 + RTX) | primary digital twin: classification from **rendered depth cameras**, freight moved by **contact physics only** |
-| [`twin_videos/`](twin_videos/) | **MuJoCo 3** | validation-twin recordings (CPU, no GPU needed) |
+| `twin_videos/` (in cloud storage) | **MuJoCo 3** | validation-twin recordings (CPU, no GPU needed) |
 | [`../validation/`](../validation/) | MuJoCo 3 | the validation twin's committed matrix (22 runs, 235 items) |
 
 > Earlier build generations (arm/table executive, ARB actuator deck, v23/v25
@@ -63,7 +63,7 @@ unsafe errors and zero floor drops across all 14 runs. Per-run routing:
   clouds**, the fused `reads_log.json` behind every verdict, and the jury
   panels ([`panels/`](xbelt/perception/panels/),
   [`panels_edge/`](xbelt/perception/panels_edge/),
-  [`perception_demo.mp4`](xbelt/perception/perception_demo.mp4)).
+  `perception_demo.mp4` in cloud storage at `xbelt/perception/perception_demo.mp4`).
 - [`videos_final/`](xbelt/videos_final/) — RTX recordings of real runs (see
   the vintage note below) and [`endcard.png`](xbelt/videos_final/endcard.png),
   generated from `matrix_summary.json`.
