@@ -485,7 +485,7 @@ Shapely используется в эталонной реализации пр
 ## Приложение А. Видеодемонстрация
 
 **Сводный ролик (главный материал):**
-`demo_sortmaster.mp4` (облачное хранилище: `isaac_evidence/demo_sortmaster.mp4`) — 1 мин 50 с,
+[demo_sortmaster.mp4](isaac_evidence/demo_sortmaster.mp4) — 1 мин 50 с,
 весь контур одной историей: куб 11 мм как причина выбора механизма →
 задача → поворотные лотки → измерение и решение (панели перцепции) →
 контактная физика → отказы и безопасные терминалы → две физики → метрики.
@@ -498,7 +498,7 @@ Shapely используется в эталонной реализации пр
 
 **Перцепция (главное доказательство CV):**
 
-- `perception_demo.mp4` (облачное хранилище: `isaac_evidence/xbelt/perception/perception_demo.mp4`) —
+- [perception_demo.mp4](isaac_evidence/xbelt/perception/perception_demo.mp4) —
   сводный ролик панелей «RGB + RTX-глубина + сегментация + габариты +
   решение»: box_s→B, bottle→D, helmet→D (агрегатная улика), **куб 11 мм→B**
   (макро-головка), куб 10 мм→C (под полом сертификации), пруток Ø9→C, ручка→C.
@@ -531,7 +531,7 @@ Shapely используется в эталонной реализации пр
 `cine_dolly.mp4`, `cine_crane.mp4`.
 
 **Цифровой двойник MuJoCo (CPU, без GPU):**
-`twin_videos/` (облачное хранилище: `isaac_evidence/twin_videos/`) — записи прогонов
+[twin_videos/](isaac_evidence/twin_videos/) — записи прогонов
 валидационного двойника: `twin_nominal_overview.mp4` /
 `twin_nominal_top.mp4` (номинал, 11 официальных товаров),
 `twin_borderline_overview.mp4` (пограничный набор),

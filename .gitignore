@@ -67,3 +67,12 @@ champion_level_improvement_agent.md
 .cache/
 # lock temporal de Word
 ~$*.docx
+
+# ---- archivo de la entrega etapa 1 (14-08) -------------------------------
+# el zip completo subido a NextCloud (978 MB) — solo local
+ozone_team_yosolo_1139142125.zip
+# la видеодемонстрация final (244 MB) supera el límite de 100 MB de GitHub;
+# vive en deliverables/stage1/ solo local + dentro del zip de NextCloud
+deliverables/stage1/YOSOLO_*.mp4
+# grabación de la sesión QA 17-07 (material fuente, no entregable)
+hackathon_qa_track3_sorting_*.mp4
